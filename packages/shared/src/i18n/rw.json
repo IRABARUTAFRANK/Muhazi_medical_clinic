@@ -1917,8 +1917,8 @@
     "supplyLabel": "Umurwayi awubona:",
     "supply": {
       "pharmacy": "Kuri farumasi",
-      "room": "Ndawutanga hano",
-      "outside": "Farumasi yo hanze"
+      "room": "Itangiwe hano, ivuye mu bubiko bw’ivuriro",
+      "outside": "Urupapuro rw’imiti: igurwa muri farumasi yo hanze"
     },
     "givenHere": "Yatanzwe hano",
     "givenBy": "yatanzwe na {{name}}",
@@ -1978,7 +1978,7 @@
     "cancelHint": "Farumasi irabimenyeshwa kandi ntizawutanga. Nta kiguzi cyawo kizishyurwa.",
     "cancelledWhy": "Byahagaritswe: {{reason}}",
     "rxCancelled": "{{item}} wahagaritswe. Farumasi yabimenyeshejwe.",
-    "fromStore": "watanzwe hano uvuye muri {{store}}",
+    "fromStore": "itangiwe hano ivuye muri {{store}}",
     "returnWhyPh": "Umuti utari wo, utafunguwe, umubiri wawanze…",
     "returnOpenHint": "Umuti usubira mu bubiko bwa farumasi kandi ukurwa kuri fagitire.",
     "returnClosedHint": "Uku kwivuza kwarafunzwe: umuti usubira mu bubiko bwa farumasi kandi hagakorwa icyemezo cyo gusubiza amafaranga. Ayo umurwayi yawishyuye ayasubizwa aho bakira ubwishyu.",
@@ -2001,7 +2001,7 @@
     "rxGivenHere_other": "Imiti {{count}} yatanzwe hano: yavanywe mu bubiko bw’icyumba ishyirwa kuri fagitire. Umurwayi yishyura byose aho bakira ubwishyu kwivuza kurangiye.",
     "rxPartSaved_one": "Umuti {{count}} wabitswe mbere yo kwangirwa; ntukigaragara hano.",
     "rxPartSaved_other": "Imiti {{count}} yabitswe mbere yo kwangirwa; ntikigaragara hano.",
-    "rxPayHint": "“Ndawutanga hano” ivana umuti mu bubiko bwawe bw’icyumba ako kanya ikawushyira kuri fagitire. Umurwayi yishyura byose rimwe, aho bakira ubwishyu, kwivuza kurangiye.",
+    "rxPayHint": "“Itangiwe hano” ikura umuti cyangwa igicuruzwa mu bubiko bw’ivuriro ubu, ku mubare wanditse, ikabishyira ku nyemezabwishyu mu izina ryawe. Umurwayi yishyura byose rimwe, ku wakira ubwishyu, visite irangiye.",
     "rxPharmacyOnly": "Imiti wandika ijya kuri farumasi. “Ndawutanga hano” ni iy’abakozi umuyobozi yahaye ububiko bw’icyumba.",
     "switchToPharmacy": "Ahubwo kuri farumasi",
     "undoHere": "Bisubize mu bubiko",
@@ -2023,7 +2023,7 @@
     "sentOutside": "{{item}}: azawugurira kuri farumasi yo hanze. Wucape ukoresheje “Cyapa urupapuro rw’imiti yo kugura hanze”.",
     "backToClinic": "{{item}} usubijwe kuri farumasi y’ivuriro.",
     "rxOutsideHint": "Umuti ivuriro ridafite: hitamo “Farumasi yo hanze”. Umurwayi awugurira ahandi; ntujya kuri fagitire. Ushobora no gushakira ku rutonde rwemewe cyangwa ukandika izina ryawo.",
-    "outsideLineHint": "Umurwayi azagura uyu muti kuri farumasi yo hanze. Ntujya kuri fagitire kandi ntujya kuri farumasi y’ivuriro.",
+    "outsideLineHint": "Umurwayi agura uyu muti muri farumasi yo hanze: uri ku rupapuro rw’imiti rucapwe, ntabwo uri ku nyemezabwishyu.",
     "rxOutsideSaved_one": "Umuti {{count}} wo kugura hanze: wucape ukoresheje “Cyapa urupapuro rw’imiti yo kugura hanze”.",
     "rxOutsideSaved_other": "Imiti {{count}} yo kugura hanze: yicape ukoresheje “Cyapa urupapuro rw’imiti yo kugura hanze”.",
     "stock": {
@@ -2105,7 +2105,9 @@
     "addTreatments_one": "Ongeraho ubuvuzi {{count}} kuri fagitire",
     "addTreatments_other": "Ongeraho ubuvuzi {{count}} kuri fagitire",
     "treatmentsAdded_one": "Ubuvuzi {{count}} bwongewe kuri fagitire.",
-    "treatmentsAdded_other": "Ubuvuzi {{count}} bwongewe kuri fagitire."
+    "treatmentsAdded_other": "Ubuvuzi {{count}} bwongewe kuri fagitire.",
+    "switchToOutside": "Uyandikire kugurwa hanze aho",
+    "givenHereTag": "itangiwe hano, ivuye mu bubiko bw’ivuriro"
   },
   "adjust": {
     "mode": "Uko ubyandika",
@@ -5366,7 +5368,7 @@
   },
   "pharmacy": {
     "desk": "Farumasi",
-    "section": "Imiti yo gutanga",
+    "section": "Kugurisha n’ububiko",
     "receive": "Kwakira ibyagemuwe",
     "openStock": "Fungura ububiko",
     "serveSoon": "abarwayi bategereje",
@@ -6629,7 +6631,7 @@
   "stockErrors": {
     "noOpenBill": "Uku kwivuza nta fagitire ifunguye gufite (kwarafunzwe cyangwa kwamaze kwishyurwa). Nta cyatanzwe cyangwa ngo cyishyuzwe.",
     "doctorHolds": "Muganga aracyari kumwe n’uyu murwayi. Tanga imiti muganga amaze kurangiza.",
-    "roomShort": "Uyu muti (utarengeje igihe) ntuhagije mu bubiko bwawe. Wandikire farumasi, cyangwa usabe farumasi imiti.",
+    "roomShort": "Uyu muti ntuhagije (utarangiriweho) mu bubiko bw’ivuriro: banza wongere ububiko, cyangwa uwandikire kugurwa hanze.",
     "notHolder": "Ntabwo ushinzwe ubu bubiko. Ababushinzwe (cyangwa umuyobozi) ni bo bonyine bashobora gutanga ibiburimo cyangwa kubukoraho.",
     "noRoomStore": "Nta bubiko bw’icyumba ushinzwe, ntushobora gutanga imiti hano. Yandikire farumasi.",
     "notRoomStore": "Hitamo ububiko bw’icyumba bufunguye.",

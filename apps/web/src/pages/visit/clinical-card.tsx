@@ -69,10 +69,7 @@ import {
 } from '@/lib/api/patients'
 import { VisitEditLock } from '@/components/clinical/visit-edit-lock'
 import { useEditWindow } from '@/components/clinical/edit-window'
-import { isRoomStore, useStockActions, useStockOverview } from '@/lib/api/stock'
-import { useHoldsStore, useStoreStock, type MyStore } from '@/lib/api/rooms'
-import { priceQuantity } from '@/lib/pack-pricing'
-import { priceLineText, saleModeText, wholePacksText } from '@/pages/stock/stock-util'
+import { useStockActions } from '@/lib/api/stock'
 import { ApiError, errorKind } from '@/lib/api/errors'
 import { useBillingActions, useVisitBill } from '@/lib/api/billing'
 import { payerLine, useInsurerTariff, usePayerLines } from '@/lib/api/insurers'
@@ -151,7 +148,8 @@ const emptyLine = (): RxLine => ({
   frequency: '',
   days: '',
   instructions: '',
-  supply: 'pharmacy',
+  // 0173: a prescription is for an outside pharmacy; "given here" takes it from the clinic's stock
+  supply: 'outside',
   supplyChosen: false,
   typedName: '',
   store: '',
@@ -399,12 +397,8 @@ export function ClinicalCard({
         if (j !== i) return l
         if (outsideOnly(value))
           return { ...l, item: value, supply: 'outside' as const, supplyChosen: false }
-        const n = stockOf(value)
-        const supply: RxSupply = l.supplyChosen
-          ? l.supply
-          : n == null || n > 0
-            ? 'pharmacy'
-            : 'outside'
+        // 0173: a prescription unless the prescriber chose "given here"
+        const supply: RxSupply = l.supplyChosen ? l.supply : 'outside'
         return { ...l, item: value, supply }
       }),
     )
@@ -488,18 +482,7 @@ export function ClinicalCard({
   const confirm = useConfirm()
   const name = patient?.name || t('confirm.visit.thisPatient')
   const isManager = user.role === 'manager'
-  // "Given here" is for the people who hold a room store; the manager may give from any one.
-  const holds = useHoldsStore()
-  const myStores = holds.stores.filter((s) => s.active !== false)
-  const canGiveHere = isManager || myStores.length > 0
-  const ownStore = myStores.find((s) => s.personal) ?? myStores[0] ?? null
-  /** The room store a line given here comes out of: the one chosen, else my own. */
-  const storeOf = (l: RxLine) =>
-    l.store
-      ? { id: l.store, name: l.storeName }
-      : ownStore
-        ? { id: ownStore.id, name: ownStore.name }
-        : null
+  // 0173: "Given here" comes from the clinic's one stock, whoever gives (no store to hold)
   // a line the room store refused (not enough, not held): "for the pharmacy" is offered
   const [refused, setRefused] = useState<{ key: number; message: string } | null>(null)
   // prescribing-rule notes from the last prescription (never a refusal)
@@ -511,9 +494,8 @@ export function ClinicalCard({
     kind: 'cancel' | 'return' | 'undo'
   } | null>(null)
   const [reason, setReason] = useState('')
-  const supplies: RxSupply[] = canGiveHere
-    ? ['pharmacy', 'room', 'outside']
-    : ['pharmacy', 'outside']
+  // 0173: bought outside (a prescription), or given here from the clinic's stock
+  const supplies: RxSupply[] = ['outside', 'room']
 
   const letterhead = useLetterhead()
   const reportLabels = useMedicalReportLabels()
@@ -847,14 +829,11 @@ export function ClinicalCard({
       setTwiceOk(ids.join(','))
       return setLocalError(t('clinical.errors.rxTwice', { names: twice.join(', ') }))
     }
-    // the manager holds no store of their own: they say which room store it comes from
-    if (prepared.some((p) => p.line.supply === 'room' && !storeOf(p.line)))
-      return setLocalError(t('clinical.errors.pickStore'))
     const list = prepared
       .map((p) => {
         const label = `${p.name} × ${p.q}`
         return p.line.supply === 'room'
-          ? `${label} (${t('clinical.fromStore', { store: storeOf(p.line)?.name ?? '' })})`
+          ? `${label} (${t('clinical.givenHereTag')})`
           : p.line.supply === 'outside'
             ? `${label} (${t('clinical.outsideTag')})`
             : label
@@ -901,7 +880,8 @@ export function ClinicalCard({
           instructions: line.instructions,
           supply: line.supply,
           station: stationFor(user),
-          locationId: line.supply === 'room' ? (storeOf(line)?.id ?? null) : null,
+          // 0173: from the clinic's stock (the database picks it)
+          locationId: null,
         })
         saved.push(line.key)
         if (line.supply === 'room') {
@@ -1540,9 +1520,7 @@ export function ClinicalCard({
     <Reveal focus block="nearest">
       <form onSubmit={submitRx} className="flex flex-col gap-3">
         <p className="text-ink-3 m-0 text-xs">{t('clinical.rxHint')}</p>
-        <p className="text-ink-3 m-0 text-xs">
-          {t(canGiveHere ? 'clinical.rxPayHint' : 'clinical.rxPharmacyOnly')}
-        </p>
+        <p className="text-ink-3 m-0 text-xs">{t('clinical.rxPayHint')}</p>
         <p className="text-ink-3 m-0 text-xs">{t('clinical.rxOutsideHint')}</p>
         {rx.map((line, i) => (
           <fieldset
@@ -1683,9 +1661,7 @@ export function ClinicalCard({
                           : 'border-border bg-card text-ink-2 hover:bg-hover',
                       )}
                     >
-                      {k === 'pharmacy' ? (
-                        <Pill size={14} aria-hidden="true" />
-                      ) : k === 'room' ? (
+                      {k === 'room' ? (
                         <HandHeart size={14} aria-hidden="true" />
                       ) : (
                         <Store size={14} aria-hidden="true" />
@@ -1713,26 +1689,6 @@ export function ClinicalCard({
                 {t('clinical.outsideLineHint')}
               </p>
             )}
-            {line.supply === 'room' &&
-              canGiveHere &&
-              (isManager ? (
-                <ManagerRoomStore
-                  value={storeOf(line)?.id ?? ''}
-                  onChange={(id, storeName) => setLine(i, { store: id, storeName })}
-                  itemId={line.item}
-                  quantity={Number(line.quantity) || 0}
-                  onPharmacy={() => setLine(i, { supply: 'pharmacy' })}
-                />
-              ) : (
-                <RoomStoreChoice
-                  stores={myStores}
-                  value={storeOf(line)?.id ?? ''}
-                  onChange={(id, storeName) => setLine(i, { store: id, storeName })}
-                  itemId={line.item}
-                  quantity={Number(line.quantity) || 0}
-                  onPharmacy={() => setLine(i, { supply: 'pharmacy' })}
-                />
-              ))}
             {refused?.key === line.key && (
               <div
                 role="alert"
@@ -1742,12 +1698,12 @@ export function ClinicalCard({
                 <Button
                   size="sm"
                   onClick={() => {
-                    setLine(i, { supply: 'pharmacy' })
+                    setLine(i, { supply: 'outside', supplyChosen: true })
                     setRefused(null)
                   }}
                 >
-                  <Pill size={14} aria-hidden="true" />
-                  {t('clinical.switchToPharmacy')}
+                  <Store size={14} aria-hidden="true" />
+                  {t('clinical.switchToOutside')}
                 </Button>
               </div>
             )}
@@ -3366,133 +3322,5 @@ export function ClinicalCard({
       )}
       {(!stepper || step === STEP_KEYS.length) && finishBar}
     </Card>
-  )
-}
-
-interface StoreChoiceProps {
-  value: string
-  onChange: (id: string, name: string) => void
-  /** The medicine on this line and how many: the store's stock of it is shown. */
-  itemId: string
-  quantity: number
-  /** Not enough here: the line goes to the pharmacy instead. */
-  onPharmacy: () => void
-}
-
-/** The manager gives from any open room store: the list comes from the stock overview. */
-function ManagerRoomStore(props: StoreChoiceProps) {
-  const { data } = useStockOverview()
-  const stores = (data?.locations ?? [])
-    .filter((l) => isRoomStore(l) && l.active !== false)
-    .map((l) => ({ id: l.id, name: l.name }))
-  return <RoomStoreChoice {...props} stores={stores} pick />
-}
-
-/**
- * Given here: which room store it comes out of (default: my own) and how much of the medicine
- * it holds, never counting expired units. Not enough: "for the pharmacy" is offered.
- */
-function RoomStoreChoice({
-  stores,
-  pick = false,
-  value,
-  onChange,
-  itemId,
-  quantity,
-  onPharmacy,
-}: StoreChoiceProps & {
-  stores: Pick<MyStore, 'id' | 'name'>[]
-  /** No store is preset (the manager): one must be chosen. */
-  pick?: boolean
-}) {
-  const { t } = useTranslation()
-  const known = stores.some((s) => s.id === value)
-  const current = known ? value : ''
-  const { data, isLoading } = useStoreStock(current || null)
-  const storeName = stores.find((s) => s.id === current)?.name ?? ''
-  const row = data?.items.find((x) => x.itemId === itemId)
-  const usable = row?.usable ?? 0
-  let stockLine: ReactNode = null
-  if (current && itemId && !isLoading && data) {
-    const short = quantity > 0 && usable < quantity
-    stockLine = (
-      <span
-        className={cn(
-          'flex flex-wrap items-center gap-2 text-[13px]',
-          short ? 'text-red font-semibold' : 'text-ink-2',
-        )}
-      >
-        <span>
-          {usable === 0
-            ? t('clinical.roomStock.none', { store: storeName })
-            : short
-              ? t('clinical.roomStock.short', { count: usable, store: storeName, quantity })
-              : t('clinical.roomStock.ready', { count: usable, store: storeName })}
-          {row && row.expired > 0 && ` ${t('clinical.roomStock.expired', { count: row.expired })}`}
-        </span>
-        {short && (
-          <Button size="sm" onClick={onPharmacy}>
-            <Pill size={14} aria-hidden="true" />
-            {t('clinical.switchToPharmacy')}
-          </Button>
-        )}
-      </span>
-    )
-  }
-  return (
-    <div className="border-border bg-card flex flex-col gap-2 rounded-md border px-3 py-2">
-      {stores.length > 1 || pick ? (
-        <Select
-          label={t('clinical.roomStock.label')}
-          value={current}
-          onChange={(e) =>
-            onChange(e.target.value, stores.find((s) => s.id === e.target.value)?.name ?? '')
-          }
-          required
-        >
-          {(pick || !current) && <option value="">{t('clinical.roomStock.pick')}</option>}
-          {stores.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </Select>
-      ) : (
-        <span className="text-ink-2 text-[13px] font-semibold">
-          {t('clinical.fromStore', { store: storeName || stores[0]?.name || '' })}
-        </span>
-      )}
-      {stores.length === 0 && (
-        <span className="text-ink-3 text-xs">{t('clinical.roomStock.noStores')}</span>
-      )}
-      {stockLine}
-      {/* 0107: how the medicine is sold, and what the quantity is charged (cash price) */}
-      {row && quantity > 0 && <GivenHereCharge row={row} quantity={quantity} />}
-    </div>
-  )
-}
-
-/** "1 box of 8 × 1,200 = 1,200", or "sold only by the whole box: give 8 or 16". */
-function GivenHereCharge({
-  row,
-  quantity,
-}: {
-  row: NonNullable<ReturnType<typeof useStoreStock>['data']>['items'][number]
-  quantity: number
-}) {
-  const { t } = useTranslation()
-  const item = { ...row, sellingPrice: row.price }
-  const p = priceQuantity(item, quantity)
-  if (!p.ok)
-    return (
-      <span className="text-red text-[13px] font-semibold">
-        {wholePacksText(t, quantity, item)}
-      </span>
-    )
-  if (!row.packSize || row.packSize < 2 || row.price == null) return null
-  return (
-    <span className="text-teal text-[13px] font-medium tabular-nums">
-      {saleModeText(t, item)} · {priceLineText(t, p, item, formatRwf)}
-    </span>
   )
 }

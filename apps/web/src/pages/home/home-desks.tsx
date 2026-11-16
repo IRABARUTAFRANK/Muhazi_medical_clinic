@@ -20,7 +20,6 @@ import { useCan } from '@/lib/api/permissions'
 import { onePerPool, openItems, useQueueBoard } from '@/lib/api/visits'
 import { useNow } from '@/lib/hooks'
 import { cn } from '@/lib/utils'
-import { PharmacyDesk } from '../stock/pharmacy-desk'
 import { LabOrderRow } from '../lab/lab-parts'
 import { AppointmentsPanel, BedsPanel, TasksPanel } from './desk-panels'
 import { MyQueuePanel } from './role-panels'
@@ -87,11 +86,6 @@ export function DeskBlocks({ user, kind }: { user: StaffUser; kind: HomeKind }) 
               </>
             )}
             {lab && <LabBenchPanel />}
-            {more.includes('pharmacy') && (
-              <div className="pc:col-span-2 flex min-w-0 flex-col gap-4">
-                <PharmacyDesk canDispense />
-              </div>
-            )}
           </div>
         </>
       )}

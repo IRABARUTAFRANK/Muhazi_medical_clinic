@@ -3009,8 +3009,8 @@
     "supplyLabel": "Le patient le reçoit :",
     "supply": {
       "pharmacy": "À la pharmacie",
-      "room": "Je le donne ici",
-      "outside": "Pharmacie extérieure"
+      "room": "Donné ici, depuis le stock de la clinique",
+      "outside": "Ordonnance : acheté dans une pharmacie extérieure"
     },
     "givenHere": "Donné ici",
     "givenBy": "donné par {{name}}",
@@ -3093,7 +3093,7 @@
     "rxGivenHere_other": "{{count}} médicaments donnés ici : pris dans la réserve de salle et ajoutés à la facture. Le patient paie tout à la caisse à la fin de la visite.",
     "rxPartSaved_one": "{{count}} médicament a été enregistré avant le refus ; il n'est plus sur le formulaire.",
     "rxPartSaved_other": "{{count}} médicaments ont été enregistrés avant le refus ; ils ne sont plus sur le formulaire.",
-    "rxPayHint": "« Je le donne ici » sort le médicament de votre réserve de salle maintenant et l'ajoute à la facture. Le patient paie tout en une fois, à la caisse, à la fin de la visite.",
+    "rxPayHint": "« Donné ici » sort le médicament ou le produit du stock de la clinique maintenant, dans la quantité tapée, et le met sur la facture à votre nom. Le patient paie tout une fois, à la caisse, à la fin de la visite.",
     "rxPharmacyOnly": "Vos médicaments vont à la pharmacie. « Je le donne ici » est réservé au personnel à qui le gestionnaire a confié une réserve de salle.",
     "switchToPharmacy": "Plutôt pour la pharmacie",
     "undoHere": "Remettre dans le stock",
@@ -3115,7 +3115,7 @@
     "sentOutside": "{{item}} : à acheter dans une pharmacie extérieure. Imprimez-le avec « Imprimer pour la pharmacie extérieure ».",
     "backToClinic": "{{item}} retourne à la pharmacie de la clinique.",
     "rxOutsideHint": "Un médicament que la clinique n’a pas : choisissez « Pharmacie extérieure ». Le patient l’achète ailleurs ; il n’est pas sur la facture. Vous pouvez aussi chercher dans la liste officielle ou écrire le nom.",
-    "outsideLineHint": "Le patient achète ce médicament dans une pharmacie extérieure. Il n’est pas facturé et ne va pas à la pharmacie de la clinique.",
+    "outsideLineHint": "Le patient achète ce médicament dans une pharmacie extérieure : il est sur l’ordonnance imprimée et pas sur la facture.",
     "rxOutsideSaved_one": "{{count}} médicament à acheter à l’extérieur : imprimez-le avec « Imprimer pour la pharmacie extérieure ».",
     "rxOutsideSaved_other": "{{count}} médicaments à acheter à l’extérieur : imprimez-les avec « Imprimer pour la pharmacie extérieure ».",
     "stock": {
@@ -3197,7 +3197,9 @@
     "addTreatments_one": "Ajouter {{count}} acte à la facture",
     "addTreatments_other": "Ajouter {{count}} actes à la facture",
     "treatmentsAdded_one": "{{count}} acte ajouté à la facture.",
-    "treatmentsAdded_other": "{{count}} actes ajoutés à la facture."
+    "treatmentsAdded_other": "{{count}} actes ajoutés à la facture.",
+    "switchToOutside": "Le prescrire pour l’extérieur plutôt",
+    "givenHereTag": "donné ici, depuis le stock de la clinique"
   },
   "adjust": {
     "mode": "Comment le saisir",
@@ -5357,7 +5359,7 @@
   },
   "pharmacy": {
     "desk": "Pharmacie",
-    "section": "Médicaments à remettre",
+    "section": "Les ventes et le stock",
     "receive": "Recevoir du stock",
     "openStock": "Ouvrir le stock",
     "serveSoon": "patients en attente",
@@ -6620,7 +6622,7 @@
   "stockErrors": {
     "noOpenBill": "Cette visite n'a pas de facture ouverte (elle est clôturée ou déjà réglée). Rien n'a été remis ni facturé.",
     "doctorHolds": "Le médecin voit encore ce patient. Remettez les médicaments quand le médecin a terminé.",
-    "roomShort": "Pas assez de ce médicament (non périmé) dans votre stock. Prescrivez-le plutôt pour la pharmacie, ou demandez un réapprovisionnement à la pharmacie.",
+    "roomShort": "Pas assez de ce médicament (non périmé) dans le stock de la clinique : ajoutez du stock d’abord, ou prescrivez-le pour l’extérieur.",
     "notHolder": "Vous ne détenez pas ce stock. Seuls ses détenteurs (ou le gestionnaire) peuvent en donner ou le gérer.",
     "noRoomStore": "Vous ne détenez aucun stock de salle : vous ne pouvez pas donner de médicaments ici. Prescrivez-les pour la pharmacie.",
     "notRoomStore": "Choisissez un stock de salle ouvert.",

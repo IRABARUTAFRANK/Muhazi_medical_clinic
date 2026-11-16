@@ -27,7 +27,7 @@ import { NoticesPanel } from '@/components/dash/notices-panel'
 import { Button, actionLink, buttonVariants } from '@/components/ui/button'
 import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
-import { isLowStock, usePharmacyQueue, usePharmacySummary, useStockOverview } from '@/lib/api/stock'
+import { isLowStock, usePharmacySummary, useStockOverview } from '@/lib/api/stock'
 import {
   EXPIRY_WINDOW_DAYS,
   expiresSoon,
@@ -45,7 +45,7 @@ import { useMySummary } from '@/lib/api/my'
 import { useNow } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { isLive } from '@/lib/supabase'
-import { PharmacyDesk, SellMedicineCard } from '../stock/pharmacy-desk'
+import { SellMedicineCard } from '../stock/pharmacy-desk'
 import { CallsPanel } from './calls-panel'
 import { MyWorkPanel, WaitingForMePanel } from './my-panels'
 import { WORK_OF } from './my-work'
@@ -83,7 +83,6 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
   const { data: s, refetch, isFetching, dataUpdatedAt } = usePharmacySummary(days)
   // my own queue and my own work (0120)
   const { data: my, refetch: refetchMine } = useMySummary(days)
-  const { data: lines = [], refetch: refetchLines } = usePharmacyQueue()
   const { data: stock, refetch: refetchStock } = useStockOverview()
   const { data: everyone = [] } = useQueueBoard('all', user.role)
   // every patient in the clinic now (one per visit), for a sale without a prescription
@@ -98,10 +97,8 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
   )
   // Waiting for me without a medicine to hand over (sent to buy something, to ask…): the
   // prescriptions have their own cards
-  const withRx = new Set(lines.map((l) => l.encounterId))
+  // 0173: no hand-over queue any more: everyone waiting for me is listed
   const others = my
-    ? { ...my, waiting: my.waiting.filter((q) => !withRx.has(q.encounterId)) }
-    : undefined
   const items = (stock?.items ?? []).filter((i) => i.active)
   const low = items.filter(isLowStock)
   // the stock totals (stock_totals); an old database: counted from the overview
@@ -178,7 +175,6 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
               // the figures, the hand-over list and the stock together
               void refetch()
               void refetchMine()
-              void refetchLines()
               void refetchStock()
               void refetchTotals()
             }}
@@ -224,18 +220,6 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
 
         {s && (
           <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3 sm:grid-cols-[repeat(auto-fit,minmax(210px,1fr))]">
-            <Kpi
-              i={0}
-              icon={Pill}
-              tint="violet"
-              label={t('pharmacy.tiles.toHandOver')}
-              value={s.lines}
-              unit={t('pharmacy.units.forPatients', { count: s.patients })}
-              delta={
-                s.lines > 0 ? { text: t('pharmacy.serveSoon'), good: false, up: null } : undefined
-              }
-              to={handoversLink()}
-            />
             <Kpi
               i={1}
               icon={PackageCheck}
@@ -314,7 +298,6 @@ export function PharmacyDashboard({ user }: { user: StaffUser }) {
           <SectionTitle icon={Workflow}>{t('pharmacy.section')}</SectionTitle>
           <div className="pc:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] grid grid-cols-1 gap-4">
             <div className="flex min-w-0 flex-col gap-4">
-              <PharmacyDesk canDispense />
               <SellMedicineCard patients={inClinic} />
               {/* waiting for me without a prescription: sent to me by name, or at my desk (0120) */}
               {(others?.waiting.length ?? 0) > 0 && (

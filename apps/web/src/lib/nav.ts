@@ -142,16 +142,6 @@ export const NURSE_NAV: NavItem[] = [
   NOTICES,
 ]
 
-/**
- * "My store": the room stores the person holds (a doctor's office, the ward, the laboratory).
- * Same page as the stock page (it shows only their stores); the id keeps the entry lit there.
- */
-const MY_STORE: NavItem = {
-  id: 'stock',
-  labelKey: 'nav.myStore',
-  icon: 'package',
-  to: '/app/stock',
-}
 /** The person's own calendar (hours, days off, bookings). */
 const CALENDAR: NavItem = {
   id: 'calendar',
@@ -254,16 +244,13 @@ function managerMenu(user: StaffUser): NavItem[] {
 const menuOf = (user: StaffUser): NavItem[] =>
   user.dashboard === 'manager' || user.role === 'manager'
     ? managerMenu(user)
-    : withMyStore(
+    : withRecordAccess(
         user,
-        withRecordAccess(
+        withReports(
           user,
-          withReports(
+          withDeskAnalytics(
             user,
-            withDeskAnalytics(
-              user,
-              withHeadDashboard(user, withSwitches(user, withDesks(user, navForStaff(user)))),
-            ),
+            withHeadDashboard(user, withSwitches(user, withDesks(user, navForStaff(user)))),
           ),
         ),
       )
@@ -524,13 +511,6 @@ export async function menuAllows(user: StaffUser, path: string): Promise<boolean
   ])
   return navForUser(user).some((n) => n.to.split('?')[0] === path)
 }
-
-/** Whoever has the pharmacy desk has the full stock page already; anyone else holding a store
- *  gets My store. */
-const withMyStore = (user: StaffUser, items: NavItem[]): NavItem[] =>
-  items.some((n) => n.to === '/app/stock') || !holdsRoomStore(user)
-    ? items
-    : [...items.slice(0, -2), MY_STORE, ...items.slice(-2)]
 
 const navForStaff = (user: StaffUser): NavItem[] => withMyBookings(roleNav(user))
 

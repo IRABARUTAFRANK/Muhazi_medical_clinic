@@ -26,23 +26,17 @@ import { StaffShell } from '@/components/staff/staff-shell'
 import { NotAllowedNotice } from '@/components/clinical/perm-gate'
 import { NoDeskNotice } from '@/components/clinical/desk-gate'
 import { useSessionCanDesk } from '@/components/clinical/session-desks'
-import { usePharmacyQueue, useStockOverview } from '@/lib/api/stock'
+import { useStockOverview } from '@/lib/api/stock'
 import { useDailyStockAlertCheck, useStockTotals } from '@/lib/api/pharmacy'
-import { useHoldsStore } from '@/lib/api/rooms'
 import { useCanDesk } from '@/lib/api/desks'
 import { useCan } from '@/lib/api/permissions'
 import { navForUser } from '@/lib/nav'
 import { cn } from '@/lib/utils'
-import { PharmacyDesk } from './pharmacy-desk'
 import { CounterSalesPanel } from './pharmacy/counter-sales'
 import { AddStockForm } from './add-stock-form'
-import { BetweenStoresForm } from './between-stores'
-import { MyStoreTab } from './my-store'
-import { RoomStoresTab } from './room-stores'
-import { StockReports, Movements } from './stock-reports'
+import { StockReports } from './stock-reports'
 import { StockTab } from './stock-tab'
-import { StoresTab } from './stores-tab'
-import { errorBox, mainTab, pharmacySide, type MainTab, type Tab } from './stock-util'
+import { errorBox, mainTab, type MainTab, type Tab } from './stock-util'
 
 export type { Tab }
 
@@ -67,7 +61,8 @@ const ICONS: Record<Tab, typeof Package> = {
   stores: Store,
 }
 /** The pharmacy and the manager: six tabs, and "My store" when they hold a room store too. */
-const ADMIN_TABS: MainTab[] = ['stock', 'prescriptions', 'walkin', 'add', 'rooms', 'reports']
+// 0173: one clinic stock: no hand-over queue, no room stores
+const ADMIN_TABS: MainTab[] = ['stock', 'walkin', 'add', 'reports']
 
 /** What the form opens with: the medicine, the store to receive into, the store to send to. */
 export interface StockPreset {
@@ -122,43 +117,10 @@ export function StockPage({
             focus={focus}
           />
         ) : (
-          <HolderStock user={user} initialTab={initialTab} focus={focus} />
+          <NoDeskNotice desks={['pharmacy']} />
         )}
       </main>
     </StaffShell>
-  )
-}
-
-/* ---------------------------------------------------------------- holders of a room store */
-function HolderStock({
-  user,
-  initialTab,
-  focus,
-}: {
-  user: StaffUser
-  initialTab?: Tab
-  focus: StockFocus
-}) {
-  const { t } = useTranslation()
-  const { holds } = useHoldsStore()
-  const [tab, setTab] = useState<'mine' | 'moves'>(
-    initialTab === 'moves' || initialTab === 'reports' ? 'moves' : 'mine',
-  )
-  const { data } = useStockOverview()
-  return (
-    <>
-      <PageBanner icon={Package} tint="amber" title={t('myStore.title')} lead={t('myStore.lead')} />
-      {holds && (
-        <TabBar
-          tabs={['mine', 'moves']}
-          tab={tab}
-          onTab={(x) => setTab(x as 'mine' | 'moves')}
-          badge={{}}
-        />
-      )}
-      {tab === 'mine' && <MyStoreTab user={user} storeId={focus.store} noteId={focus.note} />}
-      {tab === 'moves' && <Movements items={data?.items ?? []} locations={data?.locations ?? []} />}
-    </>
   )
 }
 
@@ -225,22 +187,16 @@ function AdminStock({
   focus: StockFocus
 }) {
   const { t } = useTranslation()
-  const { holds } = useHoldsStore()
   // adding, sending, counting and the stores themselves: the manager, or the pharmacy desk with
   // the switch "Manage stock" (the database's stock_manager()); handing over and selling stay
   const can = useCan(user)
   const manage = isManager || can('stock.write')
   const blocked = <NotAllowedNotice feature="stock.write" />
-  const tabs: MainTab[] = holds ? [...ADMIN_TABS, 'mine'] : ADMIN_TABS
+  const tabs: MainTab[] = ADMIN_TABS
   // an older tab name opens the tab that now holds it, on the right part
   const opened0 = mainTab(initialTab)
-  // the pharmacy desk starts at the prescriptions (only the manager starts at the stock)
   const [tab, setTab] = useState<MainTab>(
-    opened0.tab && (opened0.tab !== 'mine' || holds)
-      ? opened0.tab
-      : !isManager
-        ? 'prescriptions'
-        : 'stock',
+    opened0.tab && ADMIN_TABS.includes(opened0.tab) ? opened0.tab : 'stock',
   )
   const [part, setPart] = useState<string | undefined>(opened0.part)
   const [preset, setPreset] = useState<StockPreset>(initialPreset ?? {})
@@ -248,12 +204,11 @@ function AdminStock({
   const [opened, setOpened] = useState(0)
   const openStock: OpenStock = (to, p) => {
     setPreset(p)
-    setTab(to === 'receive' ? 'add' : 'rooms')
+    setTab(to === 'receive' ? 'add' : 'stock')
     setPart(to === 'send' ? 'send' : undefined)
     setOpened((n) => n + 1)
   }
   const { data, error } = useStockOverview()
-  const { data: queue = [] } = usePharmacyQueue()
   const { data: totals } = useStockTotals(null)
   // the stock notices (low, expiring, expired, the daily summary): once a day per person
   useDailyStockAlertCheck(true)
@@ -280,9 +235,6 @@ function AdminStock({
               </BannerChip>
             )}
             <BannerChip icon={Boxes}>{t('stock.itemCount', { count: active.length })}</BannerChip>
-            {queue.length > 0 && (
-              <BannerChip icon={Pill}>{t('stock.toHandOver', { count: queue.length })}</BannerChip>
-            )}
           </>
         }
       />
@@ -310,7 +262,7 @@ function AdminStock({
           setPart(undefined)
           setPreset({})
         }}
-        badge={{ prescriptions: queue.length }}
+        badge={{}}
       />
 
       {tab === 'stock' && (
@@ -323,7 +275,6 @@ function AdminStock({
           onAddStock={(item) => openStock('receive', item ? { item } : {})}
         />
       )}
-      {tab === 'prescriptions' && <PharmacyDesk canDispense onOpenStock={openStock} />}
       {tab === 'walkin' && (atDesk ? <CounterSalesPanel /> : <NoDeskNotice desks={['pharmacy']} />)}
       {tab === 'add' && !manage && blocked}
       {tab === 'add' && manage && (
@@ -336,35 +287,6 @@ function AdminStock({
           preset={preset}
         />
       )}
-      {tab === 'rooms' && !manage && blocked}
-      {tab === 'rooms' && (
-        <div className="flex flex-col gap-4">
-          <RoomStoresTab
-            overview={data}
-            isManager={isManager}
-            canAct={manage}
-            focusNote={focus.note}
-            focusRequest={focus.request}
-            focusStore={focus.store}
-          />
-          {manage && pharmacySide(locations).length > 1 && (
-            <BetweenStoresForm
-              key={`send-${opened}`}
-              overview={data}
-              preset={preset}
-              focused={part === 'send'}
-            />
-          )}
-          <StoresTab
-            locations={locations}
-            items={items}
-            mainId={data?.mainPharmacyId ?? null}
-            isManager={isManager}
-            focused={part === 'stores'}
-          />
-        </div>
-      )}
-      {tab === 'mine' && <MyStoreTab user={user} storeId={focus.store} noteId={focus.note} />}
       {tab === 'reports' && (
         <StockReports
           user={user}

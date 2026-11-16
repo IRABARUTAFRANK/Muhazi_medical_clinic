@@ -45,10 +45,77 @@ grant execute on function auth.uid(), auth.role(), auth.jwt() to anon, authentic
 `
 
 const db = new PGlite({ extensions: { pgcrypto } })
+const HAND_RETIRED =
+  'the pharmacy hands nothing over since 0173 (a prescription is for an outside pharmacy)'
+const ROOM_RETIRED = 'the room stores are gone since 0173 (one clinic stock)'
+const COUNTS_RETIRED = 'its stock counts assume the room stores (gone since 0173)'
 const results = []
 let failures = 0
-
+/**
+ * 0173 (one clinic stock): the checks of the room stores and of the pharmacy hand-over queue
+ * describe what the owner removed; they are kept here, named, and skipped with the reason.
+ */
+const RETIRED = [
+  ['medicine given in the room: recorded as given, no pharmacy queue', ROOM_RETIRED],
+  ['0042: receive, send to an office, pharmacy hands over', HAND_RETIRED],
+  ['0056: finishing keeps the medicines; pharmacy hands over', HAND_RETIRED],
+  ['0064: a hand-over undone comes off the bill', HAND_RETIRED],
+  ['0082 PRICE-1 / STORE-1 / CHK-1:', ROOM_RETIRED],
+  ['0082 ORD-2: no hand-over while the doctor still has the patient', HAND_RETIRED],
+  ['0082 STORE-1 / PAY-END: sent on, handed over from the chosen store', HAND_RETIRED],
+  [
+    '0082 PAY-END: an open visit of an earlier day with money due',
+    'it builds on the 0082 hand-over data (gone since 0173)',
+  ],
+  ['0082 RET-1: a return after the bill is posted', HAND_RETIRED],
+  [
+    '0082 CHG-1: a closed bill refuses the charge (MS001); the hand-over takes nothing',
+    HAND_RETIRED,
+  ],
+  ['0082 ORD-2 / TRACK-1: the prescriber cancels a waiting line', HAND_RETIRED],
+  ['0082 TRACK-1: the visit track says not given', HAND_RETIRED],
+  ['0082 ROOM-1: given here from unexpired stock across batches', ROOM_RETIRED + ' — see 0173'],
+  ['0082 PAY-END: given here, the doctor finishes', ROOM_RETIRED + ' — see 0173'],
+  [
+    '0083 E: given here only from a store the doctor holds',
+    ROOM_RETIRED + " — anyone gives from the clinic's stock, see 0173",
+  ],
+  ['0083 RIGHTS-2: holders count and write off their store', ROOM_RETIRED],
+  ['0083 CAT-1 / ALERT-1 / REORDER:', COUNTS_RETIRED + '; the daily alerts are checked at 0097'],
+  [
+    '0083 COUNTER SALE: a walk-in pays first at the cashier',
+    COUNTS_RETIRED + '; the walk-in sale itself is checked at 0109 and 0097',
+  ],
+  ['0083: the room store report; the store emptied back to the pharmacy', ROOM_RETIRED],
+  ['review: a medicine given here by mistake is put back (store and bill)', ROOM_RETIRED],
+  [
+    '0085 D: a nurse in Pharmacy gets the pharmacy desk',
+    'it reads the 0082 hand-over data (gone since 0173); the desks are checked at 0141 and 0170',
+  ],
+  [
+    '0133 B: an order to all the nurses',
+    ROOM_RETIRED + " — the nurses give from the clinic's stock",
+  ],
+]
+let retired = 0
 const step = async (name, fn) => {
+  const gone = RETIRED.find(([prefix]) => name.startsWith(prefix))
+  if (gone) {
+    // it still runs (later checks build on what it sets up); its failure is the retirement
+    try {
+      const detail = await fn()
+      results.push({ step: name, ok: true, detail: detail ?? '' })
+    } catch (e) {
+      retired++
+      results.push({
+        step: name,
+        ok: true,
+        retired: true,
+        detail: `retired: ${gone[1]} — ${String(e.message ?? e).split('\n')[0]}`,
+      })
+    }
+    return
+  }
   try {
     const detail = await fn()
     results.push({ step: name, ok: true, detail: detail ?? '' })
@@ -3851,9 +3918,10 @@ await step(
         [p.enc],
       )
     ).rows
-    if (rhia.n < 1400 || rhia.priced !== rhia.n || places.length !== 1 || !places[0].open)
+    // 0173: nothing waits at the pharmacy any more: no open pharmacy place
+    if (rhia.n < 1400 || rhia.priced !== rhia.n || places.some((x) => x.open))
       throw new Error(JSON.stringify({ rhia, places }))
-    return `${rhia.n} medicines priced; one open pharmacy place`
+    return `${rhia.n} medicines priced; no open pharmacy place (0173)`
   },
 )
 
@@ -25034,14 +25102,93 @@ await step(
     return `insurer treatment T172-A made, live, cash 7,000 from the list; list_medicines offered X and Y; X stocked (brand "100mg tablet") and left the offer; Y prescribed outside as "${named}"; unknown code ${noList}`
   },
 )
+// 0173: one clinic stock; prescriptions are for outside; given here from the stock
+await step(
+  '0173: the room stores closed and their stock back in the main pharmacy; a prescription is for outside; "given here" comes from the clinic\'s stock whoever gives; the pharmacy queue is empty',
+  async () => {
+    await asAdmin()
+    const before = (await one(`select coalesce(sum(s.quantity), 0)::int as n from stock_on_hand s`))
+      .n
+    await db.exec(await readFile(path.join(migrationsDir, '20270131090000_one_stock.sql'), 'utf8'))
+    const rooms = await one(
+      `select count(*) filter (where l.active)::int as open,
+              coalesce(sum(s.quantity) filter (where s.quantity > 0), 0)::int as held
+       from stock_location l left join stock_on_hand s on s.location_id = l.id
+       where is_room_type(l.type) and l.deleted_at is null`,
+    )
+    const after = (await one(`select coalesce(sum(s.quantity), 0)::int as n from stock_on_hand s`))
+      .n
+    const main = (await one(`select main_pharmacy() as id`)).id
+    const waiting = (
+      await one(`select count(*)::int as n from medication_request m where rx_pending(m)`)
+    ).n
+    const openQ = (
+      await one(
+        `select count(*)::int as n from queue_entry where station = 'pharmacy' and finished_at is null and deleted_at is null`,
+      )
+    ).n
+    const v = await visitAt('One stock 173')
+    await as(d1)
+    await db.query(`select take_patient($1)`, [v.queue])
+    await db.query(`select add_diagnosis($1, 'Tonsillitis', 'J03', 'primary')`, [v.enc])
+    const stockBefore = (await one(`select usable_stock($1, $2) as n`, [t97.amox, main])).n
+    const rxPharmacy = (
+      await one(
+        `select prescribe(p_encounter_id => $1, p_item_id => $2, p_quantity => 3, p_supply => 'pharmacy', p_dose => '1 cap', p_frequency => 'TDS') as j`,
+        [v.enc, t97.amox],
+      )
+    ).j
+    const given = (
+      await one(
+        `select prescribe(p_encounter_id => $1, p_item_id => $2, p_quantity => 2, p_supply => 'room', p_dose => '1 cap', p_frequency => 'STAT') as j`,
+        [v.enc, t97.amox],
+      )
+    ).j
+    const stockAfter = (await one(`select usable_stock($1, $2) as n`, [t97.amox, main])).n
+    const tooMany = await codeAs(
+      d1,
+      `select prescribe(p_encounter_id => $1, p_item_id => $2, p_quantity => 999999, p_supply => 'room')`,
+      [v.enc, t97.amox],
+    )
+    await as(staff.pharmacist)
+    const queue = (await one(`select pharmacy_queue() as j`)).j
+    await asAdmin()
+    const noQ = (
+      await one(
+        `select count(*)::int as n from queue_entry where encounter_id = $1 and station = 'pharmacy'`,
+        [v.enc],
+      )
+    ).n
+    if (rooms.open !== 0 || rooms.held !== 0) throw new Error('rooms: ' + JSON.stringify(rooms))
+    if (after !== before) throw new Error(`stock total changed: ${before} → ${after}`)
+    if (waiting !== 0 || openQ !== 0) throw new Error(JSON.stringify({ waiting, openQ }))
+    if (rxPharmacy.supply !== 'outside' || rxPharmacy.charged || rxPharmacy.stockTaken)
+      throw new Error('pharmacy → outside: ' + JSON.stringify(rxPharmacy))
+    if (
+      given.supply !== 'room' ||
+      given.locationId !== main ||
+      !given.stockTaken ||
+      !given.charged ||
+      stockBefore - stockAfter !== 2
+    )
+      throw new Error('given here: ' + JSON.stringify({ given, main, stockBefore, stockAfter }))
+    if (tooMany !== 'MS003') throw new Error('too many: ' + tooMany)
+    if ((queue.lines ?? []).length !== 0 || noQ !== 0)
+      throw new Error(JSON.stringify({ lines: queue.lines?.length, noQ }))
+    return `room stores open 0, holding 0; stock total kept (${before}); waiting 0, open pharmacy queue 0; 'pharmacy' saved as outside; given here from the main pharmacy, 2 off the shelf, charged; 999,999 refused MS003; pharmacy_queue empty`
+  },
+)
 // @@t141-end
 finish()
 
 function finish() {
   const pad = (s, n) => String(s).padEnd(n)
   console.log('')
-  for (const r of results) console.log(`${r.ok ? ' ok ' : 'FAIL'}  ${pad(r.step, 62)} ${r.detail}`)
+  for (const r of results)
+    console.log(`${r.retired ? ' -- ' : r.ok ? ' ok ' : 'FAIL'}  ${pad(r.step, 62)} ${r.detail}`)
   console.log('')
-  console.log(`${results.length - failures}/${results.length} checks passed`)
+  console.log(
+    `${results.length - failures - retired}/${results.length - retired} checks passed${retired ? `, ${retired} retired since 0173 (one clinic stock)` : ''}`,
+  )
   process.exit(failures ? 1 : 0)
 }

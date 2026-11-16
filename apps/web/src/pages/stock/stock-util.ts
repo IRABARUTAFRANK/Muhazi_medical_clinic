@@ -272,7 +272,8 @@ export const STOCK_TABS: readonly Tab[] = [
 ]
 /** Where an older tab now lives (and the part of it to show first). */
 const OLD_TABS: Record<OldTab, { tab: MainTab; part?: string }> = {
-  pharmacy: { tab: 'prescriptions' },
+  // 0173: the hand-over queue is gone: the old pharmacy tab opens the walk-in sales
+  pharmacy: { tab: 'walkin' },
   receive: { tab: 'add' },
   deliveries: { tab: 'reports', part: 'deliveries' },
   reorder: { tab: 'stock', part: 'order' },

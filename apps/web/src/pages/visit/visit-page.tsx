@@ -67,7 +67,6 @@ import { STATION_DESKS, TREATING_DESKS, useCanDesk, useMyDesks } from '@/lib/api
 import { useVisitAccess } from '@/lib/api/calls'
 import { HelpCard } from './help-card'
 import { HandoverCard } from './handover-card'
-import { PharmacyDesk } from '@/pages/stock/pharmacy-desk'
 import { openReceipt } from '@/lib/receipt-doc'
 import { useLetterhead } from '@/lib/report-parts'
 import { useConfirm } from '@/lib/confirm'
@@ -605,12 +604,6 @@ export function VisitPage({
               <NextPatientPanel station={myStation} onClose={() => setOfferNext(false)} />
             )}
 
-            {/* the pharmacy desk hands this patient's medicines over here (read only to others
-                at the pharmacy; the manager, who has every desk, when working at the pharmacy) */}
-            {!closed &&
-              ((user.role !== 'manager' && canDesk('pharmacy')) || myStation === 'pharmacy') && (
-                <PharmacyDesk canDispense={canDesk('pharmacy')} encounterId={encounterId} />
-              )}
             {/* the safety summary for the people treating the patient (the database decides) */}
             {!closed && !isReception && !isCashier && (
               <VisitSafetySummary patientId={header.patientId} patientName={header.name} />

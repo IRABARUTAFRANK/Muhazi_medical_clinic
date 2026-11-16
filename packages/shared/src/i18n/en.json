@@ -3009,8 +3009,8 @@
     "supplyLabel": "The patient gets it:",
     "supply": {
       "pharmacy": "At the pharmacy",
-      "room": "I give it here",
-      "outside": "Outside pharmacy"
+      "room": "Given here, from the clinic’s stock",
+      "outside": "Prescription: bought at an outside pharmacy"
     },
     "givenHere": "Given here",
     "givenBy": "given by {{name}}",
@@ -3093,7 +3093,7 @@
     "rxGivenHere_other": "{{count}} medicines given here: taken from the room store and put on the bill. The patient pays everything at the cashier at the end of the visit.",
     "rxPartSaved_one": "{{count}} medicine was saved before the refusal; it is no longer on the form.",
     "rxPartSaved_other": "{{count}} medicines were saved before the refusal; they are no longer on the form.",
-    "rxPayHint": "“I give it here” takes the medicine out of your room store now and puts it on the bill. The patient pays everything once, at the cashier, at the end of the visit.",
+    "rxPayHint": "“Given here” takes the medicine or product out of the clinic’s stock now, in the quantity typed, and puts it on the bill under your name. The patient pays everything once, at the cashier, at the end of the visit.",
     "rxPharmacyOnly": "Your medicines go to the pharmacy. “I give it here” is for staff the manager has given a room store.",
     "switchToPharmacy": "For the pharmacy instead",
     "undoHere": "Put back in the store",
@@ -3115,7 +3115,7 @@
     "sentOutside": "{{item}}: to buy at an outside pharmacy. Print it with “Print for the outside pharmacy”.",
     "backToClinic": "{{item}} goes back to the clinic pharmacy.",
     "rxOutsideHint": "A medicine the clinic does not have: choose “Outside pharmacy”. The patient buys it elsewhere; it is not on the bill. You can also search the official list or write the name.",
-    "outsideLineHint": "The patient buys this medicine at an outside pharmacy. It is not charged and does not go to the clinic pharmacy.",
+    "outsideLineHint": "The patient buys this medicine at an outside pharmacy: it is on the printed prescription and not on the bill.",
     "rxOutsideSaved_one": "{{count}} medicine to buy outside: print it with “Print for the outside pharmacy”.",
     "rxOutsideSaved_other": "{{count}} medicines to buy outside: print them with “Print for the outside pharmacy”.",
     "stock": {
@@ -3197,7 +3197,9 @@
     "addTreatments_one": "Add {{count}} treatment to the bill",
     "addTreatments_other": "Add {{count}} treatments to the bill",
     "treatmentsAdded_one": "{{count}} treatment added to the bill.",
-    "treatmentsAdded_other": "{{count}} treatments added to the bill."
+    "treatmentsAdded_other": "{{count}} treatments added to the bill.",
+    "switchToOutside": "Prescribe it to buy outside instead",
+    "givenHereTag": "given here, from the clinic’s stock"
   },
   "adjust": {
     "mode": "How to enter it",
@@ -5357,7 +5359,7 @@
   },
   "pharmacy": {
     "desk": "Pharmacy desk",
-    "section": "Medicines to hand over",
+    "section": "Sales and the stock",
     "receive": "Receive stock",
     "openStock": "Open the stock",
     "serveSoon": "patients waiting",
@@ -6620,7 +6622,7 @@
   "stockErrors": {
     "noOpenBill": "This visit has no open bill (it is closed or already settled). Nothing was handed over or charged.",
     "doctorHolds": "The doctor is still seeing this patient. Hand the medicines over when the doctor has finished.",
-    "roomShort": "Not enough of this medicine (not expired) in your store. Prescribe it for the pharmacy instead, or ask the pharmacy for a refill.",
+    "roomShort": "Not enough of this medicine (not expired) in the clinic’s stock: add stock first, or prescribe it to buy outside.",
     "notHolder": "You do not hold this store. Only its holders (or the manager) can give from it or work on it.",
     "noRoomStore": "You hold no room store, so you cannot give medicines here. Prescribe them for the pharmacy.",
     "notRoomStore": "Choose an open room store.",
