@@ -423,11 +423,11 @@ const DESK_ENTRIES: { item: NavItem; keep: readonly DeskId[]; add: readonly Desk
   { item: PHARMACY_DESK, keep: ['pharmacy'], add: ['pharmacy'] },
 ]
 
-/** The desks a department of the person gives: the ones that add entries to the menu and blocks
- *  to the home page. A desk kept on day one or decided by the role adds nothing (the menu stays as
- *  before). */
+/** The desks a department of the person gives, or the manager's "keeps the pharmacy stock" mark
+ *  (0170): the ones that add entries to the menu and blocks to the home page. A desk kept on day
+ *  one or decided by the role adds nothing (the menu stays as before). */
 export const extraDesks = (mine: Pick<MyDesks, 'desks' | 'via'> | undefined): DeskId[] =>
-  (mine?.desks ?? []).filter((d) => mine?.via[d] === 'department')
+  (mine?.desks ?? []).filter((d) => mine?.via[d] === 'department' || mine?.via[d] === 'keeper')
 
 /**
  * The desks of the person now, read during render from the query cache (desksNow fetches them

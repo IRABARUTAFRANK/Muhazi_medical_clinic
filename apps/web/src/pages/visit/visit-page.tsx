@@ -133,7 +133,9 @@ export function VisitPage({
     ...(DESKS_OF[user.dbRole ?? user.role] ?? []).filter(
       (s) => s === 'reception' || s === 'cashier' || canDesk(deskOf(s)),
     ),
-    ...DESK_STATIONS.filter((s) => deskOf(s).some((d) => deskInfo?.via[d] === 'department')),
+    ...DESK_STATIONS.filter((s) =>
+      deskOf(s).some((d) => deskInfo?.via[d] === 'department' || deskInfo?.via[d] === 'keeper'),
+    ),
   ]
   // reception, the cashier and the manager keep their own way of choosing the desk below
   const inSections = !['receptionist', 'cashier', 'manager'].includes(user.role)

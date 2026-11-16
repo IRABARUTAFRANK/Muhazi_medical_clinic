@@ -54,7 +54,8 @@ export const TREATING_DESKS: readonly DeskId[] = [
 /** Why the person has a desk: manager, a department of theirs, kept on day one by the rule of
  *  before (until the manager places them), the role (no department gives that desk) or the doctor
  *  they cover. The manager's per-person exception only ever takes a desk away. */
-export type DeskVia = 'manager' | 'department' | 'kept' | 'role' | 'cover'
+/** 0170: 'keeper' = marked by the manager as the one who keeps the pharmacy stock. */
+export type DeskVia = 'manager' | 'department' | 'kept' | 'role' | 'cover' | 'keeper'
 
 export interface MyDesks {
   /** The desks the person may use now. */
