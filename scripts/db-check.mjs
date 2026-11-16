@@ -12050,7 +12050,8 @@ await step(
     const other = await hintAs(staff.pharmacist, `select add_stock($1::jsonb)`, [
       line({ batch_no: 'AMX-97', expiry: t97.day.soon }),
     ])
-    // the nurse of Pharmacy 85 allowed to manage stock, without the price right: a different price is not applied
+    // the nurse of Pharmacy 85 allowed to manage stock, without the price right: since 0177 the
+    // price typed with the delivery is applied all the same (whoever adds stock sets the prices)
     await except87(t85.nurse, 'stock.write', true)
     await as(t85.nurse)
     const r = (
@@ -12061,15 +12062,18 @@ await step(
     await asAdmin()
     await except87(t85.nurse, 'stock.write', null)
     const price = (await one(`select pf.price from price_for(null, $1, null) pf`, [t97.amox])).price
+    // the price goes back to 350: the steps after this one count on it
+    await asAdmin()
+    await db.query(`select set_cash_price($1, 350)`, [t97.amox])
     if (
       past !== '22023/expired_date' ||
       other !== '22023/batch_expiry' ||
-      !r.lines[0].price_ignored ||
-      r.lines[0].price_updated ||
-      Number(price) !== 350
+      r.lines[0].price_ignored ||
+      !r.lines[0].price_updated ||
+      Number(price) !== 999
     )
       throw new Error(JSON.stringify({ past, other, r, price }))
-    return `past: ${past}; other expiry: ${other}; price 999 ignored without the right`
+    return `past: ${past}; other expiry: ${other}; price 999 applied by the one who manages stock (0177), then put back to 350`
   },
 )
 await step('0097 A: receive_delivery still works, its supplier now optional', async () => {
@@ -25243,6 +25247,53 @@ await step(
     if (d.price || d.manage || d.mgr) throw new Error('doctor: ' + JSON.stringify(d))
     if (off.manage || off.mgr) throw new Error('explicit no ignored: ' + JSON.stringify(off))
     return `keeper: price right, Manage stock, stock.read, stock_manager, listed in my_permissions; plain doctor: none; an explicit no on the keeper switches Manage stock off`
+  },
+)
+// 0177: whoever adds stock sets the package and the prices with the delivery
+await step(
+  '0177: the nurse of Pharmacy 85 with Manage stock but no price right sets the selling price and the pack with the delivery (stock_manager is enough)',
+  async () => {
+    await asAdmin()
+    await db.exec(
+      await readFile(path.join(migrationsDir, '20270203090000_add_stock_open.sql'), 'utf8'),
+    )
+    await except87(t85.nurse, 'stock.write', true)
+    await as(t85.nurse)
+    const right = await one(`select has_perm('item_price.write') as r, stock_manager() as m`)
+    const got = (
+      await one(`select add_stock($1::jsonb, null, 'open form 177') as j`, [
+        JSON.stringify([
+          {
+            item_id: t97.amox,
+            batch_no: 'AMX-177',
+            expiry: t97.day.d,
+            quantity: 10,
+            unit_cost: 120,
+            sell_price: 377,
+            pack_size: 20,
+            sale_mode: 'piece',
+          },
+        ]),
+      ])
+    ).j
+    await asAdmin()
+    const after = await one(
+      `select i.pack_size, (select pf.price from price_for(null, i.id, null) pf) as price from item i where i.id = $1`,
+      [t97.amox],
+    )
+    await except87(t85.nurse, 'stock.write', null)
+    await asAdmin()
+    await db.query(`select set_cash_price($1, 350)`, [t97.amox])
+    if (right.r !== false || right.m !== true) throw new Error('rights: ' + JSON.stringify(right))
+    if (
+      !got ||
+      got.lines[0].price_ignored ||
+      !got.lines[0].price_updated ||
+      Number(after.price) !== 377 ||
+      after.pack_size !== 20
+    )
+      throw new Error(JSON.stringify({ got, after }))
+    return `nurse with Manage stock, no price right: add_stock set the price to 377 and the pack to 20 with the delivery (nothing ignored); price put back to 350`
   },
 )
 // @@t141-end

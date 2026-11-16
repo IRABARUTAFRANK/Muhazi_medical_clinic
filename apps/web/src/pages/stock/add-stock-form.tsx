@@ -35,7 +35,6 @@ import {
 } from '@/lib/api/stock'
 import { useConfirm } from '@/lib/confirm'
 import { cn } from '@/lib/utils'
-import { useSession } from '@/store/session'
 import { MsgFlash, QtyModeToggle } from './stock-shared'
 import {
   emptyPack,
@@ -152,15 +151,12 @@ export function AddStockForm({
   locations,
   mainId,
   isManager,
-  canPrice,
   preset,
 }: {
   items: StockItem[]
   locations: StockLocation[]
   mainId: string | null
   isManager: boolean
-  /** 0176: the person may set the package and the prices (Manage stock: the keeper too). */
-  canPrice?: boolean
   preset?: { item?: string; location?: string }
 }) {
   const { t } = useTranslation()
@@ -168,8 +164,6 @@ export function AddStockForm({
   const actions = useStockActions()
   const confirm = useConfirm()
   // the price right (item_price.write): the manager and the pharmacist
-  const mayPrice =
-    useSession((s) => s.user?.role === 'manager' || s.user?.role === 'pharmacist') || !!canPrice
   const { data: reference = [] } = useMedicineReference(true)
   // 0172: the uploaded price lists' medicines the clinic does not hold yet
   const { data: listMeds = [] } = useListMedicines(true)
@@ -237,7 +231,8 @@ export function AddStockForm({
   const isNew = (l: ALine) =>
     l.pick === 'new' || l.pick.startsWith('ref:') || l.pick.startsWith('list:')
   /** A known item the person may not re-price: its package and prices are shown, not edited. */
-  const locked = (l: ALine) => !isNew(l) && !mayPrice
+  // 0177: the package and the prices are always open on Add stock, for a known medicine too: the
+  // delivery may come packed or priced differently (the owner wants one form for every line)
   const set = (key: number, patch: Partial<ALine>) => {
     setBadLine(null)
     setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)))
@@ -369,7 +364,7 @@ export function AddStockForm({
       }
       if (!l.pick) return bad(t('stockPage.add.errors.item'))
       if (isNew(l) && l.newName.trim().length < 2) return bad(t('stockPage.add.errors.newName'))
-      if (!locked(l)) {
+      {
         const p = packProblem(t, l.pack)
         if (p) return bad(p)
       }
@@ -462,17 +457,13 @@ export function AddStockForm({
         quantity: quantityOf(l),
         unitCost: Math.round(pieceCostOf(l) * 100) / 100,
         packCost: l.costPer === 'pack' && size ? Number(l.cost) : null,
-        // the package and how it is sold: a known item the person may not re-price keeps its own
-        ...(locked(l)
-          ? { sellPrice: null, packSize: size }
-          : {
-              saleMode: pk.saleMode,
-              packSize: pk.packSize,
-              sellPrice: pk.saleMode === 'pack' ? null : pk.piecePrice,
-              packPrice: pk.packPrice,
-              packUnit: pk.packUnit,
-              unit: pk.unit,
-            }),
+        // the package and how it is sold, as the form shows them (0177: for a known item too)
+        saleMode: pk.saleMode,
+        packSize: pk.packSize,
+        sellPrice: pk.saleMode === 'pack' ? null : pk.piecePrice,
+        packPrice: pk.packPrice,
+        packUnit: pk.packUnit,
+        unit: pk.unit,
       }
     })
     try {
@@ -538,7 +529,7 @@ export function AddStockForm({
             const size = sizeOf(l)
             const pk = packInput(l.pack)
             const piece = pieceWord(t, pk.unit)
-            const changes = it && !locked(l) && packChanged(l.pack, it)
+            const changes = it && packChanged(l.pack, it)
             return (
               <div
                 key={l.key}
@@ -703,13 +694,7 @@ export function AddStockForm({
                         ...(pack.kind === 'pieces' ? { qtyIn: 'pieces', costPer: 'piece' } : {}),
                       })
                     }
-                    readOnly={locked(l)}
                     current={it}
-                    readOnlyNote={tx(
-                      t,
-                      'packaging.readOnlyStock',
-                      'You add the stock; the package and the prices stay as they are (only the manager or the pharmacist changes them).',
-                    )}
                     hint={
                       l.packFrom ? (
                         <span className="text-primary inline-flex items-center gap-1 text-[12px]">
