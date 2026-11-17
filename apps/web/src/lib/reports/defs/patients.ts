@@ -12,6 +12,7 @@ import {
   type VisitReportRow,
 } from '@/lib/api/reports-patients'
 import { docDate } from '@/lib/doc-style'
+import { careHead, roleOf } from '../access'
 import type {
   AnyReportDef,
   ReportColumnDef,
@@ -25,8 +26,9 @@ import type {
 
 /**
  * The patients reports (0110): who visited in a period (one row per patient), the visits (one
- * row per visit) and the files created. The manager sees the whole clinic, a head their
- * department's visits; reception the registrations only (identity). The database checks again,
+ * row per visit) and the files created. The manager and every doctor see the whole clinic
+ * (0182), the head of a department that treats patients their department's visits; reception
+ * the registrations only (identity). The database checks again,
  * masks the national ID for everyone but the manager, gives a diagnosis only for a visit the
  * reader may see and logs each opening of a past visit.
  */
@@ -54,9 +56,11 @@ const triageWord = (s: string | null) => (s ? word(`triage.levels.${s}`, s) : ''
 
 // ---------------------------------------------------------------- who runs them
 
-const visitsReader = (ctx: ReportContext) => ctx.isManager || ctx.isHead
+/** The manager, every doctor (0182: the clinic's visits, never the money) and the head of a
+ *  department that treats patients (their department's). */
+const visitsReader = (ctx: ReportContext) => ctx.isManager || ctx.clinical || careHead(ctx)
 const registrationsReader = (ctx: ReportContext) =>
-  ctx.isManager || ctx.isHead || ctx.user.role === 'receptionist'
+  visitsReader(ctx) || roleOf(ctx) === 'receptionist'
 const manager = (ctx: ReportContext) => ctx.isManager
 
 // ---------------------------------------------------------------- filters

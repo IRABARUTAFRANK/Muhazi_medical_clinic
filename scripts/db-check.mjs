@@ -15450,7 +15450,7 @@ await step(
   },
 )
 await step(
-  '0110 B: patients who visited — a head their department (ID masked, diagnoses only where they may see, and then logged); another department, reception and a nurse refused',
+  '0110 B: patients who visited — a head their department (ID masked, diagnoses only where they may see, and then logged); a doctor the whole clinic (0182); reception and a nurse refused',
   async () => {
     await asAdmin()
     await db.query(`delete from record_access_entry where patient_id = $1`, [t110.patient])
@@ -15469,6 +15469,8 @@ await step(
     ])
     const reception = await asJson110(staff.receptionist, q, [t102r.day, '{}', false])
     const nurse = await asJson110(staff.nurse, q, [t102r.day, '{}', false])
+    // 0182: a doctor reads the clinic's visits (this head is a doctor too: every department)
+    const doctor = await asJson110(staff.doctor, q, [t102r.day, '{}', false])
     const row = head.rows?.find((x) => x.patientId === t110.patient)
     const r = {
       head: head.error ?? head.count,
@@ -15477,6 +15479,7 @@ await step(
       elsewhere,
       reception,
       nurse,
+      doctor: doctor.error ?? doctor.count,
     }
     // diagnoses given to the head ⇔ the opening logged for the head
     const given = (row?.diagnoses ?? []).length > 0
@@ -15485,16 +15488,20 @@ await step(
       !row ||
       row.nationalId !== '11•••••••••••012' ||
       given !== headLog > 0 ||
-      elsewhere.error !== '42501' ||
+      (t102r.deptOther ? elsewhere.error : elsewhere.error !== 'P0002') ||
+      doctor.error ||
+      !doctor.rows?.some(
+        (x) => x.patientId === t110.patient && x.nationalId !== '1199180012345012',
+      ) ||
       reception.error !== '42501' ||
       nurse.error !== '42501'
     )
       throw new Error(json110(r))
-    return `head: ${head.count} patient(s) of the department, ID masked, diagnoses ${given ? 'given and logged' : 'not theirs: none, nothing logged'}; elsewhere, reception, nurse refused`
+    return `head: ${head.count} patient(s) of the department, ID masked, diagnoses ${given ? 'given and logged' : 'not theirs: none, nothing logged'}; a doctor ${doctor.count} of the clinic, ID masked; reception, nurse refused`
   },
 )
 await step(
-  '0110 C: visits — one row per visit with status, route, money for the manager only, the primary diagnosis when asked; status filter; reception refused',
+  '0110 C: visits — one row per visit with status, route, money for the manager only, the primary diagnosis when asked; status filter; a doctor without money (0182); reception refused',
   async () => {
     const q = `select report_visits($1, $1, $2::jsonb, $3) as j`
     const all = await asJson110(staff.manager, q, [t102r.day, '{}', true])
@@ -15502,13 +15509,16 @@ await step(
     const open = await asJson110(staff.manager, q, [t102r.day, '{"status":"open"}', false])
     const head = await asJson110(t86.head, q, [t102r.day, '{}', false])
     const reception = await asJson110(staff.receptionist, q, [t102r.day, '{}', false])
+    const doctor = await asJson110(staff.doctor, q, [t102r.day, '{}', false])
     const v = all.rows?.find((x) => x.id === t102r.enc)
     const hv = head.rows?.find((x) => x.id === t102r.enc)
+    const dv = doctor.rows?.find((x) => x.id === t102r.enc)
     const r = {
       v: v && [v.status, v.route, v.doctor, v.diagnosis, v.billed, v.paid, v.balance, v.isNew],
       finished: finished.rows?.some((x) => x.id === t102r.enc),
       open: open.rows?.some((x) => x.id === t102r.enc),
       head: hv && [hv.billed, hv.paid, hv.diagnosis],
+      doctor: doctor.error ?? (dv && [dv.billed, dv.paid, dv.balance, dv.diagnosis]),
       reception,
     }
     if (
@@ -15525,14 +15535,18 @@ await step(
       !hv ||
       hv.billed != null ||
       hv.diagnosis != null ||
+      !dv ||
+      dv.billed != null ||
+      dv.paid != null ||
+      dv.balance != null ||
       reception.error !== '42501'
     )
       throw new Error(json110(r))
-    return 'finished, route, doctor, 4,000 billed and paid, diagnosis; head: no money; reception refused'
+    return 'finished, route, doctor, 4,000 billed and paid, diagnosis; head and doctor: no money; reception refused'
   },
 )
 await step(
-  '0110 D: new registrations — reception and the manager see the files of the period (identity only, missing fields); a nurse is refused; the options',
+  '0110 D: new registrations — reception, the manager and a doctor (0182) see the files of the period (identity only, missing fields); a nurse is refused; the options',
   async () => {
     const q = `select report_new_registrations($1, $1, $2::jsonb) as j`
     const rec = await asJson110(staff.receptionist, q, [t102r.day, '{}'])
@@ -15544,6 +15558,7 @@ await step(
     ])
     const head = await asJson110(t86.head, q, [t102r.day, '{}'])
     const nurse = await asJson110(staff.nurse, q, [t102r.day, '{}'])
+    const doctor = await asJson110(staff.doctor, q, [t102r.day, '{}'])
     const optsMgr = await asJson110(staff.manager, `select report_patients_options() as j`)
     const optsHead = await asJson110(t86.head, `select report_patients_options() as j`)
     const optsNurse = await asJson110(staff.nurse, `select report_patients_options() as j`)
@@ -15556,6 +15571,7 @@ await step(
       byOther: byOther.count,
       head: head.error ?? head.count,
       nurse,
+      doctor: doctor.error ?? doctor.count,
       optsMgr: optsMgr.departments?.length,
       optsHead: optsHead.departments?.map((d) => d.id),
       optsNurse,
@@ -15572,13 +15588,15 @@ await step(
       byOther.count !== 0 ||
       head.error ||
       nurse.error !== '42501' ||
+      doctor.error ||
+      doctor.count !== mgr.count ||
       !optsMgr.departments?.some((d) => d.id === t86.dept) ||
-      optsHead.departments?.length !== 1 ||
-      optsHead.departments[0].id !== t86.dept ||
+      // 0182: this head is a doctor, so every department is offered (a doctor reads the clinic)
+      !optsHead.departments?.some((d) => d.id === t86.dept) ||
       optsNurse.error !== '42501'
     )
       throw new Error(json110(r))
-    return `${rec.count} files today (reception = manager), identity and missing fields only; nurse refused; options per reader`
+    return `${rec.count} files today (reception = manager = doctor), identity and missing fields only; nurse refused; options per reader`
   },
 )
 

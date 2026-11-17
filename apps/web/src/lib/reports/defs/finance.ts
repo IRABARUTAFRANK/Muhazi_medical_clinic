@@ -46,6 +46,7 @@ import {
   seesMoney,
   toOptions,
 } from '@/lib/api/reports-options'
+import { careHead } from '../access'
 import type {
   AnyReportDef,
   ReportColumnDef,
@@ -293,7 +294,8 @@ const services: ReportDef<ChargeRow> = {
   description: `${K}.services.description`,
   code: 'SRV',
   load: loadCharges,
-  allowed: (ctx) => readsAllMoney(ctx) || ctx.isHead,
+  // a head of a treating department: their department's services (0182: not the finance head)
+  allowed: (ctx) => readsAllMoney(ctx) || careHead(ctx),
   filters: [
     periodFilter('month'),
     {

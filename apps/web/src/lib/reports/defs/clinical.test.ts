@@ -43,6 +43,8 @@ const RECEPTION = ctxOf({
 })
 const PHARMACY = ctxOf({ id: 'p-pha', role: 'pharmacist', desks: ['pharmacy'] })
 const CASHIER = ctxOf({ id: 'u-cash', role: 'cashier', desks: ['cashier'] })
+/** The head of the finance desk (0182): the money, not the patients' care. */
+const FINANCE_HEAD = ctxOf({ id: 'u-fin', role: 'cashier', head: true, desks: ['cashier'] })
 
 function filtersOf(def: AnyReportDef, extra: Record<string, unknown> = {}): ReportFilterValues {
   const to = new Date().toISOString().slice(0, 10)
@@ -87,6 +89,9 @@ describe('clinical reports', () => {
     expect(ids(PHARMACY)).toEqual(['clinical.prescriptions'])
     expect(ids(RECEPTION)).toEqual(['clinical.vitals', 'reception.bookings'])
     expect(ids(CASHIER)).toEqual([])
+    // a head of a treating department reads them all; the finance desk's head none (0182)
+    expect(ids(HEAD)).toHaveLength(6)
+    expect(ids(FINANCE_HEAD)).toEqual([])
   })
 
   it('patients seen: a doctor her own, a head their department, the manager everyone', async () => {

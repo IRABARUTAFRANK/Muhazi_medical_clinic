@@ -30,6 +30,7 @@ import {
   type VitalsRow,
 } from '@/lib/api/reports-clinical'
 import { packsOf, w } from './stock'
+import { careHead } from '../access'
 import type {
   AnyReportDef,
   ReportColumnDef,
@@ -51,8 +52,9 @@ const C = 'reports.clinical'
 
 // ---------------------------------------------------------------- who reads what
 
-/** Reads clinical reports beyond their own work: the manager and the heads. */
-const wide = (ctx: ReportContext) => ctx.isManager || ctx.isHead
+/** Reads clinical reports beyond their own work: the manager and the heads of the departments
+ *  that treat patients (0182: not the head of the finance desk). */
+const wide = (ctx: ReportContext) => ctx.isManager || careHead(ctx)
 /** A doctor (0126: patient records are for doctors), the manager or a head. The database leaves
  *  the clinical columns out for someone who is not a doctor. */
 const clinicalReader = (ctx: ReportContext) => wide(ctx) || ctx.clinical
