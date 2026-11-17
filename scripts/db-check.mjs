@@ -25352,6 +25352,17 @@ await step(
     await db.query(`select unpay_salary($1, 'wrong person')`, [paid.id])
     const undone = (await one(`select salary_periods($1, 2026) as j`, [d1])).j
     const money4 = (await one(`select finance_summary('2026-03-01', '2026-03-31') as j`)).j
+    // 0183: the same period settled again after the undo (the undone row stays underneath)
+    const again = (
+      await one(
+        `select pay_salary($1, '2026-02-02', '2026-03-02', null, 'cash', 'TRF-2', null) as j`,
+        [d1],
+      )
+    ).j
+    const skipAgain = await codeAs(staff.cashier, `select skip_salary($1, '2026-02-02', 'twice')`, [
+      d1,
+    ])
+    await db.query(`select unpay_salary($1, 'wrong again')`, [again.id])
     // pay day 28: the monthly pay dates move to the 28th
     await db.query(`select set_salary($1, 500000, 'monthly', '2026-02-02', 28, null)`, [d1])
     const pd = (await one(`select salary_periods($1, 2026) as j`, [d1])).j
@@ -25395,9 +25406,15 @@ await step(
     if (
       undone[0].status === 'paid' ||
       Number(money4.salaries) !== 0 ||
-      undone[1].status !== 'skipped'
+      undone[1].status !== 'skipped' ||
+      !again.id ||
+      again.id === paid.id ||
+      skipAgain !== '23505'
     )
-      throw new Error('undone: ' + JSON.stringify({ u: undone.slice(0, 2), s: money4.salaries }))
+      throw new Error(
+        'undone: ' +
+          JSON.stringify({ u: undone.slice(0, 2), s: money4.salaries, again, skipAgain }),
+      )
     if (pd[0].dueOn !== '2026-03-28' || pd[1].dueOn !== '2026-04-28')
       throw new Error('pay day: ' + JSON.stringify(pd.slice(0, 2)))
     if (!me || Number(me.amount) !== 500000 || me.intervalKind !== 'monthly' || me.payDay !== 28)
@@ -25407,7 +25424,7 @@ await step(
     await as(staff.cashier)
     await db.query(`select remove_salary($1)`, [d1])
     await asAdmin()
-    return `11 periods Feb–Dec, due 2 Mar / 2 Apr…; paid 2 Mar (expense 500,000), twice 23505, odd start 22023; Mar skipped; other expense 85,000 then voided; undo → due again, salaries 0; pay day 28 → due 28 Mar; alerts created ${alerts.created} (overdue ${alerts.overdue}), second run 0; doctor 42501`
+    return `11 periods Feb–Dec, due 2 Mar / 2 Apr…; paid 2 Mar (expense 500,000), twice 23505, odd start 22023; Mar skipped; other expense 85,000 then voided; undo → due again, salaries 0, paid again then undone again (0183); pay day 28 → due 28 Mar; alerts created ${alerts.created} (overdue ${alerts.overdue}), second run 0; doctor 42501`
   },
 )
 // @@t141-end
