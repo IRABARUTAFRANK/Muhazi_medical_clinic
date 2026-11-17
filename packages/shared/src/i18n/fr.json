@@ -3786,7 +3786,12 @@
     "salaryDue_other": "Salaire de {{name}} dû dans {{count}} jours",
     "salaryOverdue_one": "Salaire de {{name}} en retard de {{count}} jour",
     "salaryOverdue_other": "Salaire de {{name}} en retard de {{count}} jours",
-    "salaryBody": "{{amount}} · date de paie {{date}}"
+    "salaryBody": "{{amount}} · date de paie {{date}}",
+    "taxDue_one": "Impôt {{name}} dû dans {{count}} jour",
+    "taxDue_other": "Impôt {{name}} dû dans {{count}} jours",
+    "taxOverdue_one": "Impôt {{name}} en retard de {{count}} jour",
+    "taxOverdue_other": "Impôt {{name}} en retard de {{count}} jours",
+    "taxBodyNoAmount": "Montant à calculer · échéance {{date}}"
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
@@ -8116,6 +8121,7 @@
   },
   "dbErrors": {
     "25402734": "Le médecin a annulé ce médicament.",
+    "26943731": "Le montant de l’impôt est zéro ou plus.",
     "37902613": "Le réglage « antécédents pour le médecin traitant » doit être activé ou désactivé.",
     "39332635": "La réception, le caissier et l’administrateur ne soignent aucun patient : cette fonction ne peut pas leur être activée.",
     "47437974": "Notez le motif de consultation (étape 1) avant de terminer la consultation.",
@@ -8592,7 +8598,14 @@
     "abd89c9b": "Dites pour quoi est la dépense.",
     "5b5d4b64": "Période de paie introuvable : elle a peut-être déjà été annulée.",
     "382311f5": "Dépense introuvable : elle a peut-être déjà été annulée.",
-    "16324e52": "Un intervalle personnalisé va de 1 à 365 jours, semaines ou mois."
+    "16324e52": "Un intervalle personnalisé va de 1 à 365 jours, semaines ou mois.",
+    "8444ca5d": "Saisissez le nom de l’impôt.",
+    "8fd3f86e": "Dites à quelle fréquence l’impôt est payé.",
+    "a9585e5d": "Choisissez la date depuis laquelle l’impôt compte.",
+    "b3f2857b": "Cet impôt est introuvable.",
+    "7f86438c": "Saisissez le montant d’impôt payé.",
+    "c3bd06f4": "Un impôt payé s’annule sur sa période, dans l’onglet Impôts.",
+    "11e2522c": "Une dépense est « Autre » ou « Impôt »."
   },
   "panel": {
     "close": "Fermer",
@@ -9258,7 +9271,9 @@
       "otherExpenses": "Autres dépenses",
       "stockBought": "Stock acheté",
       "moneyOut": "Argent sorti",
-      "netResult": "Net"
+      "netResult": "Net",
+      "tax": "Impôt",
+      "taxes": "Impôts"
     },
     "filters": {
       "method": "Mode de paiement",
@@ -9277,7 +9292,8 @@
       "salaryStatus": "Statut",
       "expenseKind": "Type",
       "includeVoided": "Inclure les dépenses annulées",
-      "includeVoidedHint": "Une dépense annulée apparaît avec « Annulée : oui » et son motif."
+      "includeVoidedHint": "Une dépense annulée apparaît avec « Annulée : oui » et son motif.",
+      "tax": "Impôt"
     },
     "placeholders": {
       "payments": "Patient, dossier, n° de reçu ou de facture",
@@ -9288,7 +9304,8 @@
       "sales": "Client, n° de vente ou médicament",
       "claims": "Patient, n° d’affilié, de facture ou de lot",
       "payroll": "Employé, ID du personnel, référence ou note",
-      "expenses": "Objet, référence, note ou qui a enregistré"
+      "expenses": "Objet, référence, note ou qui a enregistré",
+      "taxes": "Impôt, référence, qui a payé…"
     },
     "groups": {
       "method": "Par mode de paiement",
@@ -9305,7 +9322,8 @@
       "seller": "Par vendeur",
       "employee": "Par employé",
       "month": "Par mois",
-      "expenseKind": "Par type"
+      "expenseKind": "Par type",
+      "tax": "Impôt"
     },
     "kinds": {
       "visit": "Facture de visite",
@@ -9392,7 +9410,10 @@
       "otherTotal": "Autres dépenses",
       "netRevenue": "Recettes nettes",
       "moneyOut": "Argent sorti",
-      "netResult": "Net"
+      "netResult": "Net",
+      "taxPeriods": "Périodes d’impôt",
+      "taxesPaid": "Impôts payés",
+      "taxesDue": "Impôts dus"
     },
     "count": {
       "payments": "Paiements",
@@ -9403,7 +9424,8 @@
       "counts": "Comptages",
       "periods": "Périodes de paie",
       "expenses": "Dépenses",
-      "months": "Mois"
+      "months": "Mois",
+      "taxPeriods": "Périodes d’impôt"
     },
     "payroll": {
       "title": "Paie : les périodes de paie",
@@ -9422,6 +9444,12 @@
       "description": "Mois par mois : les recettes prises, les remboursements, les salaires, les autres dépenses, le stock acheté et le net.",
       "note1": "Recettes nettes : les paiements pris dans le mois moins les remboursements. Stock acheté : les livraisons reçues dans le mois, au coût.",
       "note2": "Net = recettes nettes − salaires − autres dépenses − stock acheté."
+    },
+    "taxes": {
+      "title": "Impôts : les périodes",
+      "description": "Chaque période d’impôt qui échoit dans la période : payée, due, en retard ou sautée, avec ce qui a été payé et comment.",
+      "note1": "Une ligne par période d’impôt, datée par son échéance.",
+      "note2": "Payé : le montant marqué payé (sa dépense est dans le rapport des dépenses) ; un impôt calculé à chaque fois n’a pas de montant avant d’être payé."
     }
   },
   "staffReports": {
@@ -11101,11 +11129,12 @@
   },
   "accounts": {
     "title": "Finances",
-    "lead": "Les comptes de la clinique : l’argent entré contre l’argent sorti, les salaires des employés avec chaque période de paie de l’année, les autres dépenses, et les rapports imprimés.",
+    "lead": "Les comptes de la clinique : l’argent entré contre l’argent sorti, les salaires des employés avec chaque période de paie de l’année, les impôts que la clinique paie, les autres dépenses, et les rapports imprimés.",
     "tabs": {
       "money": "L’argent",
       "salaries": "Salaires",
-      "expenses": "Autres dépenses"
+      "expenses": "Autres dépenses",
+      "taxes": "Impôts"
     },
     "cancel": "Annuler",
     "reference": "Référence (reçu, virement…)",
@@ -11133,11 +11162,13 @@
       "stock": "Stock acheté",
       "net": "Bénéfice net",
       "salariesDue": "Salaires à payer dans la période",
-      "how": "Argent entré = chaque paiement pris ({{revenue}}) moins les remboursements ({{refunds}}). Bénéfice net = argent entré moins les salaires, les autres dépenses et le stock reçu au coût.",
+      "how": "Argent entré = chaque paiement pris ({{revenue}}) moins les remboursements ({{refunds}}). Bénéfice net = argent entré moins les salaires, les impôts, les autres dépenses et le stock reçu au coût.",
       "byMethod": "Argent entré par mode",
       "byMonth": "Mois par mois",
       "month": "Mois",
-      "none": "Rien sur cette période."
+      "none": "Rien sur cette période.",
+      "taxes": "Impôts payés",
+      "taxesDue": "Impôts dus dans la période"
     },
     "salaries": {
       "year": "Année",
@@ -11213,7 +11244,8 @@
       "kind": "Type",
       "kinds": {
         "salary": "Salaire",
-        "other": "Autre"
+        "other": "Autre",
+        "tax": "Impôt"
       },
       "void": "Annuler",
       "voidTitle": "Annuler la dépense « {{what}} » ?",
@@ -11223,7 +11255,9 @@
       "errors": {
         "label": "Dites pour quoi est la dépense.",
         "amount": "Tapez le montant payé."
-      }
+      },
+      "kindField": "Nature",
+      "taxPh": "ex. Retenue à la source, pénalité"
     },
     "report": {
       "moneyTitle": "Argent entré et sorti",
@@ -11237,7 +11271,12 @@
       "salariesTable": "Salaires",
       "periodsTable": "Périodes de paie",
       "periodStart": "Du",
-      "periodEnd": "Au"
+      "periodEnd": "Au",
+      "taxesTitle": "Impôts {{year}}",
+      "taxesSummary": "{{count}} impôts définis ; payé cette année {{paid}} ; encore dû {{due}}.",
+      "taxesCount": "Impôts",
+      "taxesTable": "Impôts",
+      "taxPeriodsTable": "Périodes d’impôt"
     },
     "units": {
       "days_one": "jour",
@@ -11247,6 +11286,43 @@
       "months_one": "mois",
       "months_other": "mois"
     },
-    "inReports": "Filtrer et imprimer dans le centre de rapports"
+    "inReports": "Filtrer et imprimer dans le centre de rapports",
+    "taxes": {
+      "year": "Année",
+      "title": "Impôts {{year}}",
+      "none": "Aucun impôt défini : appuyez sur « Ajouter un impôt ».",
+      "add": "Ajouter un impôt",
+      "oneOffHint": "Un impôt payé une seule fois, sans échéancier (une retenue, une pénalité…), s’enregistre dans l’onglet Autres dépenses avec la nature « Impôt ».",
+      "cols": {
+        "tax": "Impôt",
+        "amount": "Montant (RWF)"
+      },
+      "selfAssessed": "Calculé à chaque fois",
+      "newTitle": "Nouvel impôt",
+      "setTitle": "Impôt : {{name}}",
+      "name": "Nom de l’impôt",
+      "namePh": "ex. PAYE, TVA, patente, impôt sur le revenu",
+      "amountField": "Montant (RWF) — vide quand vous le calculez à chaque fois",
+      "amountPh": "Vide : saisi au paiement",
+      "anchor": "Compte depuis (début de la première période)",
+      "setHint": "Les périodes suivent la date de début et l’intervalle : payé chaque mois depuis le 1er janvier, la période de janvier est due le 1er février… Un jour de paie du mois déplace chaque échéance mensuelle ou plus longue à ce jour (PAYE : jour 15 → due le 15 février pour janvier). Laissez le montant vide pour un impôt que vous calculez à partir des chiffres ; vous le saisissez en marquant la période payée.",
+      "save": "Enregistrer l’impôt",
+      "saved": "Impôt « {{name}} » enregistré.",
+      "remove": "Retirer l’impôt",
+      "removeTitle": "Retirer l’impôt « {{name}} » ?",
+      "removeBody": "Plus de périodes désormais ; ce qui a été payé reste dans les dépenses.",
+      "removed": "Impôt « {{name}} » retiré.",
+      "paidOk": "{{name}} marqué payé le {{date}} ; la dépense est enregistrée.",
+      "amountYouWorkedOut": "Le montant que vous avez calculé",
+      "undoTitle": "Annuler le paiement de {{name}} ?",
+      "skipTitle": "Sauter une période de {{name}} ?",
+      "skipBody": "La période due le {{date}} ne sera pas payée (exonéré, rien à déclarer…).",
+      "errors": {
+        "name": "Saisissez le nom de l’impôt.",
+        "amount": "Le montant est zéro ou plus, ou vide.",
+        "anchor": "Choisissez la date depuis laquelle les périodes comptent.",
+        "paid": "Saisissez le montant d’impôt payé."
+      }
+    }
   }
 }

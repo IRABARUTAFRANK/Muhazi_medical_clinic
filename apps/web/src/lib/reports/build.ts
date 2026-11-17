@@ -7,7 +7,12 @@ import type { DashboardData } from '@/lib/api/dashboard'
 import type { CashierSummary } from '@/lib/api/finance'
 import type { LabOrder, LabSummary } from '@/lib/api/lab'
 import { isLowStock, type StockItem, type StockMovement, type StockSales } from '@/lib/api/stock'
-import { intervalWords, type FinanceSummary, type SalaryOverview } from '@/lib/api/accounts'
+import {
+  intervalWords,
+  type FinanceSummary,
+  type SalaryOverview,
+  type TaxOverview,
+} from '@/lib/api/accounts'
 import { docDate, kigaliParts, makeDocLabels } from '@/lib/doc-style'
 import type {
   Cell,
@@ -986,6 +991,7 @@ export function financeMoneyReport(
   const figures: ReportFigure[] = [
     { label: t('accounts.money.revenue'), value: Math.round(s.netRevenue), unit: 'RWF' },
     { label: t('accounts.money.salaries'), value: Math.round(s.salaries), unit: 'RWF' },
+    { label: t('accounts.money.taxes'), value: Math.round(s.taxes), unit: 'RWF' },
     { label: t('accounts.money.other'), value: Math.round(s.otherExpenses), unit: 'RWF' },
     { label: t('accounts.money.stock'), value: Math.round(s.stockBought), unit: 'RWF' },
     { label: t('accounts.money.net'), value: Math.round(s.net), unit: 'RWF' },
@@ -1023,6 +1029,7 @@ export function financeMoneyReport(
               { label: t('accounts.money.month'), nowrap: true },
               { label: t('accounts.money.revenue'), kind: 'money' },
               { label: t('accounts.money.salaries'), kind: 'money' },
+              { label: t('accounts.money.taxes'), kind: 'money' },
               { label: t('accounts.money.other'), kind: 'money' },
               { label: t('accounts.money.stock'), kind: 'money' },
               { label: t('accounts.money.net'), kind: 'money', boldNegative: true },
@@ -1031,11 +1038,117 @@ export function financeMoneyReport(
               m.month,
               m.revenue - m.refunds,
               m.salaries,
+              m.taxes,
               m.other,
               m.stock,
-              m.revenue - m.refunds - m.salaries - m.other - m.stock,
+              m.revenue - m.refunds - m.salaries - m.taxes - m.other - m.stock,
             ]),
-            totals: [1, 2, 3, 4, 5],
+            totals: [1, 2, 3, 4, 5, 6],
+          },
+        ],
+      },
+    ],
+  }
+}
+
+/** 0184: the taxes of a year: each tax set and every period paid or not. */
+export function taxesReport(
+  o: TaxOverview,
+  clinic: ClinicProfile,
+  user: StaffUser,
+  t: TFn,
+): Report {
+  const base = common(t, clinic, user)
+  const method = base.doc.method
+  const from = `${o.year}-01-01`
+  const to = `${o.year}-12-31`
+  const paid = o.taxes.reduce((s, x) => s + x.paidThisYear, 0)
+  const due = o.taxes.reduce(
+    (s, x) =>
+      s +
+      x.periods
+        .filter((p) => p.status === 'due' || p.status === 'overdue')
+        .reduce((a, p) => a + (p.amount ?? 0), 0),
+    0,
+  )
+  const overdue = o.taxes.reduce((s, x) => s + x.overdue, 0)
+  const figures: ReportFigure[] = [
+    { label: t('accounts.report.taxesCount'), value: o.taxes.length },
+    { label: t('accounts.report.paidYear'), value: Math.round(paid), unit: 'RWF' },
+    { label: t('accounts.report.dueYear'), value: Math.round(due), unit: 'RWF' },
+    { label: t('accounts.report.overduePeriods'), value: overdue },
+  ]
+  const rows: Cell[][] = []
+  for (const x of o.taxes)
+    for (const p of x.periods)
+      rows.push([
+        x.name,
+        p.periodStart,
+        p.periodEnd,
+        p.dueOn,
+        p.amount,
+        t(`accounts.status.${p.status}`),
+        p.paidOn,
+        p.paidAmount,
+        p.method ? method(p.method) : null,
+        p.reference,
+        p.paidBy,
+      ])
+  return {
+    ...base,
+    title: t('accounts.report.taxesTitle', { year: o.year }),
+    period: periodOf(from, to, t),
+    code: 'TAX',
+    periodKey: periodKeyOf(from, to),
+    fileName: stem('taxes', from, to),
+    figures,
+    summaryText: t('accounts.report.taxesSummary', {
+      count: o.taxes.length,
+      paid: formatRwf(Math.round(paid)),
+      due: formatRwf(Math.round(due)),
+    }),
+    orientation: 'landscape',
+    sections: [
+      {
+        name: t('accounts.tabs.taxes'),
+        tables: [
+          {
+            title: t('accounts.report.taxesTable'),
+            columns: [
+              { label: t('accounts.taxes.cols.tax'), pdfWidth: '24%' },
+              { label: t('accounts.taxes.cols.amount'), kind: 'money' },
+              { label: t('accounts.salaries.cols.interval') },
+              { label: t('accounts.taxes.anchor'), kind: 'date' },
+              { label: t('accounts.salaries.cols.paidYear'), kind: 'money' },
+              { label: t('accounts.report.overduePeriods'), kind: 'number' },
+            ],
+            rows: o.taxes.map((x) => [
+              x.name,
+              x.amount,
+              intervalWords(t, x.intervalKind, x.customEvery, x.customUnit),
+              x.anchorOn,
+              x.paidThisYear,
+              x.overdue,
+            ]),
+            totals: [4, 5],
+          },
+          {
+            title: t('accounts.report.taxPeriodsTable'),
+            columns: [
+              { label: t('accounts.taxes.cols.tax'), pdfWidth: '18%' },
+              { label: t('accounts.report.periodStart'), kind: 'date' },
+              { label: t('accounts.report.periodEnd'), kind: 'date' },
+              { label: t('accounts.salaries.cols.dueOn'), kind: 'date' },
+              { label: t('accounts.taxes.cols.amount'), kind: 'money' },
+              { label: t('accounts.salaries.cols.status'), nowrap: true },
+              { label: t('accounts.salaries.paidOn'), kind: 'date' },
+              { label: t('accounts.salaries.paidAmount'), kind: 'money' },
+              { label: t('report.cols.method') },
+              { label: t('accounts.reference') },
+              { label: t('report.cols.by') },
+            ],
+            rows,
+            totals: [4, 7],
           },
         ],
       },

@@ -1,13 +1,12 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
-import { Link } from '@tanstack/react-router'
+import { useState, type FormEvent } from 'react'
 import {
   AlertTriangle,
   Banknote,
   CalendarCheck,
   Coins,
   Eye,
-  FileText,
   Landmark,
+  Percent,
   Receipt,
   TrendingDown,
   TrendingUp,
@@ -23,7 +22,7 @@ import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import { ReportButtons } from '@/components/dash/report-buttons'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { Badge } from '@/components/ui/badge'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { Seg } from '@/components/ui/seg'
 import { Select } from '@/components/ui/select'
@@ -38,6 +37,7 @@ import {
   useFinanceSummary,
   useSalaryOverview,
   type CustomUnit,
+  type ExpenseKind,
   type SalaryInterval,
   type SalaryPeriod,
   type SalaryPerson,
@@ -51,47 +51,24 @@ import { financeMoneyReport, payrollReport } from '@/lib/reports/build'
 import { cn } from '@/lib/utils'
 import { CLINIC_PROFILE } from '@mmc/shared'
 
-import { ACCOUNTS_TABS, type AccountsTab } from './accounts-tabs'
-
-const METHODS = ['cash', 'momo', 'airtel', 'bank', 'card'] as const
-
-const errText = (e: unknown) => (e instanceof Error ? e.message : String(e))
-
-type Msg = { ok: boolean; text: string }
-
-function Note({ msg }: { msg: Msg }) {
-  return (
-    <p
-      className={cn(
-        'm-0 rounded-md px-3 py-2 text-[14px] font-medium',
-        msg.ok ? 'bg-green-bg text-green' : 'bg-red-bg text-red',
-      )}
-    >
-      {msg.text}
-    </p>
-  )
-}
-
-/** The same figures in the report centre, with its filters, columns, grouping and printing (0181). */
-function ReportsLink({ id }: { id: string }) {
-  const { t } = useTranslation()
-  return (
-    <Link
-      to="/app/reports"
-      search={{ r: id }}
-      className={cn(buttonVariants({ variant: 'tint-teal', size: 'md' }))}
-    >
-      <FileText size={16} aria-hidden="true" />
-      {t('accounts.inReports')}
-    </Link>
-  )
-}
+import { Note, PanelForm, ReportsLink } from './accounts-kit'
+import {
+  ACCOUNTS_TABS,
+  METHODS,
+  STATUSES,
+  STATUS_TONE,
+  errText,
+  type AccountsTab,
+  type Msg,
+} from './accounts-tabs'
+import { TaxesTab } from './taxes-tab'
 
 /**
  * Finance (0179): the clinic's accounts for the cashier (the accountant) and the manager — the
- * money in by method against the money out (salaries, other expenses, stock bought) and the net;
- * the employees' salaries, every pay period of the year marked paid or not; the other expenses;
- * the printed reports in the clinic's template.
+ * money in by method against the money out (salaries, taxes, other expenses, stock bought) and
+ * the net; the employees' salaries, every pay period of the year marked paid or not; the taxes
+ * the clinic pays with their periods (0184); the other expenses; the printed reports in the
+ * clinic's template.
  */
 export function AccountsPage({
   user,
@@ -123,6 +100,7 @@ export function AccountsPage({
         />
         {tab === 'money' && <MoneyTab user={user} />}
         {tab === 'salaries' && <SalariesTab user={user} initialYear={initialYear} />}
+        {tab === 'taxes' && <TaxesTab user={user} initialYear={initialYear} />}
         {tab === 'expenses' && <ExpensesTab />}
       </main>
     </StaffShell>
@@ -172,14 +150,22 @@ function MoneyTab({ user }: { user: StaffUser }) {
             />
             <Kpi
               i={2}
-              icon={Receipt}
+              icon={Percent}
               tint="violet"
+              label={t('accounts.money.taxes')}
+              value={Math.round(s.taxes)}
+              unit="RWF"
+            />
+            <Kpi
+              i={3}
+              icon={Receipt}
+              tint="rose"
               label={t('accounts.money.other')}
               value={Math.round(s.otherExpenses)}
               unit="RWF"
             />
             <Kpi
-              i={3}
+              i={4}
               icon={Banknote}
               tint="navy"
               label={t('accounts.money.stock')}
@@ -187,7 +173,7 @@ function MoneyTab({ user }: { user: StaffUser }) {
               unit="RWF"
             />
             <Kpi
-              i={4}
+              i={5}
               icon={s.net >= 0 ? TrendingUp : TrendingDown}
               tint={s.net >= 0 ? 'mint' : 'coral'}
               label={t('accounts.money.net')}
@@ -195,11 +181,19 @@ function MoneyTab({ user }: { user: StaffUser }) {
               unit="RWF"
             />
             <Kpi
-              i={5}
+              i={6}
               icon={AlertTriangle}
               tint="amber"
               label={t('accounts.money.salariesDue')}
               value={Math.round(s.salariesDue)}
+              unit="RWF"
+            />
+            <Kpi
+              i={7}
+              icon={AlertTriangle}
+              tint="violet"
+              label={t('accounts.money.taxesDue')}
+              value={Math.round(s.taxesDue)}
               unit="RWF"
             />
           </div>
@@ -251,6 +245,7 @@ function MoneyTab({ user }: { user: StaffUser }) {
                         <th className={cn(tableHead, 'text-right')}>
                           {t('accounts.money.salaries')}
                         </th>
+                        <th className={cn(tableHead, 'text-right')}>{t('accounts.money.taxes')}</th>
                         <th className={cn(tableHead, 'text-right')}>{t('accounts.money.other')}</th>
                         <th className={cn(tableHead, 'text-right')}>{t('accounts.money.stock')}</th>
                         <th className={cn(tableHead, 'text-right')}>{t('accounts.money.net')}</th>
@@ -258,7 +253,7 @@ function MoneyTab({ user }: { user: StaffUser }) {
                     </thead>
                     <tbody>
                       {s.byMonth.map((m) => {
-                        const net = m.revenue - m.refunds - m.salaries - m.other - m.stock
+                        const net = m.revenue - m.refunds - m.salaries - m.taxes - m.other - m.stock
                         return (
                           <tr key={m.month} className={tableRow}>
                             <td className={cn(tableFirstCell, 'whitespace-nowrap')}>{m.month}</td>
@@ -267,6 +262,9 @@ function MoneyTab({ user }: { user: StaffUser }) {
                             </td>
                             <td className={cn(tableCell, 'text-right tabular-nums')}>
                               {formatRwf(m.salaries)}
+                            </td>
+                            <td className={cn(tableCell, 'text-right tabular-nums')}>
+                              {formatRwf(m.taxes)}
                             </td>
                             <td className={cn(tableCell, 'text-right tabular-nums')}>
                               {formatRwf(m.other)}
@@ -299,13 +297,6 @@ function MoneyTab({ user }: { user: StaffUser }) {
 }
 
 /* ---------------------------------------------------------------- the salaries */
-const STATUS_TONE: Record<SalaryPeriod['status'], 'green' | 'red' | 'yellow' | 'grey'> = {
-  paid: 'green',
-  overdue: 'red',
-  due: 'yellow',
-  skipped: 'grey',
-}
-const STATUSES: SalaryPeriod['status'][] = ['paid', 'due', 'overdue', 'skipped']
 
 /**
  * 0181: a compact list (one row per employee, one View button); the employee's side panel holds
@@ -694,16 +685,6 @@ function SalaryPanel({
   )
 }
 
-/** A form inside the side panel: a bordered box with its own heading. */
-function PanelForm({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="border-border bg-surface rounded-md border p-3">
-      <h3 className="text-ink m-0 mb-3 text-[15px] font-semibold">{title}</h3>
-      {children}
-    </div>
-  )
-}
-
 function SalaryForm({
   profileId,
   name,
@@ -959,6 +940,7 @@ function ExpensesTab() {
   const { data: rows = [], error } = useExpenses(period.from, period.to)
   const { addExpense, voidExpense } = useAccountsActions()
   const confirm = useConfirm()
+  const [kind, setKind] = useState<'other' | 'tax'>('other')
   const [label, setLabel] = useState('')
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState<string>('cash')
@@ -982,6 +964,7 @@ function ExpensesTab() {
         reference,
         paidOn,
         note,
+        kind,
       })
       setMsg({ ok: true, text: t('accounts.expenses.added') })
       setLabel('')
@@ -1024,11 +1007,24 @@ function ExpensesTab() {
       {msg && <Note msg={msg} />}
       <Panel i={1} icon={Receipt} tint="violet" title={t('accounts.expenses.add')}>
         <form onSubmit={submit} className="flex flex-col gap-3">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
+            <Select
+              label={t('accounts.expenses.kindField')}
+              value={kind}
+              onChange={(e) => setKind(e.target.value as 'other' | 'tax')}
+            >
+              {(['other', 'tax'] as const).map((k) => (
+                <option key={k} value={k}>
+                  {t(`accounts.expenses.kinds.${k}`)}
+                </option>
+              ))}
+            </Select>
             <Field
               wrapperClassName="lg:col-span-2"
               label={t('accounts.expenses.label')}
-              placeholder={t('accounts.expenses.labelPh')}
+              placeholder={
+                kind === 'tax' ? t('accounts.expenses.taxPh') : t('accounts.expenses.labelPh')
+              }
               value={label}
               onChange={(e) => setLabel(e.target.value)}
             />
@@ -1110,7 +1106,9 @@ function ExpensesTab() {
                       </span>
                     )}
                   </td>
-                  <td className={tableCell}>{t(`accounts.expenses.kinds.${r.kind}`)}</td>
+                  <td className={tableCell}>
+                    {t(`accounts.expenses.kinds.${r.kind as ExpenseKind}`)}
+                  </td>
                   <td
                     className={cn(
                       tableCell,
@@ -1126,7 +1124,7 @@ function ExpensesTab() {
                   </td>
                   <td className={tableCell}>{r.paidBy ?? '—'}</td>
                   <td className={cn(tableCell, 'text-right')}>
-                    {!r.voided && r.kind === 'other' && (
+                    {!r.voided && r.kind !== 'salary' && !r.periodId && (
                       <Button size="sm" variant="ghost" onClick={() => void undo(r.id, r.label)}>
                         {t('accounts.expenses.void')}
                       </Button>

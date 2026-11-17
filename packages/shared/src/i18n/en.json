@@ -3786,7 +3786,12 @@
     "salaryDue_other": "Salary of {{name}} due in {{count}} days",
     "salaryOverdue_one": "Salary of {{name}} overdue by {{count}} day",
     "salaryOverdue_other": "Salary of {{name}} overdue by {{count}} days",
-    "salaryBody": "{{amount}} · pay date {{date}}"
+    "salaryBody": "{{amount}} · pay date {{date}}",
+    "taxDue_one": "Tax {{name}} due in {{count}} day",
+    "taxDue_other": "Tax {{name}} due in {{count}} days",
+    "taxOverdue_one": "Tax {{name}} overdue by {{count}} day",
+    "taxOverdue_other": "Tax {{name}} overdue by {{count}} days",
+    "taxBodyNoAmount": "Amount to work out · pay date {{date}}"
   },
   "identity": {
     "aria": "Signed in: {{name}}"
@@ -8116,6 +8121,7 @@
   },
   "dbErrors": {
     "25402734": "the doctor cancelled this medicine",
+    "26943731": "The tax amount is zero or more.",
     "37902613": "The setting “past history for the treating doctor” must be on or off.",
     "39332635": "Reception, the cashier and the administrator do not treat patients: this feature cannot be switched on for them.",
     "47437974": "Write the chief complaint (step 1) before finishing the visit.",
@@ -8592,7 +8598,14 @@
     "abd89c9b": "Say what the expense is for.",
     "5b5d4b64": "Pay period not found: it may have been undone already.",
     "382311f5": "Expense not found: it may have been cancelled already.",
-    "16324e52": "A custom interval is every 1 to 365 days, weeks or months."
+    "16324e52": "A custom interval is every 1 to 365 days, weeks or months.",
+    "8444ca5d": "Type the name of the tax.",
+    "8fd3f86e": "Say how often the tax is paid.",
+    "a9585e5d": "Choose the date the tax counts from.",
+    "b3f2857b": "This tax was not found.",
+    "7f86438c": "Type the amount of tax paid.",
+    "c3bd06f4": "A tax paid is undone on its period, on the Taxes tab.",
+    "11e2522c": "An expense is “Other” or “Tax”."
   },
   "panel": {
     "close": "Close",
@@ -9258,7 +9271,9 @@
       "otherExpenses": "Other expenses",
       "stockBought": "Stock bought",
       "moneyOut": "Money out",
-      "netResult": "Net"
+      "netResult": "Net",
+      "tax": "Tax",
+      "taxes": "Taxes"
     },
     "filters": {
       "method": "Payment method",
@@ -9277,7 +9292,8 @@
       "salaryStatus": "Status",
       "expenseKind": "Kind",
       "includeVoided": "Include cancelled expenses",
-      "includeVoidedHint": "A cancelled expense is shown with “Cancelled: yes” and its reason."
+      "includeVoidedHint": "A cancelled expense is shown with “Cancelled: yes” and its reason.",
+      "tax": "Tax"
     },
     "placeholders": {
       "payments": "Patient, file, receipt or bill no.",
@@ -9288,7 +9304,8 @@
       "sales": "Buyer, sale no. or medicine",
       "claims": "Patient, member, bill or batch no.",
       "payroll": "Employee, staff ID, reference or note",
-      "expenses": "What for, reference, note or who recorded"
+      "expenses": "What for, reference, note or who recorded",
+      "taxes": "Tax, reference, who paid…"
     },
     "groups": {
       "method": "By payment method",
@@ -9305,7 +9322,8 @@
       "seller": "By seller",
       "employee": "By employee",
       "month": "By month",
-      "expenseKind": "By kind"
+      "expenseKind": "By kind",
+      "tax": "Tax"
     },
     "kinds": {
       "visit": "Visit bill",
@@ -9392,7 +9410,10 @@
       "otherTotal": "Other expenses",
       "netRevenue": "Net revenue",
       "moneyOut": "Money out",
-      "netResult": "Net"
+      "netResult": "Net",
+      "taxPeriods": "Tax periods",
+      "taxesPaid": "Taxes paid",
+      "taxesDue": "Taxes due"
     },
     "count": {
       "payments": "Payments",
@@ -9403,7 +9424,8 @@
       "counts": "Cash counts",
       "periods": "Pay periods",
       "expenses": "Expenses",
-      "months": "Months"
+      "months": "Months",
+      "taxPeriods": "Tax periods"
     },
     "payroll": {
       "title": "Payroll: the pay periods",
@@ -9422,6 +9444,12 @@
       "description": "Month by month: the revenue taken, what was given back, the salaries, the other expenses, the stock bought and the net.",
       "note1": "Net revenue: the payments taken in the month minus the refunds given back. Stock bought: the deliveries received in the month, at cost.",
       "note2": "Net = net revenue − salaries − other expenses − stock bought."
+    },
+    "taxes": {
+      "title": "Taxes: the periods",
+      "description": "Every tax period falling due in the period: paid, due, overdue or skipped, with what was paid and how.",
+      "note1": "One row per tax period, dated by its due date.",
+      "note2": "Paid: the amount marked paid (its expense is in the expenses report); a tax worked out each time shows no amount until it is paid."
     }
   },
   "staffReports": {
@@ -11101,11 +11129,12 @@
   },
   "accounts": {
     "title": "Finance",
-    "lead": "The clinic’s accounts: the money in against the money out, the employees’ salaries with every pay period of the year, the other expenses, and the printed reports.",
+    "lead": "The clinic’s accounts: the money in against the money out, the employees’ salaries with every pay period of the year, the taxes the clinic pays, the other expenses, and the printed reports.",
     "tabs": {
       "money": "The money",
       "salaries": "Salaries",
-      "expenses": "Other expenses"
+      "expenses": "Other expenses",
+      "taxes": "Taxes"
     },
     "cancel": "Cancel",
     "reference": "Reference (receipt, transfer…)",
@@ -11133,11 +11162,13 @@
       "stock": "Stock bought",
       "net": "Net profit",
       "salariesDue": "Salaries due in the period",
-      "how": "Money in = every payment taken ({{revenue}}) less the refunds ({{refunds}}). Net profit = money in less salaries, other expenses and the stock received at cost.",
+      "how": "Money in = every payment taken ({{revenue}}) less the refunds ({{refunds}}). Net profit = money in less salaries, taxes, other expenses and the stock received at cost.",
       "byMethod": "Money in by method",
       "byMonth": "Month by month",
       "month": "Month",
-      "none": "Nothing in this period."
+      "none": "Nothing in this period.",
+      "taxes": "Taxes paid",
+      "taxesDue": "Taxes due in the period"
     },
     "salaries": {
       "year": "Year",
@@ -11213,7 +11244,8 @@
       "kind": "Kind",
       "kinds": {
         "salary": "Salary",
-        "other": "Other"
+        "other": "Other",
+        "tax": "Tax"
       },
       "void": "Cancel",
       "voidTitle": "Cancel the expense “{{what}}”?",
@@ -11223,7 +11255,9 @@
       "errors": {
         "label": "Say what the expense is for.",
         "amount": "Type the amount paid."
-      }
+      },
+      "kindField": "Kind",
+      "taxPh": "e.g. Withholding tax, penalty"
     },
     "report": {
       "moneyTitle": "Money in and out",
@@ -11237,7 +11271,12 @@
       "salariesTable": "Salaries",
       "periodsTable": "Pay periods",
       "periodStart": "From",
-      "periodEnd": "To"
+      "periodEnd": "To",
+      "taxesTitle": "Taxes {{year}}",
+      "taxesSummary": "{{count}} taxes set; paid this year {{paid}}; still due {{due}}.",
+      "taxesCount": "Taxes",
+      "taxesTable": "Taxes",
+      "taxPeriodsTable": "Tax periods"
     },
     "units": {
       "days_one": "day",
@@ -11247,6 +11286,43 @@
       "months_one": "month",
       "months_other": "months"
     },
-    "inReports": "Filter and print in the report centre"
+    "inReports": "Filter and print in the report centre",
+    "taxes": {
+      "year": "Year",
+      "title": "Taxes {{year}}",
+      "none": "No tax set yet: press “Add a tax”.",
+      "add": "Add a tax",
+      "oneOffHint": "A tax paid once, with no schedule (a withholding, a penalty…), is recorded on the Other expenses tab with the kind “Tax”.",
+      "cols": {
+        "tax": "Tax",
+        "amount": "Amount (RWF)"
+      },
+      "selfAssessed": "Worked out each time",
+      "newTitle": "New tax",
+      "setTitle": "Tax: {{name}}",
+      "name": "Name of the tax",
+      "namePh": "e.g. PAYE, VAT, trading licence, income tax",
+      "amountField": "Amount (RWF) — leave empty when you work it out each time",
+      "amountPh": "Empty: typed when paying",
+      "anchor": "Counts from (the first period starts)",
+      "setHint": "The periods follow the start date and the interval: paid monthly from 1 January, the January period is due on 1 February… A pay day of the month moves every monthly or longer due date to that day (PAYE: pay day 15 → due 15 February for January). Leave the amount empty for a tax you work out from the figures each time; you type it when marking the period paid.",
+      "save": "Save the tax",
+      "saved": "Tax “{{name}}” saved.",
+      "remove": "Remove the tax",
+      "removeTitle": "Remove the tax “{{name}}”?",
+      "removeBody": "No more periods from now on; what was paid stays in the expenses.",
+      "removed": "Tax “{{name}}” removed.",
+      "paidOk": "{{name}} marked paid on {{date}}; the expense is recorded.",
+      "amountYouWorkedOut": "The amount you worked out",
+      "undoTitle": "Undo the payment of {{name}}?",
+      "skipTitle": "Skip a period of {{name}}?",
+      "skipBody": "The period due on {{date}} will not be paid (exempt, nothing to declare…).",
+      "errors": {
+        "name": "Type the name of the tax.",
+        "amount": "The amount is zero or more, or empty.",
+        "anchor": "Choose the date the periods count from.",
+        "paid": "Type the amount of tax paid."
+      }
+    }
   }
 }

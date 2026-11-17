@@ -32,10 +32,13 @@ import {
   loadExpenseRows,
   loadMoney,
   loadPayroll,
+  loadTaxRows,
   payrollEmployees,
+  taxOptions,
   type ExpenseRow,
   type MoneyRow,
   type PayrollRow,
+  type TaxRow,
 } from '@/lib/api/reports-accounts'
 import {
   categoryName,
@@ -1253,6 +1256,123 @@ const payroll: ReportDef<PayrollRow> = {
   countLabel: `${K}.count.periods`,
 }
 
+/** 0184: the taxes' periods, like the payroll. */
+const taxes: ReportDef<TaxRow> = {
+  id: 'finance.taxes',
+  group: 'finance',
+  title: `${K}.taxes.title`,
+  description: `${K}.taxes.description`,
+  code: 'TAX',
+  load: loadTaxRows,
+  allowed: keepsAccounts,
+  filters: [
+    periodFilter('month'),
+    { key: 'tax', label: `${K}.filters.tax`, kind: 'select', loadOptions: taxOptions },
+    {
+      key: 'status',
+      label: `${K}.filters.salaryStatus`,
+      kind: 'multi',
+      options: keyOptions('accounts.status', SALARY_STATUSES),
+    },
+    searchFilter('taxes'),
+  ],
+  columns: [
+    { key: 'tax', label: `${K}.cols.tax`, default: true, value: (r) => r.tax },
+    {
+      key: 'period',
+      label: `${K}.cols.period`,
+      default: true,
+      value: (r) => `${dayLabel(r.periodStart)} – ${dayLabel(r.periodEnd)}`,
+      nowrap: true,
+    },
+    {
+      key: 'dueOn',
+      label: `${K}.cols.dueOn`,
+      kind: 'date',
+      default: true,
+      value: (r) => r.dueOn,
+      nowrap: true,
+    },
+    {
+      key: 'interval',
+      label: `${K}.cols.interval`,
+      value: (r) => intervalWords(t, r.intervalKind, r.customEvery, r.customUnit),
+    },
+    {
+      key: 'amount',
+      label: `${K}.cols.amount`,
+      kind: 'money',
+      default: true,
+      total: 'sum',
+      value: (r) => r.amount,
+    },
+    {
+      key: 'status',
+      label: `${K}.cols.status`,
+      default: true,
+      value: (r) => t(`accounts.status.${r.status}`),
+      nowrap: true,
+    },
+    {
+      key: 'paidOn',
+      label: `${K}.cols.paidOn`,
+      kind: 'date',
+      default: true,
+      value: (r) => r.paidOn,
+      nowrap: true,
+    },
+    {
+      key: 'paidAmount',
+      label: `${K}.cols.paidAmount`,
+      kind: 'money',
+      default: true,
+      total: 'sum',
+      value: (r) => r.paidAmount,
+    },
+    {
+      key: 'method',
+      label: `${K}.cols.method`,
+      default: true,
+      value: (r) => methodLabel(r.method),
+      nowrap: true,
+    },
+    { key: 'reference', label: `${K}.cols.reference`, value: (r) => r.reference, nowrap: true },
+    { key: 'paidBy', label: `${K}.cols.paidBy`, value: (r) => r.paidBy },
+    { key: 'note', label: `${K}.cols.note`, value: (r) => r.note },
+  ],
+  figures: (rows) => [
+    { label: `${K}.figures.taxPeriods`, value: rows.length },
+    {
+      label: `${K}.figures.taxesPaid`,
+      value: sum(rows, (r) => (r.status === 'paid' ? (r.paidAmount ?? r.amount ?? 0) : 0)),
+      unit: 'RWF',
+    },
+    {
+      label: `${K}.figures.taxesDue`,
+      value: sum(rows, (r) => (r.status === 'due' || r.status === 'overdue' ? (r.amount ?? 0) : 0)),
+      unit: 'RWF',
+    },
+    {
+      label: `${K}.figures.overduePeriods`,
+      value: rows.filter((r) => r.status === 'overdue').length,
+    },
+  ],
+  groups: [
+    { key: 'tax', label: `${K}.groups.tax`, value: (r) => r.tax },
+    {
+      key: 'status',
+      label: `${K}.groups.status`,
+      value: (r) => t(`accounts.status.${r.status}`),
+      order: (r) => SALARY_STATUSES.indexOf(r.status),
+    },
+    byMonth<TaxRow>((r) => r.dueOn),
+  ],
+  defaultSort: { key: 'dueOn', dir: 'asc' },
+  notes: [`${K}.taxes.note1`, `${K}.taxes.note2`],
+  wide: true,
+  countLabel: `${K}.count.taxPeriods`,
+}
+
 const expenses: ReportDef<ExpenseRow> = {
   id: 'finance.expenses',
   group: 'finance',
@@ -1377,6 +1497,7 @@ const moneyInOut: ReportDef<MoneyRow> = {
     money('refunds', (r) => r.refunds, false),
     money('netRevenue', (r) => r.netRevenue),
     money('salaries', (r) => r.salaries),
+    money('taxes', (r) => r.taxes),
     money('otherExpenses', (r) => r.other),
     money('stockBought', (r) => r.stock),
     money('moneyOut', (r) => r.moneyOut, false),
@@ -1404,5 +1525,6 @@ export const FINANCE_REPORTS: AnyReportDef[] = [
   walkIn,
   moneyInOut,
   payroll,
+  taxes,
   expenses,
 ]

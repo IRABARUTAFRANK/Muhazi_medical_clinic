@@ -3795,7 +3795,12 @@
     "salaryDue_other": "Umushahara wa {{name}} ugomba kwishyurwa mu minsi {{count}}",
     "salaryOverdue_one": "Umushahara wa {{name}} watinze umunsi {{count}}",
     "salaryOverdue_other": "Umushahara wa {{name}} watinze iminsi {{count}}",
-    "salaryBody": "{{amount}} · itariki yo guhemba {{date}}"
+    "salaryBody": "{{amount}} · itariki yo guhemba {{date}}",
+    "taxDue_one": "Umusoro {{name}} ugomba kwishyurwa mu munsi {{count}}",
+    "taxDue_other": "Umusoro {{name}} ugomba kwishyurwa mu minsi {{count}}",
+    "taxOverdue_one": "Umusoro {{name}} watinze umunsi {{count}}",
+    "taxOverdue_other": "Umusoro {{name}} watinze iminsi {{count}}",
+    "taxBodyNoAmount": "Umubare ugomba kubarwa · itariki yo kwishyura {{date}}"
   },
   "identity": {
     "aria": "Winjiye: {{name}}"
@@ -8125,6 +8130,7 @@
   },
   "dbErrors": {
     "25402734": "Muganga yahagaritse uyu muti.",
+    "26943731": "Umubare w’umusoro ni zeru cyangwa urenga.",
     "37902613": "Igenamiterere “amakuru ya kera kuri muganga uvura” rigomba gufungurwa cyangwa gufungwa.",
     "39332635": "Aho bakira abarwayi, uwakira ubwishyu n’umunyamabanga ntibavura umurwayi: iki gikorwa ntigishobora gufungurirwa bo.",
     "47437974": "Andika icyamuzanye (intambwe ya 1) mbere yo kurangiza kwivuza.",
@@ -8601,7 +8607,14 @@
     "abd89c9b": "Vuga icyo isohoka ari icyo.",
     "5b5d4b64": "Igihe cyo guhemba ntikibonetse: gishobora kuba cyarasubijweho.",
     "382311f5": "Isohoka ntiribonetse: rishobora kuba ryarahagaritswe.",
-    "16324e52": "Igihe mwumvikanye kiri hagati y’umunsi 1 n’iminsi 365, ibyumweru cyangwa amezi."
+    "16324e52": "Igihe mwumvikanye kiri hagati y’umunsi 1 n’iminsi 365, ibyumweru cyangwa amezi.",
+    "8444ca5d": "Andika izina ry’umusoro.",
+    "8fd3f86e": "Vuga uko umusoro wishyurwa kangahe.",
+    "a9585e5d": "Hitamo itariki umusoro ubarwa guhera.",
+    "b3f2857b": "Uyu musoro ntiwabonetse.",
+    "7f86438c": "Andika umubare w’umusoro wishyuwe.",
+    "c3bd06f4": "Umusoro wishyuwe usubizwaho ku gihe cyawo, mu gice cy’Imisoro.",
+    "11e2522c": "Isohoka ni “Irindi” cyangwa “Umusoro”."
   },
   "panel": {
     "close": "Funga",
@@ -9267,7 +9280,9 @@
       "otherExpenses": "Andi masohoka",
       "stockBought": "Ububiko bwaguzwe",
       "moneyOut": "Amafaranga yasohotse",
-      "netResult": "Inyungu nyayo"
+      "netResult": "Inyungu nyayo",
+      "tax": "Umusoro",
+      "taxes": "Imisoro"
     },
     "filters": {
       "method": "Uburyo bwo kwishyura",
@@ -9286,7 +9301,8 @@
       "salaryStatus": "Uko bimeze",
       "expenseKind": "Ubwoko",
       "includeVoided": "Shyiramo amasohoka yahagaritswe",
-      "includeVoidedHint": "Isohoka ryahagaritswe rigaragara na « Ryahagaritswe: yego » n’impamvu yaryo."
+      "includeVoidedHint": "Isohoka ryahagaritswe rigaragara na « Ryahagaritswe: yego » n’impamvu yaryo.",
+      "tax": "Umusoro"
     },
     "placeholders": {
       "payments": "Umurwayi, dosiye, nimero y’inyemezabwishyu cyangwa ya fagitire",
@@ -9297,7 +9313,8 @@
       "sales": "Umuguzi, nimero y’igurisha cyangwa umuti",
       "claims": "Umurwayi, nimero y’ubwishingizi, ya fagitire cyangwa y’icyiciro",
       "payroll": "Umukozi, nomero y’umukozi, inyandiko cyangwa icyitonderwa",
-      "expenses": "Icyo ari cyo, inyandiko, icyitonderwa cyangwa uwabyanditse"
+      "expenses": "Icyo ari cyo, inyandiko, icyitonderwa cyangwa uwabyanditse",
+      "taxes": "Umusoro, inomero, uwishyuye…"
     },
     "groups": {
       "method": "Ku buryo bwo kwishyura",
@@ -9314,7 +9331,8 @@
       "seller": "Ku wagurishije",
       "employee": "Ku mukozi",
       "month": "Ku kwezi",
-      "expenseKind": "Ku bwoko"
+      "expenseKind": "Ku bwoko",
+      "tax": "Umusoro"
     },
     "kinds": {
       "visit": "Fagitire yo kwivuza",
@@ -9401,7 +9419,10 @@
       "otherTotal": "Andi masohoka",
       "netRevenue": "Amafaranga yinjiye nyayo",
       "moneyOut": "Amafaranga yasohotse",
-      "netResult": "Inyungu nyayo"
+      "netResult": "Inyungu nyayo",
+      "taxPeriods": "Ibihe by’imisoro",
+      "taxesPaid": "Imisoro yishyuwe",
+      "taxesDue": "Imisoro igomba kwishyurwa"
     },
     "count": {
       "payments": "Ubwishyu",
@@ -9412,7 +9433,8 @@
       "counts": "Ibarura",
       "periods": "Ibihe byo guhemba",
       "expenses": "Amasohoka",
-      "months": "Amezi"
+      "months": "Amezi",
+      "taxPeriods": "Ibihe by’imisoro"
     },
     "payroll": {
       "title": "Imishahara: ibihe byo guhemba",
@@ -9431,6 +9453,12 @@
       "description": "Ukwezi ku kundi: amafaranga yinjiye, ayasubijwe, imishahara, andi masohoka, ububiko bwaguzwe n’inyungu nyayo.",
       "note1": "Amafaranga yinjiye nyayo: ubwishyu bwakiriwe mu kwezi hakuwemo ayasubijwe. Ububiko bwaguzwe: ibyakiriwe mu kwezi, ku giciro byaguzwe.",
       "note2": "Inyungu nyayo = amafaranga yinjiye nyayo − imishahara − andi masohoka − ububiko bwaguzwe."
+    },
+    "taxes": {
+      "title": "Imisoro: ibihe",
+      "description": "Buri gihe cy’umusoro kigomba kwishyurwa muri icyo gihe: cyishyuwe, kigomba kwishyurwa, cyatinze cyangwa cyasimbutswe, hamwe n’ibyishyuwe n’uko byishyuwe.",
+      "note1": "Umurongo umwe kuri buri gihe cy’umusoro, ushyizweho itariki yacyo yo kwishyura.",
+      "note2": "Cyishyuwe: umubare washyizweho ko wishyuwe (isohoka ryacyo riri muri raporo y’amasohoka); umusoro ubarwa buri gihe nta mubare ugaragaza mbere yo kwishyurwa."
     }
   },
   "staffReports": {
@@ -11110,11 +11138,12 @@
   },
   "accounts": {
     "title": "Imari",
-    "lead": "Ibaruramari ry’ivuriro: amafaranga yinjiye ugereranyije n’ayasohotse, imishahara y’abakozi hamwe na buri gihe cyo guhembwa mu mwaka, andi masohoka, na raporo zicapwa.",
+    "lead": "Ibaruramari rya kiliniki: amafaranga yinjiye ugereranyije n’ayasohotse, imishahara y’abakozi n’ibihe byose byo guhemba by’umwaka, imisoro kiliniki yishyura, andi masohoka, na raporo zicapwa.",
     "tabs": {
       "money": "Amafaranga",
       "salaries": "Imishahara",
-      "expenses": "Andi masohoka"
+      "expenses": "Andi masohoka",
+      "taxes": "Imisoro"
     },
     "cancel": "Reka",
     "reference": "Inyandiko (risiti, kohereza…)",
@@ -11142,11 +11171,13 @@
       "stock": "Ububiko bwaguzwe",
       "net": "Inyungu nyayo",
       "salariesDue": "Imishahara igomba kwishyurwa muri iki gihe",
-      "how": "Amafaranga yinjiye = buri bwishyu bwakiriwe ({{revenue}}) hakuwemo ayasubijwe ({{refunds}}). Inyungu nyayo = amafaranga yinjiye hakuwemo imishahara, andi masohoka n’ububiko bwakiriwe ku giciro bwaguzwe.",
+      "how": "Amafaranga yinjiye = buri bwishyu bwakiriwe ({{revenue}}) hakuwemo ayasubijwe ({{refunds}}). Inyungu nyayo = amafaranga yinjiye hakuwemo imishahara, imisoro, andi masohoka n’ububiko bwakiriwe ku giciro bwaguzwe.",
       "byMethod": "Amafaranga yinjiye ku buryo",
       "byMonth": "Ukwezi ku kundi",
       "month": "Ukwezi",
-      "none": "Nta kintu muri iki gihe."
+      "none": "Nta kintu muri iki gihe.",
+      "taxes": "Imisoro yishyuwe",
+      "taxesDue": "Imisoro igomba kwishyurwa muri icyo gihe"
     },
     "salaries": {
       "year": "Umwaka",
@@ -11222,7 +11253,8 @@
       "kind": "Ubwoko",
       "kinds": {
         "salary": "Umushahara",
-        "other": "Irindi"
+        "other": "Irindi",
+        "tax": "Umusoro"
       },
       "void": "Hagarika",
       "voidTitle": "Guhagarika isohoka “{{what}}”?",
@@ -11232,7 +11264,9 @@
       "errors": {
         "label": "Vuga icyo isohoka ari icyo.",
         "amount": "Andika amafaranga yishyuwe."
-      }
+      },
+      "kindField": "Ubwoko",
+      "taxPh": "urugero: Umusoro ufatirwa, ihazabu"
     },
     "report": {
       "moneyTitle": "Amafaranga yinjiye n’ayasohotse",
@@ -11246,7 +11280,12 @@
       "salariesTable": "Imishahara",
       "periodsTable": "Ibihe byo guhemba",
       "periodStart": "Kuva",
-      "periodEnd": "Kugeza"
+      "periodEnd": "Kugeza",
+      "taxesTitle": "Imisoro {{year}}",
+      "taxesSummary": "Imisoro {{count}} yashyizweho; yishyuwe uyu mwaka {{paid}}; igomba kwishyurwa {{due}}.",
+      "taxesCount": "Imisoro",
+      "taxesTable": "Imisoro",
+      "taxPeriodsTable": "Ibihe by’imisoro"
     },
     "units": {
       "days_one": "munsi",
@@ -11256,6 +11295,43 @@
       "months_one": "kwezi",
       "months_other": "mezi"
     },
-    "inReports": "Shungura ucapishe mu kigo cya raporo"
+    "inReports": "Shungura ucapishe mu kigo cya raporo",
+    "taxes": {
+      "year": "Umwaka",
+      "title": "Imisoro {{year}}",
+      "none": "Nta musoro urashyirwaho: kanda “Ongeraho umusoro”.",
+      "add": "Ongeraho umusoro",
+      "oneOffHint": "Umusoro wishyurwa rimwe, udafite gahunda (umusoro ufatirwa, ihazabu…), wandikwa mu gice cy’Andi masohoka ufite ubwoko “Umusoro”.",
+      "cols": {
+        "tax": "Umusoro",
+        "amount": "Umubare (RWF)"
+      },
+      "selfAssessed": "Ubarwa buri gihe",
+      "newTitle": "Umusoro mushya",
+      "setTitle": "Umusoro: {{name}}",
+      "name": "Izina ry’umusoro",
+      "namePh": "urugero: PAYE, TVA, patanti, umusoro ku nyungu",
+      "amountField": "Umubare (RWF) — usige ubusa iyo uwubara buri gihe",
+      "amountPh": "Ubusa: wandikwa igihe cyo kwishyura",
+      "anchor": "Ubarwa guhera (itangira ry’igihe cya mbere)",
+      "setHint": "Ibihe bikurikira itariki yo gutangira n’intera: wishyurwa buri kwezi guhera ku ya 1 Mutarama, igihe cya Mutarama kigomba kwishyurwa ku ya 1 Gashyantare… Umunsi wo kwishyura mu kwezi wimurira buri tariki ya buri kwezi cyangwa irenze kuri uwo munsi (PAYE: umunsi wa 15 → ku ya 15 Gashyantare kuri Mutarama). Siga umubare ubusa ku musoro ubara ukurikije imibare buri gihe; uwandika igihe ushyiraho ko igihe cyishyuwe.",
+      "save": "Bika umusoro",
+      "saved": "Umusoro “{{name}}” wabitswe.",
+      "remove": "Kura umusoro",
+      "removeTitle": "Kura umusoro “{{name}}”?",
+      "removeBody": "Nta bihe bizongera kubaho; ibyishyuwe biguma mu masohoka.",
+      "removed": "Umusoro “{{name}}” wakuweho.",
+      "paidOk": "{{name}} ushyizweho ko wishyuwe ku ya {{date}}; isohoka ryanditswe.",
+      "amountYouWorkedOut": "Umubare wabaze",
+      "undoTitle": "Gusubizaho ubwishyu bwa {{name}}?",
+      "skipTitle": "Gusimbuka igihe cya {{name}}?",
+      "skipBody": "Igihe kigomba kwishyurwa ku ya {{date}} ntikizishyurwa (gisonewe, nta cyo gutangaza…).",
+      "errors": {
+        "name": "Andika izina ry’umusoro.",
+        "amount": "Umubare ni zeru cyangwa urenga, cyangwa ubusa.",
+        "anchor": "Hitamo itariki ibihe bibarwa guhera.",
+        "paid": "Andika umubare w’umusoro wishyuwe."
+      }
+    }
   }
 }

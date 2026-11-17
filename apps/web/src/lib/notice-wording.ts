@@ -206,6 +206,19 @@ export function useWording() {
             date: p.dueOn ? formatDate(new Date(String(p.dueOn))) : '',
           }),
         }
+      // 0184: a tax due in a few days, or overdue (the amount may be unknown until paid)
+      case 'tax_due':
+      case 'tax_overdue':
+        return {
+          title: t(n.kind === 'tax_due' ? 'notify.taxDue' : 'notify.taxOverdue', {
+            name: p.name ?? '',
+            count: Number(p.days ?? 0),
+          }),
+          body: t(p.amount != null ? 'notify.salaryBody' : 'notify.taxBodyNoAmount', {
+            amount: formatRwf(Number(p.amount ?? 0)),
+            date: p.dueOn ? formatDate(new Date(String(p.dueOn))) : '',
+          }),
+        }
       case 'unpriced_treatments':
         return {
           title: t('notify.unpricedTreatments', { count: Number(p.count ?? 0) }),

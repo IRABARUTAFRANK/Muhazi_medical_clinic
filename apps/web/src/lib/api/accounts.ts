@@ -1,10 +1,11 @@
 /**
- * The clinic's accounts (0179): salaries, expenses and the money summary, for the cashier (the
- * accountant) and the manager.
+ * The clinic's accounts (0179): salaries, taxes (0184), expenses and the money summary, for the
+ * cashier (the accountant) and the manager.
  *
  * Live: salary_overview, set_salary, remove_salary, pay_salary, unpay_salary, skip_salary,
- * add_expense, void_expense, expenses_list, finance_summary, salary_alert_check. Sample mode:
- * figures kept in memory for the session.
+ * tax_overview, set_tax, remove_tax, pay_tax, unpay_tax, skip_tax, add_expense, void_expense,
+ * expenses_list, finance_summary, finance_alert_check. Sample mode: figures kept in memory for
+ * the session.
  */
 import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -87,9 +88,38 @@ export interface SalaryOverview {
   today: string
 }
 
+/** A tax the clinic pays (0184): built like a salary; the amount is null when the accountant
+ *  works it out each time and types it when paying. */
+export interface TaxPeriod extends Omit<SalaryPeriod, 'amount'> {
+  amount: number | null
+}
+export interface Tax {
+  id: string
+  name: string
+  amount: number | null
+  intervalKind: SalaryInterval
+  customEvery: number | null
+  customUnit: CustomUnit | null
+  anchorOn: string
+  payDay: number | null
+  note: string | null
+  setAt: string | null
+  setBy: string | null
+  periods: TaxPeriod[]
+  paidThisYear: number
+  overdue: number
+  nextDue: string | null
+}
+export interface TaxOverview {
+  year: number
+  taxes: Tax[]
+  today: string
+}
+
+export type ExpenseKind = 'salary' | 'tax' | 'other'
 export interface Expense {
   id: string
-  kind: 'salary' | 'other'
+  kind: ExpenseKind
   label: string
   amount: number
   method: string
@@ -109,6 +139,8 @@ export interface FinanceSummary {
   refunds: number
   netRevenue: number
   salaries: number
+  /** 0184: the taxes paid, apart from the other expenses. */
+  taxes: number
   otherExpenses: number
   stockBought: number
   expenses: number
@@ -119,10 +151,12 @@ export interface FinanceSummary {
     revenue: number
     refunds: number
     salaries: number
+    taxes: number
     other: number
     stock: number
   }[]
   salariesDue: number
+  taxesDue: number
 }
 
 const KEY = ['accounts'] as const
@@ -227,6 +261,63 @@ const sampleOverview = (year: number): SalaryOverview => ({
     { id: 'u-lab', name: 'Uwera Diane', role: 'lab_tech' },
   ],
 })
+const sampleTaxOverview = (year: number): TaxOverview => ({
+  year,
+  today: kigaliToday(),
+  taxes: [
+    {
+      id: 'tx-paye',
+      name: 'PAYE (salaries)',
+      amount: 420000,
+      intervalKind: 'monthly',
+      customEvery: null,
+      customUnit: null,
+      anchorOn: `${year}-01-01`,
+      payDay: 15,
+      note: null,
+      setAt: `${year}-01-05T09:00:00Z`,
+      setBy: 'Mugisha Samuel',
+      periods: samplePeriods(`${year}-01-01`, year, 420000, 9),
+      paidThisYear: 420000 * 9,
+      overdue: 1,
+      nextDue: null,
+    },
+    {
+      id: 'tx-vat',
+      name: 'VAT',
+      amount: null,
+      intervalKind: 'quarterly',
+      customEvery: null,
+      customUnit: null,
+      anchorOn: `${year}-01-01`,
+      payDay: 15,
+      note: 'Worked out from the quarter’s sales',
+      setAt: `${year}-01-05T09:00:00Z`,
+      setBy: 'Mugisha Samuel',
+      periods: [],
+      paidThisYear: 0,
+      overdue: 0,
+      nextDue: `${year}-10-15`,
+    },
+    {
+      id: 'tx-licence',
+      name: 'Trading licence',
+      amount: 60000,
+      intervalKind: 'yearly',
+      customEvery: null,
+      customUnit: null,
+      anchorOn: `${year}-01-01`,
+      payDay: 31,
+      note: null,
+      setAt: `${year}-01-05T09:00:00Z`,
+      setBy: 'Mugisha Samuel',
+      periods: [],
+      paidThisYear: 60000,
+      overdue: 0,
+      nextDue: null,
+    },
+  ],
+})
 const sampleExpenses: Expense[] = [
   {
     id: 'e-1',
@@ -256,6 +347,20 @@ const sampleExpenses: Expense[] = [
     voidReason: null,
     periodId: 'sp-9',
   },
+  {
+    id: 'e-3',
+    kind: 'tax',
+    label: 'PAYE (salaries) · 01/10 – 31/10',
+    amount: 420000,
+    method: 'bank',
+    reference: 'RRA-10',
+    note: null,
+    paidOn: kigaliToday(),
+    paidBy: 'Mugisha Samuel',
+    voided: false,
+    voidReason: null,
+    periodId: 'tp-9',
+  },
 ]
 const sampleSummary = (from: string, to: string): FinanceSummary => ({
   from,
@@ -264,10 +369,11 @@ const sampleSummary = (from: string, to: string): FinanceSummary => ({
   refunds: 25_000,
   netRevenue: 4_835_000,
   salaries: 1_970_000,
+  taxes: 1_260_000,
   otherExpenses: 412_000,
   stockBought: 1_120_000,
-  expenses: 3_502_000,
-  net: 1_333_000,
+  expenses: 4_762_000,
+  net: 73_000,
   byMethod: [
     { method: 'cash', count: 312, amount: 2_940_000 },
     { method: 'momo', count: 148, amount: 1_430_000 },
@@ -280,6 +386,7 @@ const sampleSummary = (from: string, to: string): FinanceSummary => ({
       revenue: 1_520_000,
       refunds: 0,
       salaries: 650_000,
+      taxes: 420_000,
       other: 120_000,
       stock: 380_000,
     },
@@ -288,6 +395,7 @@ const sampleSummary = (from: string, to: string): FinanceSummary => ({
       revenue: 1_640_000,
       refunds: 25_000,
       salaries: 660_000,
+      taxes: 420_000,
       other: 142_000,
       stock: 400_000,
     },
@@ -296,11 +404,13 @@ const sampleSummary = (from: string, to: string): FinanceSummary => ({
       revenue: 1_700_000,
       refunds: 0,
       salaries: 660_000,
+      taxes: 420_000,
       other: 150_000,
       stock: 340_000,
     },
   ],
   salariesDue: 830_000,
+  taxesDue: 420_000,
 })
 
 /* ---------------------------------------------------------------- reads */
@@ -362,6 +472,58 @@ export function useSalaryOverview(year: number, enabled = true) {
   })
 }
 
+const toTaxPeriod = (x: Partial<TaxPeriod>): TaxPeriod => ({
+  periodStart: String(x.periodStart),
+  periodEnd: String(x.periodEnd),
+  dueOn: String(x.dueOn),
+  amount: numOrNull(x.amount),
+  status: (x.status ?? 'due') as PeriodStatus,
+  id: x.id ?? null,
+  paidOn: x.paidOn ?? null,
+  paidAmount: numOrNull(x.paidAmount),
+  method: x.method ?? null,
+  reference: x.reference ?? null,
+  note: x.note ?? null,
+  paidBy: x.paidBy ?? null,
+})
+
+/** The taxes and their periods of a year (0184). */
+export async function fetchTaxOverview(year: number, sample = !supabase): Promise<TaxOverview> {
+  if (sample || !supabase) return sampleTaxOverview(year)
+  const { data, error } = await supabase.rpc('tax_overview', { p_year: year })
+  if (error) throw apiError(error)
+  const d = data as Partial<TaxOverview> & { taxes?: Partial<Tax>[] }
+  return {
+    year: Number(d.year ?? year),
+    today: String(d.today ?? kigaliToday()),
+    taxes: (d.taxes ?? []).map((x) => ({
+      id: String(x.id),
+      name: String(x.name ?? ''),
+      amount: numOrNull(x.amount),
+      intervalKind: (x.intervalKind ?? 'monthly') as SalaryInterval,
+      customEvery: numOrNull(x.customEvery),
+      customUnit: (x.customUnit ?? null) as CustomUnit | null,
+      anchorOn: String(x.anchorOn ?? ''),
+      payDay: numOrNull(x.payDay),
+      note: x.note ?? null,
+      setAt: x.setAt ?? null,
+      setBy: x.setBy ?? null,
+      periods: (x.periods ?? []).map(toTaxPeriod),
+      paidThisYear: num(x.paidThisYear),
+      overdue: num(x.overdue),
+      nextDue: x.nextDue ?? null,
+    })),
+  }
+}
+
+export function useTaxOverview(year: number, enabled = true) {
+  return useQuery({
+    queryKey: [...KEY, 'taxes', year],
+    enabled,
+    queryFn: () => fetchTaxOverview(year),
+  })
+}
+
 export async function fetchFinanceSummary(
   from: string,
   to: string,
@@ -378,6 +540,7 @@ export async function fetchFinanceSummary(
     refunds: num(d.refunds),
     netRevenue: num(d.netRevenue),
     salaries: num(d.salaries),
+    taxes: num(d.taxes),
     otherExpenses: num(d.otherExpenses),
     stockBought: num(d.stockBought),
     expenses: num(d.expenses),
@@ -392,10 +555,12 @@ export async function fetchFinanceSummary(
       revenue: num(x.revenue),
       refunds: num(x.refunds),
       salaries: num(x.salaries),
+      taxes: num(x.taxes),
       other: num(x.other),
       stock: num(x.stock),
     })),
     salariesDue: num(d.salariesDue),
+    taxesDue: num(d.taxesDue),
   }
 }
 
@@ -417,7 +582,7 @@ export async function fetchExpenses(
   if (error) throw apiError(error)
   return ((data ?? []) as Partial<Expense>[]).map((e) => ({
     id: String(e.id),
-    kind: e.kind === 'salary' ? 'salary' : 'other',
+    kind: e.kind === 'salary' ? 'salary' : e.kind === 'tax' ? 'tax' : 'other',
     label: String(e.label ?? ''),
     amount: num(e.amount),
     method: String(e.method ?? 'cash'),
@@ -440,6 +605,17 @@ export function useExpenses(from: string, to: string, enabled = true) {
 }
 
 /* ---------------------------------------------------------------- actions */
+/** A tax's settings (0184): the amount null when worked out each time. */
+export interface TaxInput {
+  amount: number | null
+  interval: SalaryInterval
+  customEvery?: number | null
+  customUnit?: CustomUnit | null
+  anchorOn: string
+  payDay: number | null
+  note?: string
+}
+
 export interface SalaryInput {
   amount: number
   interval: SalaryInterval
@@ -535,6 +711,57 @@ export function useAccountsActions() {
       }),
     onSuccess: refresh,
   })
+  // 0184: the taxes, built like the salaries
+  const setTax = useMutation({
+    mutationFn: (i: { id: string | null; name: string } & TaxInput) =>
+      rpc('set_tax', {
+        p_id: i.id,
+        p_name: i.name,
+        p_amount: i.amount,
+        p_interval: i.interval,
+        p_anchor_on: i.anchorOn,
+        p_pay_day: i.payDay,
+        p_note: i.note ?? null,
+        p_custom_every: i.interval === 'custom' ? (i.customEvery ?? null) : null,
+        p_custom_unit: i.interval === 'custom' ? (i.customUnit ?? null) : null,
+      }),
+    onSuccess: refresh,
+  })
+  const removeTax = useMutation({
+    mutationFn: (id: string) => rpc('remove_tax', { p_id: id }),
+    onSuccess: refresh,
+  })
+  const payTax = useMutation({
+    mutationFn: (i: {
+      taxId: string
+      periodStart: string
+      paidOn: string
+      amount: number
+      method: string
+      reference: string
+      note: string
+    }) =>
+      rpc('pay_tax', {
+        p_tax: i.taxId,
+        p_period_start: i.periodStart,
+        p_paid_on: i.paidOn,
+        p_amount: i.amount,
+        p_method: i.method,
+        p_reference: i.reference || null,
+        p_note: i.note || null,
+      }),
+    onSuccess: refresh,
+  })
+  const unpayTax = useMutation({
+    mutationFn: (i: { periodId: string; reason: string }) =>
+      rpc('unpay_tax', { p_period: i.periodId, p_reason: i.reason }),
+    onSuccess: refresh,
+  })
+  const skipTax = useMutation({
+    mutationFn: (i: { taxId: string; periodStart: string; reason: string }) =>
+      rpc('skip_tax', { p_tax: i.taxId, p_period_start: i.periodStart, p_reason: i.reason }),
+    onSuccess: refresh,
+  })
   const addExpense = useMutation({
     mutationFn: (i: {
       label: string
@@ -543,6 +770,8 @@ export function useAccountsActions() {
       reference: string
       paidOn: string
       note: string
+      /** 0184: 'other', or 'tax' for a one-off tax with no schedule. */
+      kind: 'other' | 'tax'
     }) =>
       rpc('add_expense', {
         p_label: i.label,
@@ -551,6 +780,7 @@ export function useAccountsActions() {
         p_reference: i.reference || null,
         p_paid_on: i.paidOn,
         p_note: i.note || null,
+        p_kind: i.kind,
       }),
     onSuccess: refresh,
   })
@@ -559,10 +789,23 @@ export function useAccountsActions() {
       rpc('void_expense', { p_id: i.id, p_reason: i.reason }),
     onSuccess: refresh,
   })
-  return { setSalary, removeSalary, paySalary, unpaySalary, skipSalary, addExpense, voidExpense }
+  return {
+    setSalary,
+    removeSalary,
+    paySalary,
+    unpaySalary,
+    skipSalary,
+    setTax,
+    removeTax,
+    payTax,
+    unpayTax,
+    skipTax,
+    addExpense,
+    voidExpense,
+  }
 }
 
-/** Once per Kigali day per person: the salary notices (due within 3 days, overdue). */
+/** Once per Kigali day per person: the salary and tax notices (due within 3 days, overdue). */
 export function useDailySalaryAlertCheck(enabled = true) {
   const qc = useQueryClient()
   const userId = useSession((s) => s.user?.id ?? null)
@@ -576,8 +819,16 @@ export function useDailySalaryAlertCheck(enabled = true) {
     } catch {
       // no storage: check on each visit
     }
-    void supabase.rpc('salary_alert_check').then(({ error }) => {
-      if (!error) void qc.invalidateQueries({ queryKey: ['notifications'] })
-    })
+    const client = supabase
+    void client
+      .rpc('finance_alert_check')
+      .then(({ error }) => {
+        // a database before 0184: the salary check alone
+        if (error && isMissingFunction(error)) return client.rpc('salary_alert_check')
+        return { error }
+      })
+      .then((r) => {
+        if (!r.error) void qc.invalidateQueries({ queryKey: ['notifications'] })
+      })
   }, [enabled, userId, qc])
 }

@@ -25326,6 +25326,8 @@ await step(
     await db.exec(
       await readFile(path.join(migrationsDir, '20270205090000_salary_custom_interval.sql'), 'utf8'),
     )
+    // 0184 again: 0179 brings back the six-value add_expense and the two-kind expense check
+    await db.exec(await readFile(path.join(migrationsDir, '20270208090000_taxes.sql'), 'utf8'))
     const refused = await codeAs(d1, `select salary_overview(2026)`)
     await as(staff.cashier)
     await db.query(`select set_salary($1, 500000, 'monthly', '2026-02-02', null, 'contract')`, [d1])
@@ -25425,6 +25427,155 @@ await step(
     await db.query(`select remove_salary($1)`, [d1])
     await asAdmin()
     return `11 periods Feb–Dec, due 2 Mar / 2 Apr…; paid 2 Mar (expense 500,000), twice 23505, odd start 22023; Mar skipped; other expense 85,000 then voided; undo → due again, salaries 0, paid again then undone again (0183); pay day 28 → due 28 Mar; alerts created ${alerts.created} (overdue ${alerts.overdue}), second run 0; doctor 42501`
+  },
+)
+
+// 0184: the taxes, built like the salaries
+await step(
+  '0184: the cashier sets taxes (PAYE monthly from 1 Jan, pay day 15 → due 15 Feb…; VAT quarterly worked out each time; a licence yearly), pays, skips, undoes, pays again; a one-off tax expense; the money with the taxes; the notices; a doctor refused',
+  async () => {
+    const refused = await codeAs(d1, `select tax_overview(2026)`)
+    await as(staff.cashier)
+    const paye = (
+      await one(`select set_tax(null, 'PAYE', 420000, 'monthly', '2026-01-01', 15, null) as j`)
+    ).j
+    const vat = (
+      await one(`select set_tax(null, 'VAT', null, 'quarterly', '2026-01-01', 15, null) as j`)
+    ).j
+    const licence = (
+      await one(
+        `select set_tax(null, 'Trading licence', 60000, 'yearly', '2026-01-01', 31, null) as j`,
+      )
+    ).j
+    const noName = await codeAs(
+      staff.cashier,
+      `select set_tax(null, ' ', 1, 'monthly', '2026-01-01')`,
+    )
+    const payePeriods = (await one(`select tax_periods($1, 2026) as j`, [paye.id])).j
+    const vatPeriods = (await one(`select tax_periods($1, 2026) as j`, [vat.id])).j
+    const licencePeriods = (await one(`select tax_periods($1, 2026) as j`, [licence.id])).j
+    // PAYE January paid on 14 Feb by bank
+    const paid = (
+      await one(
+        `select pay_tax($1, '2026-01-01', '2026-02-14', null, 'bank', 'RRA-1', null) as j`,
+        [paye.id],
+      )
+    ).j
+    const twice = await codeAs(staff.cashier, `select pay_tax($1, '2026-01-01')`, [paye.id])
+    // VAT has no amount: paying without one is refused, with one it works
+    const vatNoAmount = await codeAs(staff.cashier, `select pay_tax($1, '2026-01-01')`, [vat.id])
+    const vatPaid = (
+      await one(
+        `select pay_tax($1, '2026-01-01', '2026-04-10', 1250000, 'bank', 'RRA-2', null) as j`,
+        [vat.id],
+      )
+    ).j
+    const skipped = (
+      await one(`select skip_tax($1, '2026-02-01', 'exempt this month') as id`, [paye.id])
+    ).id
+    const after = (await one(`select tax_periods($1, 2026) as j`, [paye.id])).j
+    const vatAfter = (await one(`select tax_periods($1, 2026) as j`, [vat.id])).j
+    const money = (await one(`select finance_summary('2026-02-01', '2026-02-28') as j`)).j
+    const exp = (await one(`select expenses_list('2026-02-01', '2026-02-28') as j`)).j
+    // the paid tax's expense is undone on its period, not on the expenses tab
+    const voidTax = await codeAs(staff.cashier, `select void_expense($1, 'wrong')`, [
+      paid.expenseId,
+    ])
+    // a one-off tax with no schedule: an expense of kind tax, cancellable there
+    const oneOff = (
+      await one(
+        `select add_expense('Withholding tax 3% on a supplier', 45000, 'bank', 'RRA-3', '2026-02-20', null, 'tax') as id`,
+      )
+    ).id
+    const badKind = await codeAs(
+      staff.cashier,
+      `select add_expense('x', 10, 'cash', null, null, null, 'rent')`,
+    )
+    const money2 = (await one(`select finance_summary('2026-02-01', '2026-02-28') as j`)).j
+    await db.query(`select void_expense($1, 'typed twice')`, [oneOff])
+    // undo, then the same period paid again (0183's rule holds here too)
+    await db.query(`select unpay_tax($1, 'wrong month')`, [paid.id])
+    const undone = (await one(`select tax_periods($1, 2026) as j`, [paye.id])).j
+    const again = (
+      await one(
+        `select pay_tax($1, '2026-01-01', '2026-02-14', null, 'cash', 'RRA-1b', null) as j`,
+        [paye.id],
+      )
+    ).j
+    // the tax changed: the amount becomes 450,000 and the name keeps
+    await db.query(
+      `select set_tax($1, 'PAYE', 450000, 'monthly', '2026-01-01', 15, 'from March')`,
+      [paye.id],
+    )
+    const overview = (await one(`select tax_overview(2026) as j`)).j
+    const alerts = (await one(`select finance_alert_check() as j`)).j
+    const alerts2 = (await one(`select tax_alert_check() as j`)).j
+    await db.query(`select remove_tax($1)`, [licence.id])
+    const overview2 = (await one(`select tax_overview(2026) as j`)).j
+    await asAdmin()
+    const notices = (
+      await one(
+        `select count(*)::int as n from notification where kind in ('tax_due', 'tax_overdue') and recipient_role = 'cashier'`,
+      )
+    ).n
+    const me = overview.taxes.find((x) => x.id === paye.id)
+    if (refused !== '42501') throw new Error('doctor not refused: ' + refused)
+    if (!paye.id || !vat.id || !licence.id || noName !== '22023')
+      throw new Error(JSON.stringify({ paye, vat, licence, noName }))
+    if (
+      payePeriods.length !== 12 ||
+      payePeriods[0].periodStart !== '2026-01-01' ||
+      payePeriods[0].periodEnd !== '2026-01-31' ||
+      payePeriods[0].dueOn !== '2026-02-15' ||
+      payePeriods[11].dueOn !== '2027-01-15' ||
+      vatPeriods.length !== 4 ||
+      vatPeriods[0].dueOn !== '2026-04-15' ||
+      vatPeriods[0].amount != null ||
+      licencePeriods.length !== 1 ||
+      licencePeriods[0].dueOn !== '2027-01-31'
+    )
+      throw new Error(
+        'periods: ' +
+          JSON.stringify({ p: payePeriods.slice(0, 2), v: vatPeriods[0], l: licencePeriods }),
+      )
+    if (!paid.id || Number(paid.amount) !== 420000 || twice !== '23505')
+      throw new Error(JSON.stringify({ paid, twice }))
+    if (vatNoAmount !== '22023' || !vatPaid.id || Number(vatPaid.amount) !== 1250000)
+      throw new Error(JSON.stringify({ vatNoAmount, vatPaid }))
+    if (
+      !skipped ||
+      after[0].status !== 'paid' ||
+      after[0].paidOn !== '2026-02-14' ||
+      after[1].status !== 'skipped' ||
+      after[2].status === 'paid' ||
+      vatAfter[0].status !== 'paid' ||
+      Number(vatAfter[0].amount) !== 1250000
+    )
+      throw new Error('after: ' + JSON.stringify({ a: after.slice(0, 3), v: vatAfter[0] }))
+    if (
+      Number(money.taxes) !== 420000 ||
+      Number(money.salaries) !== 0 ||
+      exp.length !== 1 ||
+      exp[0].kind !== 'tax' ||
+      exp[0].periodId !== paid.id ||
+      voidTax !== '22023'
+    )
+      throw new Error(JSON.stringify({ money: money.taxes, exp, voidTax }))
+    if (!oneOff || badKind !== '22023' || Number(money2.taxes) !== 465000)
+      throw new Error(JSON.stringify({ oneOff, badKind, money2: money2.taxes }))
+    if (undone[0].status === 'paid' || !again.id || again.id === paid.id)
+      throw new Error('undone: ' + JSON.stringify({ u: undone[0], again }))
+    if (
+      !me ||
+      Number(me.amount) !== 450000 ||
+      me.note !== 'from March' ||
+      overview.taxes.length !== 3
+    )
+      throw new Error('overview: ' + JSON.stringify({ me, n: overview.taxes.length }))
+    if (!alerts.taxes || alerts.taxes.created < 1 || alerts2.created !== 0 || notices < 1)
+      throw new Error(JSON.stringify({ alerts, alerts2, notices }))
+    if (overview2.taxes.length !== 2) throw new Error('remove: ' + overview2.taxes.length)
+    return `PAYE 12 periods, Jan due 15 Feb; VAT 4 periods without amount, paid 1,250,000 when typed; licence due 31 Jan 2027; Jan paid (expense 420,000), twice 23505; Feb skipped; expense tab refuses the period's tax (22023); one-off tax 45,000 → taxes 465,000, then cancelled; undo → paid again; changed to 450,000; alerts ${alerts.taxes.created} (overdue ${alerts.taxes.overdue}), second run 0; licence removed; doctor 42501`
   },
 )
 // @@t141-end

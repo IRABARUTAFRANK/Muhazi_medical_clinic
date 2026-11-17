@@ -4,6 +4,7 @@ import {
   fetchExpenses,
   fetchFinanceSummary,
   fetchSalaryOverview,
+  fetchTaxOverview,
   type CustomUnit,
   type Expense,
   type PeriodStatus,
@@ -13,15 +14,16 @@ import { chosen, inChosen, matches, searchText, selected, switchedOn } from './r
 
 /**
  * The finance page's reports in the report centre (0181): the payroll (one row per pay period),
- * the expenses (one row per expense) and the money in and out (one row per month). The rows come
- * from the same functions as the Finance page (salary_overview, expenses_list, finance_summary),
- * so both always agree; the filters are applied here. Sample mode: the page's sample figures.
+ * the taxes (one row per tax period, 0184), the expenses (one row per expense) and the money in
+ * and out (one row per month). The rows come from the same functions as the Finance page
+ * (salary_overview, tax_overview, expenses_list, finance_summary), so both always agree; the
+ * filters are applied here. Sample mode: the page's sample figures.
  */
 
 // ------------------------------------------------------------------ payroll
 
 export const SALARY_STATUSES: readonly PeriodStatus[] = ['due', 'overdue', 'paid', 'skipped']
-export const EXPENSE_KINDS = ['salary', 'other'] as const
+export const EXPENSE_KINDS = ['salary', 'tax', 'other'] as const
 
 export interface PayrollRow {
   id: string
@@ -108,6 +110,74 @@ export async function payrollEmployees(ctx: ReportContext): Promise<ReportOption
     .sort((a, b) => a.label.localeCompare(b.label))
 }
 
+// ------------------------------------------------------------------ taxes (0184)
+
+export interface TaxRow {
+  id: string
+  taxId: string
+  tax: string
+  intervalKind: SalaryInterval
+  customEvery: number | null
+  customUnit: CustomUnit | null
+  periodStart: string
+  periodEnd: string
+  dueOn: string
+  /** The tax's amount, or what was paid; null for a tax worked out each time and not yet paid. */
+  amount: number | null
+  status: PeriodStatus
+  paidOn: string | null
+  paidAmount: number | null
+  method: string | null
+  reference: string | null
+  note: string | null
+  paidBy: string | null
+}
+
+export async function loadTaxRows(f: ReportFilterValues, ctx: ReportContext): Promise<TaxRow[]> {
+  const { from, to } = f.period
+  const overviews = await Promise.all(yearsOf(from, to).map((y) => fetchTaxOverview(y, ctx.sample)))
+  const tax = selected(f, 'tax')
+  const statuses = chosen(f, 'status')
+  const q = searchText(f)
+  const rows: TaxRow[] = []
+  for (const o of overviews)
+    for (const x of o.taxes)
+      for (const p of x.periods) {
+        if (p.dueOn < from || p.dueOn > to) continue
+        rows.push({
+          id: `${x.id}:${p.periodStart}`,
+          taxId: x.id,
+          tax: x.name,
+          intervalKind: x.intervalKind,
+          customEvery: x.customEvery,
+          customUnit: x.customUnit,
+          periodStart: p.periodStart,
+          periodEnd: p.periodEnd,
+          dueOn: p.dueOn,
+          amount: p.amount,
+          status: p.status,
+          paidOn: p.paidOn,
+          paidAmount: p.paidAmount,
+          method: p.method,
+          reference: p.reference,
+          note: p.note,
+          paidBy: p.paidBy,
+        })
+      }
+  return rows.filter(
+    (r) =>
+      (!tax || r.taxId === tax) &&
+      inChosen(statuses, r.status) &&
+      matches(q, r.tax, r.reference, r.paidBy, r.note),
+  )
+}
+
+/** The tax filter: every tax set this year. */
+export async function taxOptions(ctx: ReportContext): Promise<ReportOption[]> {
+  const o = await fetchTaxOverview(Number(kigaliToday().slice(0, 4)), ctx.sample)
+  return o.taxes.map((x) => ({ value: x.id, label: x.name }))
+}
+
 // ------------------------------------------------------------------ expenses
 
 export type ExpenseRow = Expense
@@ -139,9 +209,10 @@ export interface MoneyRow {
   refunds: number
   netRevenue: number
   salaries: number
+  taxes: number
   other: number
   stock: number
-  /** salaries + other expenses + stock bought */
+  /** salaries + taxes + other expenses + stock bought */
   moneyOut: number
   net: number
 }
@@ -149,13 +220,14 @@ export interface MoneyRow {
 export async function loadMoney(f: ReportFilterValues, ctx: ReportContext): Promise<MoneyRow[]> {
   const s = await fetchFinanceSummary(f.period.from, f.period.to, ctx.sample)
   return s.byMonth.map((m) => {
-    const moneyOut = m.salaries + m.other + m.stock
+    const moneyOut = m.salaries + m.taxes + m.other + m.stock
     return {
       month: m.month,
       revenue: m.revenue,
       refunds: m.refunds,
       netRevenue: m.revenue - m.refunds,
       salaries: m.salaries,
+      taxes: m.taxes,
       other: m.other,
       stock: m.stock,
       moneyOut,
