@@ -66,6 +66,8 @@ for (const name of names) {
       '--project-ref',
       ref,
       '--use-api',
+      // the CLI asks for confirmation before a hosted deploy; this script is run on purpose
+      '--yes',
       ...FUNCTIONS[name],
     ],
     {
