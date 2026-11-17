@@ -9237,7 +9237,28 @@
       "claimed": "Réclamé",
       "claimStatus": "Demande",
       "batchNo": "Lot",
-      "rejection": "Motif du refus"
+      "rejection": "Motif du refus",
+      "employee": "Employé",
+      "role": "Rôle",
+      "staffId": "ID du personnel",
+      "period": "Période",
+      "dueOn": "Date de paie",
+      "interval": "Payé",
+      "paidOn": "Payé le",
+      "paidAmount": "Payé (RWF)",
+      "paidBy": "Enregistré par",
+      "whatFor": "Objet",
+      "voided": "Annulée",
+      "voidReason": "Motif d’annulation",
+      "month": "Mois",
+      "revenue": "Paiements pris",
+      "refunds": "Remboursé",
+      "netRevenue": "Recettes nettes",
+      "salaries": "Salaires",
+      "otherExpenses": "Autres dépenses",
+      "stockBought": "Stock acheté",
+      "moneyOut": "Argent sorti",
+      "netResult": "Net"
     },
     "filters": {
       "method": "Mode de paiement",
@@ -9251,7 +9272,12 @@
       "status": "Statut",
       "claimStatus": "État de la demande",
       "store": "Stock",
-      "search": "Rechercher"
+      "search": "Rechercher",
+      "employee": "Employé",
+      "salaryStatus": "Statut",
+      "expenseKind": "Type",
+      "includeVoided": "Inclure les dépenses annulées",
+      "includeVoidedHint": "Une dépense annulée apparaît avec « Annulée : oui » et son motif."
     },
     "placeholders": {
       "payments": "Patient, dossier, n° de reçu ou de facture",
@@ -9260,7 +9286,9 @@
       "debts": "Patient, dossier, téléphone ou n° de facture",
       "refunds": "Patient, dossier, n° de facture ou motif",
       "sales": "Client, n° de vente ou médicament",
-      "claims": "Patient, n° d’affilié, de facture ou de lot"
+      "claims": "Patient, n° d’affilié, de facture ou de lot",
+      "payroll": "Employé, ID du personnel, référence ou note",
+      "expenses": "Objet, référence, note ou qui a enregistré"
     },
     "groups": {
       "method": "Par mode de paiement",
@@ -9274,7 +9302,10 @@
       "status": "Par statut",
       "age": "Par ancienneté de l’impayé",
       "store": "Par stock",
-      "seller": "Par vendeur"
+      "seller": "Par vendeur",
+      "employee": "Par employé",
+      "month": "Par mois",
+      "expenseKind": "Par type"
     },
     "kinds": {
       "visit": "Facture de visite",
@@ -9350,7 +9381,18 @@
       "difference": "Écart",
       "short": "Comptages avec manque",
       "insurers": "Assureurs",
-      "notClaimed": "Pas encore réclamé"
+      "notClaimed": "Pas encore réclamé",
+      "payPeriods": "Périodes de paie",
+      "salariesPaid": "Payé",
+      "salariesDue": "Reste à payer",
+      "overduePeriods": "En retard",
+      "expensesCount": "Dépenses",
+      "expensesTotal": "Total",
+      "salariesTotal": "Salaires",
+      "otherTotal": "Autres dépenses",
+      "netRevenue": "Recettes nettes",
+      "moneyOut": "Argent sorti",
+      "netResult": "Net"
     },
     "count": {
       "payments": "Paiements",
@@ -9358,7 +9400,28 @@
       "bills": "Factures",
       "refunds": "Remboursements",
       "sales": "Ventes",
-      "counts": "Comptages"
+      "counts": "Comptages",
+      "periods": "Périodes de paie",
+      "expenses": "Dépenses",
+      "months": "Mois"
+    },
+    "payroll": {
+      "title": "Paie : les périodes de paie",
+      "description": "Chaque période de paie arrivant à échéance dans la période, par employé : payée, à payer, en retard ou sautée, avec ce qui a été payé et comment.",
+      "note1": "Une ligne par période de paie, à la date de paie (le jour où la période arrive à échéance).",
+      "note2": "Payée : le montant marqué payé (sa dépense est dans le rapport des dépenses) ; les périodes à payer et en retard montrent le salaire fixé."
+    },
+    "expenses": {
+      "title": "Dépenses",
+      "description": "Chaque dépense payée dans la période : les salaires payés et les autres dépenses, avec le mode et qui l’a enregistrée.",
+      "note1": "Une ligne par dépense, à la date du paiement.",
+      "note2": "Les dépenses annulées sont exclues sauf si « Inclure les dépenses annulées » est coché."
+    },
+    "money": {
+      "title": "Argent entré et sorti",
+      "description": "Mois par mois : les recettes prises, les remboursements, les salaires, les autres dépenses, le stock acheté et le net.",
+      "note1": "Recettes nettes : les paiements pris dans le mois moins les remboursements. Stock acheté : les livraisons reçues dans le mois, au coût.",
+      "note2": "Net = recettes nettes − salaires − autres dépenses − stock acheté."
     }
   },
   "staffReports": {
@@ -11097,8 +11160,6 @@
       "payDay": "jour de paie {{day}}",
       "overdueCount_one": "{{count}} en retard",
       "overdueCount_other": "{{count}} en retard",
-      "show": "Périodes",
-      "hide": "Fermer",
       "edit": "Modifier",
       "markPaid": "Marquer payé",
       "skip": "Sauter",
@@ -11136,7 +11197,8 @@
         "custom": "Un intervalle personnalisé va de 1 à 365 jours, semaines ou mois."
       },
       "customEvery": "Tous les",
-      "customUnit": "Unité"
+      "customUnit": "Unité",
+      "view": "Voir"
     },
     "expenses": {
       "add": "Enregistrer une dépense",
@@ -11184,6 +11246,7 @@
       "weeks_other": "semaines",
       "months_one": "mois",
       "months_other": "mois"
-    }
+    },
+    "inReports": "Filtrer et imprimer dans le centre de rapports"
   }
 }

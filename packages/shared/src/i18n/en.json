@@ -9237,7 +9237,28 @@
       "claimed": "Claimed",
       "claimStatus": "Claim",
       "batchNo": "Batch",
-      "rejection": "Reason refused"
+      "rejection": "Reason refused",
+      "employee": "Employee",
+      "role": "Role",
+      "staffId": "Staff ID",
+      "period": "Period",
+      "dueOn": "Pay date",
+      "interval": "Paid",
+      "paidOn": "Paid on",
+      "paidAmount": "Paid (RWF)",
+      "paidBy": "Recorded by",
+      "whatFor": "What for",
+      "voided": "Cancelled",
+      "voidReason": "Cancelled because",
+      "month": "Month",
+      "revenue": "Payments taken",
+      "refunds": "Given back",
+      "netRevenue": "Net revenue",
+      "salaries": "Salaries",
+      "otherExpenses": "Other expenses",
+      "stockBought": "Stock bought",
+      "moneyOut": "Money out",
+      "netResult": "Net"
     },
     "filters": {
       "method": "Payment method",
@@ -9251,7 +9272,12 @@
       "status": "Status",
       "claimStatus": "Claim status",
       "store": "Store",
-      "search": "Search"
+      "search": "Search",
+      "employee": "Employee",
+      "salaryStatus": "Status",
+      "expenseKind": "Kind",
+      "includeVoided": "Include cancelled expenses",
+      "includeVoidedHint": "A cancelled expense is shown with “Cancelled: yes” and its reason."
     },
     "placeholders": {
       "payments": "Patient, file, receipt or bill no.",
@@ -9260,7 +9286,9 @@
       "debts": "Patient, file, phone or bill no.",
       "refunds": "Patient, file, bill no. or reason",
       "sales": "Buyer, sale no. or medicine",
-      "claims": "Patient, member, bill or batch no."
+      "claims": "Patient, member, bill or batch no.",
+      "payroll": "Employee, staff ID, reference or note",
+      "expenses": "What for, reference, note or who recorded"
     },
     "groups": {
       "method": "By payment method",
@@ -9274,7 +9302,10 @@
       "status": "By status",
       "age": "By how long unpaid",
       "store": "By store",
-      "seller": "By seller"
+      "seller": "By seller",
+      "employee": "By employee",
+      "month": "By month",
+      "expenseKind": "By kind"
     },
     "kinds": {
       "visit": "Visit bill",
@@ -9350,7 +9381,18 @@
       "difference": "Difference",
       "short": "Counts with money missing",
       "insurers": "Insurers",
-      "notClaimed": "Not yet claimed"
+      "notClaimed": "Not yet claimed",
+      "payPeriods": "Pay periods",
+      "salariesPaid": "Paid",
+      "salariesDue": "Still to pay",
+      "overduePeriods": "Overdue",
+      "expensesCount": "Expenses",
+      "expensesTotal": "Total",
+      "salariesTotal": "Salaries",
+      "otherTotal": "Other expenses",
+      "netRevenue": "Net revenue",
+      "moneyOut": "Money out",
+      "netResult": "Net"
     },
     "count": {
       "payments": "Payments",
@@ -9358,7 +9400,28 @@
       "bills": "Bills",
       "refunds": "Refunds",
       "sales": "Sales",
-      "counts": "Cash counts"
+      "counts": "Cash counts",
+      "periods": "Pay periods",
+      "expenses": "Expenses",
+      "months": "Months"
+    },
+    "payroll": {
+      "title": "Payroll: the pay periods",
+      "description": "Every pay period falling due in the period, per employee: paid, due, overdue or skipped, with what was paid and how.",
+      "note1": "One row per pay period, dated by its pay date (the day the period falls due).",
+      "note2": "Paid: the amount marked paid (its expense is in the expenses report); due and overdue periods show the salary set."
+    },
+    "expenses": {
+      "title": "Expenses",
+      "description": "Every expense paid in the period: the salaries paid and the other expenses, with the method and who recorded it.",
+      "note1": "One row per expense, dated when it was paid.",
+      "note2": "Cancelled expenses are left out unless “Include cancelled expenses” is ticked."
+    },
+    "money": {
+      "title": "Money in and out",
+      "description": "Month by month: the revenue taken, what was given back, the salaries, the other expenses, the stock bought and the net.",
+      "note1": "Net revenue: the payments taken in the month minus the refunds given back. Stock bought: the deliveries received in the month, at cost.",
+      "note2": "Net = net revenue − salaries − other expenses − stock bought."
     }
   },
   "staffReports": {
@@ -11097,8 +11160,6 @@
       "payDay": "pay day {{day}}",
       "overdueCount_one": "{{count}} overdue",
       "overdueCount_other": "{{count}} overdue",
-      "show": "Periods",
-      "hide": "Close",
       "edit": "Change",
       "markPaid": "Mark paid",
       "skip": "Skip",
@@ -11136,7 +11197,8 @@
         "custom": "A custom interval is every 1 to 365 days, weeks or months."
       },
       "customEvery": "Every",
-      "customUnit": "Unit"
+      "customUnit": "Unit",
+      "view": "View"
     },
     "expenses": {
       "add": "Record an expense",
@@ -11184,6 +11246,7 @@
       "weeks_other": "weeks",
       "months_one": "month",
       "months_other": "months"
-    }
+    },
+    "inReports": "Filter and print in the report centre"
   }
 }

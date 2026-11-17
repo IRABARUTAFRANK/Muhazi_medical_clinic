@@ -304,120 +304,138 @@ const sampleSummary = (from: string, to: string): FinanceSummary => ({
 })
 
 /* ---------------------------------------------------------------- reads */
+// The fetchers are also the report centre's loaders (0181, reports-accounts.ts).
+export async function fetchSalaryOverview(
+  year: number,
+  sample = !supabase,
+): Promise<SalaryOverview> {
+  if (sample || !supabase) return sampleOverview(year)
+  const { data, error } = await supabase.rpc('salary_overview', { p_year: year })
+  if (error) throw apiError(error)
+  const d = data as Partial<SalaryOverview> & { people?: Partial<SalaryPerson>[] }
+  return {
+    year: Number(d.year ?? year),
+    today: String(d.today ?? kigaliToday()),
+    withoutSalary: d.withoutSalary ?? [],
+    people: (d.people ?? []).map((p) => ({
+      id: String(p.id),
+      name: String(p.name ?? ''),
+      role: String(p.role ?? ''),
+      staffId: p.staffId ?? null,
+      active: p.active !== false,
+      amount: num(p.amount),
+      intervalKind: (p.intervalKind ?? 'monthly') as SalaryInterval,
+      customEvery: numOrNull(p.customEvery),
+      customUnit: (p.customUnit ?? null) as CustomUnit | null,
+      anchorOn: String(p.anchorOn ?? ''),
+      payDay: numOrNull(p.payDay),
+      note: p.note ?? null,
+      setAt: p.setAt ?? null,
+      setBy: p.setBy ?? null,
+      contractEnd: p.contractEnd ?? null,
+      periods: (p.periods ?? []).map((x) => ({
+        periodStart: String(x.periodStart),
+        periodEnd: String(x.periodEnd),
+        dueOn: String(x.dueOn),
+        amount: num(x.amount),
+        status: (x.status ?? 'due') as PeriodStatus,
+        id: x.id ?? null,
+        paidOn: x.paidOn ?? null,
+        paidAmount: numOrNull(x.paidAmount),
+        method: x.method ?? null,
+        reference: x.reference ?? null,
+        note: x.note ?? null,
+        paidBy: x.paidBy ?? null,
+      })),
+      paidThisYear: num(p.paidThisYear),
+      overdue: num(p.overdue),
+      nextDue: p.nextDue ?? null,
+    })),
+  }
+}
+
 export function useSalaryOverview(year: number, enabled = true) {
   return useQuery({
     queryKey: [...KEY, 'salaries', year],
     enabled,
-    queryFn: async (): Promise<SalaryOverview> => {
-      if (!supabase) return sampleOverview(year)
-      const { data, error } = await supabase.rpc('salary_overview', { p_year: year })
-      if (error) throw apiError(error)
-      const d = data as Partial<SalaryOverview> & { people?: Partial<SalaryPerson>[] }
-      return {
-        year: Number(d.year ?? year),
-        today: String(d.today ?? kigaliToday()),
-        withoutSalary: d.withoutSalary ?? [],
-        people: (d.people ?? []).map((p) => ({
-          id: String(p.id),
-          name: String(p.name ?? ''),
-          role: String(p.role ?? ''),
-          staffId: p.staffId ?? null,
-          active: p.active !== false,
-          amount: num(p.amount),
-          intervalKind: (p.intervalKind ?? 'monthly') as SalaryInterval,
-          customEvery: numOrNull(p.customEvery),
-          customUnit: (p.customUnit ?? null) as CustomUnit | null,
-          anchorOn: String(p.anchorOn ?? ''),
-          payDay: numOrNull(p.payDay),
-          note: p.note ?? null,
-          setAt: p.setAt ?? null,
-          setBy: p.setBy ?? null,
-          contractEnd: p.contractEnd ?? null,
-          periods: (p.periods ?? []).map((x) => ({
-            periodStart: String(x.periodStart),
-            periodEnd: String(x.periodEnd),
-            dueOn: String(x.dueOn),
-            amount: num(x.amount),
-            status: (x.status ?? 'due') as PeriodStatus,
-            id: x.id ?? null,
-            paidOn: x.paidOn ?? null,
-            paidAmount: numOrNull(x.paidAmount),
-            method: x.method ?? null,
-            reference: x.reference ?? null,
-            note: x.note ?? null,
-            paidBy: x.paidBy ?? null,
-          })),
-          paidThisYear: num(p.paidThisYear),
-          overdue: num(p.overdue),
-          nextDue: p.nextDue ?? null,
-        })),
-      }
-    },
+    queryFn: () => fetchSalaryOverview(year),
   })
+}
+
+export async function fetchFinanceSummary(
+  from: string,
+  to: string,
+  sample = !supabase,
+): Promise<FinanceSummary> {
+  if (sample || !supabase) return sampleSummary(from, to)
+  const { data, error } = await supabase.rpc('finance_summary', { p_from: from, p_to: to })
+  if (error) throw apiError(error)
+  const d = data as Partial<FinanceSummary>
+  return {
+    from,
+    to,
+    revenue: num(d.revenue),
+    refunds: num(d.refunds),
+    netRevenue: num(d.netRevenue),
+    salaries: num(d.salaries),
+    otherExpenses: num(d.otherExpenses),
+    stockBought: num(d.stockBought),
+    expenses: num(d.expenses),
+    net: num(d.net),
+    byMethod: (d.byMethod ?? []).map((x) => ({
+      method: String(x.method),
+      count: num(x.count),
+      amount: num(x.amount),
+    })),
+    byMonth: (d.byMonth ?? []).map((x) => ({
+      month: String(x.month),
+      revenue: num(x.revenue),
+      refunds: num(x.refunds),
+      salaries: num(x.salaries),
+      other: num(x.other),
+      stock: num(x.stock),
+    })),
+    salariesDue: num(d.salariesDue),
+  }
 }
 
 export function useFinanceSummary(from: string, to: string, enabled = true) {
   return useQuery({
     queryKey: [...KEY, 'summary', from, to],
     enabled,
-    queryFn: async (): Promise<FinanceSummary> => {
-      if (!supabase) return sampleSummary(from, to)
-      const { data, error } = await supabase.rpc('finance_summary', { p_from: from, p_to: to })
-      if (error) throw apiError(error)
-      const d = data as Partial<FinanceSummary>
-      return {
-        from,
-        to,
-        revenue: num(d.revenue),
-        refunds: num(d.refunds),
-        netRevenue: num(d.netRevenue),
-        salaries: num(d.salaries),
-        otherExpenses: num(d.otherExpenses),
-        stockBought: num(d.stockBought),
-        expenses: num(d.expenses),
-        net: num(d.net),
-        byMethod: (d.byMethod ?? []).map((x) => ({
-          method: String(x.method),
-          count: num(x.count),
-          amount: num(x.amount),
-        })),
-        byMonth: (d.byMonth ?? []).map((x) => ({
-          month: String(x.month),
-          revenue: num(x.revenue),
-          refunds: num(x.refunds),
-          salaries: num(x.salaries),
-          other: num(x.other),
-          stock: num(x.stock),
-        })),
-        salariesDue: num(d.salariesDue),
-      }
-    },
+    queryFn: () => fetchFinanceSummary(from, to),
   })
+}
+
+export async function fetchExpenses(
+  from: string,
+  to: string,
+  sample = !supabase,
+): Promise<Expense[]> {
+  if (sample || !supabase) return sampleExpenses.filter((e) => e.paidOn >= from && e.paidOn <= to)
+  const { data, error } = await supabase.rpc('expenses_list', { p_from: from, p_to: to })
+  if (error) throw apiError(error)
+  return ((data ?? []) as Partial<Expense>[]).map((e) => ({
+    id: String(e.id),
+    kind: e.kind === 'salary' ? 'salary' : 'other',
+    label: String(e.label ?? ''),
+    amount: num(e.amount),
+    method: String(e.method ?? 'cash'),
+    reference: e.reference ?? null,
+    note: e.note ?? null,
+    paidOn: String(e.paidOn ?? ''),
+    paidBy: e.paidBy ?? null,
+    voided: !!e.voided,
+    voidReason: e.voidReason ?? null,
+    periodId: e.periodId ?? null,
+  }))
 }
 
 export function useExpenses(from: string, to: string, enabled = true) {
   return useQuery({
     queryKey: [...KEY, 'expenses', from, to],
     enabled,
-    queryFn: async (): Promise<Expense[]> => {
-      if (!supabase) return sampleExpenses.filter((e) => e.paidOn >= from && e.paidOn <= to)
-      const { data, error } = await supabase.rpc('expenses_list', { p_from: from, p_to: to })
-      if (error) throw apiError(error)
-      return ((data ?? []) as Partial<Expense>[]).map((e) => ({
-        id: String(e.id),
-        kind: e.kind === 'salary' ? 'salary' : 'other',
-        label: String(e.label ?? ''),
-        amount: num(e.amount),
-        method: String(e.method ?? 'cash'),
-        reference: e.reference ?? null,
-        note: e.note ?? null,
-        paidOn: String(e.paidOn ?? ''),
-        paidBy: e.paidBy ?? null,
-        voided: !!e.voided,
-        voidReason: e.voidReason ?? null,
-        periodId: e.periodId ?? null,
-      }))
-    },
+    queryFn: () => fetchExpenses(from, to),
   })
 }
 

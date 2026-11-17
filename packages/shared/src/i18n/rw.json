@@ -9246,7 +9246,28 @@
       "claimed": "Ayasabwe",
       "claimStatus": "Ubusabe",
       "batchNo": "Icyiciro cy’ubusabe",
-      "rejection": "Impamvu yanzwe"
+      "rejection": "Impamvu yanzwe",
+      "employee": "Umukozi",
+      "role": "Umwanya",
+      "staffId": "Nomero y’umukozi",
+      "period": "Igihe",
+      "dueOn": "Itariki yo guhemba",
+      "interval": "Ahembwa",
+      "paidOn": "Yishyuwe ku wa",
+      "paidAmount": "Ayishyuwe (RWF)",
+      "paidBy": "Uwabyanditse",
+      "whatFor": "Icyo ari cyo",
+      "voided": "Ryahagaritswe",
+      "voidReason": "Impamvu yo guhagarika",
+      "month": "Ukwezi",
+      "revenue": "Ubwishyu bwakiriwe",
+      "refunds": "Ayasubijwe",
+      "netRevenue": "Amafaranga yinjiye nyayo",
+      "salaries": "Imishahara",
+      "otherExpenses": "Andi masohoka",
+      "stockBought": "Ububiko bwaguzwe",
+      "moneyOut": "Amafaranga yasohotse",
+      "netResult": "Inyungu nyayo"
     },
     "filters": {
       "method": "Uburyo bwo kwishyura",
@@ -9260,7 +9281,12 @@
       "status": "Uko bihagaze",
       "claimStatus": "Aho ubusabe bugeze",
       "store": "Ububiko",
-      "search": "Shakisha"
+      "search": "Shakisha",
+      "employee": "Umukozi",
+      "salaryStatus": "Uko bimeze",
+      "expenseKind": "Ubwoko",
+      "includeVoided": "Shyiramo amasohoka yahagaritswe",
+      "includeVoidedHint": "Isohoka ryahagaritswe rigaragara na « Ryahagaritswe: yego » n’impamvu yaryo."
     },
     "placeholders": {
       "payments": "Umurwayi, dosiye, nimero y’inyemezabwishyu cyangwa ya fagitire",
@@ -9269,7 +9295,9 @@
       "debts": "Umurwayi, dosiye, telefone cyangwa nimero ya fagitire",
       "refunds": "Umurwayi, dosiye, nimero ya fagitire cyangwa impamvu",
       "sales": "Umuguzi, nimero y’igurisha cyangwa umuti",
-      "claims": "Umurwayi, nimero y’ubwishingizi, ya fagitire cyangwa y’icyiciro"
+      "claims": "Umurwayi, nimero y’ubwishingizi, ya fagitire cyangwa y’icyiciro",
+      "payroll": "Umukozi, nomero y’umukozi, inyandiko cyangwa icyitonderwa",
+      "expenses": "Icyo ari cyo, inyandiko, icyitonderwa cyangwa uwabyanditse"
     },
     "groups": {
       "method": "Ku buryo bwo kwishyura",
@@ -9283,7 +9311,10 @@
       "status": "Hakurikijwe uko bihagaze",
       "age": "Hakurikijwe igihe imaze itishyuwe",
       "store": "Ku bubiko",
-      "seller": "Ku wagurishije"
+      "seller": "Ku wagurishije",
+      "employee": "Ku mukozi",
+      "month": "Ku kwezi",
+      "expenseKind": "Ku bwoko"
     },
     "kinds": {
       "visit": "Fagitire yo kwivuza",
@@ -9359,7 +9390,18 @@
       "difference": "Ikinyuranyo",
       "short": "Ibarura ryabuzemo amafaranga",
       "insurers": "Ibigo by’ubwishingizi",
-      "notClaimed": "Ntibirasabwa"
+      "notClaimed": "Ntibirasabwa",
+      "payPeriods": "Ibihe byo guhemba",
+      "salariesPaid": "Yishyuwe",
+      "salariesDue": "Asigaye kwishyurwa",
+      "overduePeriods": "Yatinze",
+      "expensesCount": "Amasohoka",
+      "expensesTotal": "Igiteranyo",
+      "salariesTotal": "Imishahara",
+      "otherTotal": "Andi masohoka",
+      "netRevenue": "Amafaranga yinjiye nyayo",
+      "moneyOut": "Amafaranga yasohotse",
+      "netResult": "Inyungu nyayo"
     },
     "count": {
       "payments": "Ubwishyu",
@@ -9367,7 +9409,28 @@
       "bills": "Fagitire",
       "refunds": "Gusubiza",
       "sales": "Igurisha",
-      "counts": "Ibarura"
+      "counts": "Ibarura",
+      "periods": "Ibihe byo guhemba",
+      "expenses": "Amasohoka",
+      "months": "Amezi"
+    },
+    "payroll": {
+      "title": "Imishahara: ibihe byo guhemba",
+      "description": "Buri gihe cyo guhemba kigera muri iki gihe, kuri buri mukozi: cyishyuwe, kigomba kwishyurwa, cyatinze cyangwa cyasimbutswe, n’ayishyuwe n’uko.",
+      "note1": "Umurongo umwe kuri buri gihe cyo guhemba, ku itariki yo guhemba (umunsi igihe kigeraho).",
+      "note2": "Cyishyuwe: amafaranga yanditswe ko yishyuwe (isohoka ryayo riri muri raporo y’amasohoka); ibihe bigomba kwishyurwa n’ibyatinze byerekana umushahara washyizweho."
+    },
+    "expenses": {
+      "title": "Amasohoka",
+      "description": "Buri sohoka ryishyuwe muri iki gihe: imishahara yishyuwe n’andi masohoka, n’uburyo n’uwabyanditse.",
+      "note1": "Umurongo umwe kuri buri sohoka, ku itariki ryishyuriweho.",
+      "note2": "Amasohoka yahagaritswe ntashyirwamo keretse ushyize akamenyetso kuri « Shyiramo amasohoka yahagaritswe »."
+    },
+    "money": {
+      "title": "Amafaranga yinjiye n’ayasohotse",
+      "description": "Ukwezi ku kundi: amafaranga yinjiye, ayasubijwe, imishahara, andi masohoka, ububiko bwaguzwe n’inyungu nyayo.",
+      "note1": "Amafaranga yinjiye nyayo: ubwishyu bwakiriwe mu kwezi hakuwemo ayasubijwe. Ububiko bwaguzwe: ibyakiriwe mu kwezi, ku giciro byaguzwe.",
+      "note2": "Inyungu nyayo = amafaranga yinjiye nyayo − imishahara − andi masohoka − ububiko bwaguzwe."
     }
   },
   "staffReports": {
@@ -11106,8 +11169,6 @@
       "payDay": "umunsi wo guhemba {{day}}",
       "overdueCount_one": "{{count}} yatinze",
       "overdueCount_other": "{{count}} zatinze",
-      "show": "Ibihe",
-      "hide": "Funga",
       "edit": "Hindura",
       "markPaid": "Shyiraho ko yishyuwe",
       "skip": "Simbuka",
@@ -11145,7 +11206,8 @@
         "custom": "Igihe mwumvikanye kiri hagati y’umunsi 1 n’iminsi 365, ibyumweru cyangwa amezi."
       },
       "customEvery": "Buri",
-      "customUnit": "Igipimo"
+      "customUnit": "Igipimo",
+      "view": "Reba"
     },
     "expenses": {
       "add": "Andika isohoka",
@@ -11193,6 +11255,7 @@
       "weeks_other": "byumweru",
       "months_one": "kwezi",
       "months_other": "mezi"
-    }
+    },
+    "inReports": "Shungura ucapishe mu kigo cya raporo"
   }
 }

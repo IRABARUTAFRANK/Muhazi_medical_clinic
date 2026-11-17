@@ -25,6 +25,18 @@ import {
   type PaymentRow,
   type RefundRow,
 } from '@/lib/api/reports-finance'
+import { intervalWords } from '@/lib/api/accounts'
+import {
+  EXPENSE_KINDS,
+  SALARY_STATUSES,
+  loadExpenseRows,
+  loadMoney,
+  loadPayroll,
+  payrollEmployees,
+  type ExpenseRow,
+  type MoneyRow,
+  type PayrollRow,
+} from '@/lib/api/reports-accounts'
 import {
   categoryName,
   keyOptions,
@@ -36,6 +48,7 @@ import {
 } from '@/lib/api/reports-options'
 import type {
   AnyReportDef,
+  ReportColumnDef,
   ReportContext,
   ReportDef,
   ReportFilterDef,
@@ -1085,6 +1098,298 @@ const claims: ReportDef<ClaimRow> = {
   countLabel: `${K}.count.bills`,
 }
 
+// ------------------------------------------------------------------ 9 the accounts (0181)
+
+/** The accountant (the cashier role) and the manager: the Finance page's reports. */
+const keepsAccounts = (ctx: ReportContext) => ctx.isManager || ctx.user.role === 'cashier'
+/** mm/yyyy of a yyyy-mm month. */
+const monthLabel = (m: string) => (m ? `${m.slice(5, 7)}/${m.slice(0, 4)}` : '')
+const byMonth = <R>(day: (r: R) => string): ReportGroupDef<R> => ({
+  key: 'month',
+  label: `${K}.groups.month`,
+  value: (r) => monthLabel(day(r).slice(0, 7)),
+  order: (r) => day(r).slice(0, 7),
+})
+const money = (
+  key: string,
+  value: (r: MoneyRow) => number,
+  dflt = true,
+): ReportColumnDef<MoneyRow> => ({
+  key,
+  label: `${K}.cols.${key}`,
+  kind: 'money',
+  default: dflt,
+  total: 'sum',
+  value,
+})
+
+const payroll: ReportDef<PayrollRow> = {
+  id: 'finance.payroll',
+  group: 'finance',
+  title: `${K}.payroll.title`,
+  description: `${K}.payroll.description`,
+  code: 'PAY',
+  load: loadPayroll,
+  allowed: keepsAccounts,
+  filters: [
+    periodFilter('month'),
+    {
+      key: 'employee',
+      label: `${K}.filters.employee`,
+      kind: 'select',
+      loadOptions: payrollEmployees,
+    },
+    {
+      key: 'status',
+      label: `${K}.filters.salaryStatus`,
+      kind: 'multi',
+      options: keyOptions('accounts.status', SALARY_STATUSES),
+    },
+    searchFilter('payroll'),
+  ],
+  columns: [
+    { key: 'employee', label: `${K}.cols.employee`, default: true, value: (r) => r.employee },
+    {
+      key: 'role',
+      label: `${K}.cols.role`,
+      default: true,
+      value: (r) => t(`staff.roles.${r.role}`, { defaultValue: r.role }),
+    },
+    { key: 'staffId', label: `${K}.cols.staffId`, value: (r) => r.staffId, nowrap: true },
+    {
+      key: 'period',
+      label: `${K}.cols.period`,
+      default: true,
+      value: (r) => `${dayLabel(r.periodStart)} – ${dayLabel(r.periodEnd)}`,
+      nowrap: true,
+    },
+    {
+      key: 'dueOn',
+      label: `${K}.cols.dueOn`,
+      kind: 'date',
+      default: true,
+      value: (r) => r.dueOn,
+      nowrap: true,
+    },
+    {
+      key: 'interval',
+      label: `${K}.cols.interval`,
+      value: (r) => intervalWords(t, r.intervalKind, r.customEvery, r.customUnit),
+    },
+    {
+      key: 'amount',
+      label: `${K}.cols.amount`,
+      kind: 'money',
+      default: true,
+      total: 'sum',
+      value: (r) => r.amount,
+    },
+    {
+      key: 'status',
+      label: `${K}.cols.status`,
+      default: true,
+      value: (r) => t(`accounts.status.${r.status}`),
+      nowrap: true,
+    },
+    {
+      key: 'paidOn',
+      label: `${K}.cols.paidOn`,
+      kind: 'date',
+      default: true,
+      value: (r) => r.paidOn,
+      nowrap: true,
+    },
+    {
+      key: 'paidAmount',
+      label: `${K}.cols.paidAmount`,
+      kind: 'money',
+      default: true,
+      total: 'sum',
+      value: (r) => r.paidAmount,
+    },
+    {
+      key: 'method',
+      label: `${K}.cols.method`,
+      default: true,
+      value: (r) => methodLabel(r.method),
+      nowrap: true,
+    },
+    { key: 'reference', label: `${K}.cols.reference`, value: (r) => r.reference, nowrap: true },
+    { key: 'paidBy', label: `${K}.cols.paidBy`, value: (r) => r.paidBy },
+    { key: 'note', label: `${K}.cols.note`, value: (r) => r.note },
+  ],
+  figures: (rows) => [
+    { label: `${K}.figures.payPeriods`, value: rows.length },
+    {
+      label: `${K}.figures.salariesPaid`,
+      value: sum(rows, (r) => (r.status === 'paid' ? (r.paidAmount ?? r.amount) : 0)),
+      unit: 'RWF',
+    },
+    {
+      label: `${K}.figures.salariesDue`,
+      value: sum(rows, (r) => (r.status === 'due' || r.status === 'overdue' ? r.amount : 0)),
+      unit: 'RWF',
+    },
+    {
+      label: `${K}.figures.overduePeriods`,
+      value: rows.filter((r) => r.status === 'overdue').length,
+    },
+  ],
+  groups: [
+    { key: 'employee', label: `${K}.groups.employee`, value: (r) => r.employee },
+    {
+      key: 'status',
+      label: `${K}.groups.status`,
+      value: (r) => t(`accounts.status.${r.status}`),
+      order: (r) => SALARY_STATUSES.indexOf(r.status),
+    },
+    byMonth<PayrollRow>((r) => r.dueOn),
+  ],
+  defaultSort: { key: 'dueOn', dir: 'asc' },
+  notes: [`${K}.payroll.note1`, `${K}.payroll.note2`],
+  wide: true,
+  countLabel: `${K}.count.periods`,
+}
+
+const expenses: ReportDef<ExpenseRow> = {
+  id: 'finance.expenses',
+  group: 'finance',
+  title: `${K}.expenses.title`,
+  description: `${K}.expenses.description`,
+  code: 'EXP',
+  load: loadExpenseRows,
+  allowed: keepsAccounts,
+  filters: [
+    periodFilter('month'),
+    {
+      key: 'kind',
+      label: `${K}.filters.expenseKind`,
+      kind: 'multi',
+      options: keyOptions('accounts.expenses.kinds', EXPENSE_KINDS),
+    },
+    methodFilter,
+    {
+      key: 'includeVoided',
+      label: `${K}.filters.includeVoided`,
+      kind: 'toggle',
+      default: false,
+      hint: `${K}.filters.includeVoidedHint`,
+    },
+    searchFilter('expenses'),
+  ],
+  columns: [
+    {
+      key: 'paidOn',
+      label: `${K}.cols.paidOn`,
+      kind: 'date',
+      default: true,
+      value: (r) => r.paidOn,
+      nowrap: true,
+    },
+    {
+      key: 'label',
+      label: `${K}.cols.whatFor`,
+      default: true,
+      value: (r) => r.label,
+      width: '30%',
+    },
+    {
+      key: 'kind',
+      label: `${K}.cols.kind`,
+      default: true,
+      value: (r) => t(`accounts.expenses.kinds.${r.kind}`),
+      nowrap: true,
+    },
+    {
+      key: 'amount',
+      label: `${K}.cols.amount`,
+      kind: 'money',
+      default: true,
+      total: 'sum',
+      value: (r) => r.amount,
+    },
+    {
+      key: 'method',
+      label: `${K}.cols.method`,
+      default: true,
+      value: (r) => methodLabel(r.method),
+      nowrap: true,
+    },
+    { key: 'reference', label: `${K}.cols.reference`, value: (r) => r.reference, nowrap: true },
+    { key: 'paidBy', label: `${K}.cols.paidBy`, default: true, value: (r) => r.paidBy },
+    { key: 'note', label: `${K}.cols.note`, value: (r) => r.note },
+    { key: 'voided', label: `${K}.cols.voided`, kind: 'yesno', value: (r) => r.voided },
+    { key: 'voidReason', label: `${K}.cols.voidReason`, value: (r) => r.voidReason },
+  ],
+  figures: (rows) => {
+    const live = rows.filter((r) => !r.voided)
+    return [
+      { label: `${K}.figures.expensesCount`, value: live.length },
+      { label: `${K}.figures.expensesTotal`, value: sum(live, (r) => r.amount), unit: 'RWF' },
+      {
+        label: `${K}.figures.salariesTotal`,
+        value: sum(live, (r) => (r.kind === 'salary' ? r.amount : 0)),
+        unit: 'RWF',
+      },
+      {
+        label: `${K}.figures.otherTotal`,
+        value: sum(live, (r) => (r.kind === 'other' ? r.amount : 0)),
+        unit: 'RWF',
+      },
+    ]
+  },
+  groups: [
+    {
+      key: 'kind',
+      label: `${K}.groups.expenseKind`,
+      value: (r) => t(`accounts.expenses.kinds.${r.kind}`),
+      order: (r) => EXPENSE_KINDS.indexOf(r.kind),
+    },
+    byMethod<ExpenseRow>(),
+    byDay<ExpenseRow>((r) => r.paidOn),
+    byMonth<ExpenseRow>((r) => r.paidOn),
+  ],
+  defaultSort: { key: 'paidOn', dir: 'asc' },
+  notes: [`${K}.expenses.note1`, `${K}.expenses.note2`],
+  countLabel: `${K}.count.expenses`,
+}
+
+const moneyInOut: ReportDef<MoneyRow> = {
+  id: 'finance.money',
+  group: 'finance',
+  title: `${K}.money.title`,
+  description: `${K}.money.description`,
+  code: 'MNY',
+  load: loadMoney,
+  allowed: keepsAccounts,
+  filters: [periodFilter('month')],
+  columns: [
+    {
+      key: 'month',
+      label: `${K}.cols.month`,
+      default: true,
+      value: (r) => monthLabel(r.month),
+      nowrap: true,
+    },
+    money('revenue', (r) => r.revenue, false),
+    money('refunds', (r) => r.refunds, false),
+    money('netRevenue', (r) => r.netRevenue),
+    money('salaries', (r) => r.salaries),
+    money('otherExpenses', (r) => r.other),
+    money('stockBought', (r) => r.stock),
+    money('moneyOut', (r) => r.moneyOut, false),
+    money('netResult', (r) => r.net),
+  ],
+  figures: (rows) => [
+    { label: `${K}.figures.netRevenue`, value: sum(rows, (r) => r.netRevenue), unit: 'RWF' },
+    { label: `${K}.figures.moneyOut`, value: sum(rows, (r) => r.moneyOut), unit: 'RWF' },
+    { label: `${K}.figures.netResult`, value: sum(rows, (r) => r.net), unit: 'RWF' },
+  ],
+  defaultSort: { key: 'month', dir: 'asc' },
+  notes: [`${K}.money.note1`, `${K}.money.note2`],
+  countLabel: `${K}.count.months`,
+}
+
 /** The finance reports, in the order the report centre lists them. */
 export const FINANCE_REPORTS: AnyReportDef[] = [
   revenue,
@@ -1095,4 +1400,7 @@ export const FINANCE_REPORTS: AnyReportDef[] = [
   cashCounts,
   claims,
   walkIn,
+  moneyInOut,
+  payroll,
+  expenses,
 ]

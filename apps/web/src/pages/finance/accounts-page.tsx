@@ -1,9 +1,12 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
+import { Link } from '@tanstack/react-router'
 import {
   AlertTriangle,
   Banknote,
   CalendarCheck,
   Coins,
+  Eye,
+  FileText,
   Landmark,
   Receipt,
   TrendingDown,
@@ -20,10 +23,11 @@ import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import { ReportButtons } from '@/components/dash/report-buttons'
 import { StaffShell } from '@/components/staff/staff-shell'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { Seg } from '@/components/ui/seg'
 import { Select } from '@/components/ui/select'
+import { SidePanel } from '@/components/ui/side-panel'
 import {
   CUSTOM_UNITS,
   SALARY_INTERVALS,
@@ -52,6 +56,36 @@ import { ACCOUNTS_TABS, type AccountsTab } from './accounts-tabs'
 const METHODS = ['cash', 'momo', 'airtel', 'bank', 'card'] as const
 
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e))
+
+type Msg = { ok: boolean; text: string }
+
+function Note({ msg }: { msg: Msg }) {
+  return (
+    <p
+      className={cn(
+        'm-0 rounded-md px-3 py-2 text-[14px] font-medium',
+        msg.ok ? 'bg-green-bg text-green' : 'bg-red-bg text-red',
+      )}
+    >
+      {msg.text}
+    </p>
+  )
+}
+
+/** The same figures in the report centre, with its filters, columns, grouping and printing (0181). */
+function ReportsLink({ id }: { id: string }) {
+  const { t } = useTranslation()
+  return (
+    <Link
+      to="/app/reports"
+      search={{ r: id }}
+      className={cn(buttonVariants({ variant: 'tint-teal', size: 'md' }))}
+    >
+      <FileText size={16} aria-hidden="true" />
+      {t('accounts.inReports')}
+    </Link>
+  )
+}
 
 /**
  * Finance (0179): the clinic's accounts for the cashier (the accountant) and the manager — the
@@ -106,11 +140,14 @@ function MoneyTab({ user }: { user: StaffUser }) {
     <div className="flex flex-col gap-4">
       <ActionRow>
         <PeriodSeg period={period} className="max-w-full flex-wrap" />
-        <ReportButtons
-          build={() =>
-            s ? financeMoneyReport(s, info?.profile ?? CLINIC_PROFILE, user, t, method) : null
-          }
-        />
+        <div className="flex flex-wrap gap-2">
+          <ReportsLink id="finance.money" />
+          <ReportButtons
+            build={() =>
+              s ? financeMoneyReport(s, info?.profile ?? CLINIC_PROFILE, user, t, method) : null
+            }
+          />
+        </div>
       </ActionRow>
       <PeriodCustom period={period} />
       {error && <p className="text-red m-0 text-[14px] font-medium">{error.message}</p>}
@@ -268,20 +305,24 @@ const STATUS_TONE: Record<SalaryPeriod['status'], 'green' | 'red' | 'yellow' | '
   due: 'yellow',
   skipped: 'grey',
 }
+const STATUSES: SalaryPeriod['status'][] = ['paid', 'due', 'overdue', 'skipped']
 
+/**
+ * 0181: a compact list (one row per employee, one View button); the employee's side panel holds
+ * the pay periods and every action (mark paid, skip, undo, change or remove the salary).
+ */
 function SalariesTab({ user, initialYear }: { user: StaffUser; initialYear?: number }) {
   const { t } = useTranslation()
   const thisYear = Number(kigaliToday().slice(0, 4))
   const [year, setYear] = useState(initialYear ?? thisYear)
   const { data, error, isLoading } = useSalaryOverview(year)
   const { data: info } = useClinicInfo()
-  const [editing, setEditing] = useState<{ id: string; name: string } | null>(null)
-  const [paying, setPaying] = useState<{ person: SalaryPerson; period: SalaryPeriod } | null>(null)
-  const [open, setOpen] = useState<string | null>(null)
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [who, setWho] = useState<{ id: string; name: string; role: string } | null>(null)
+  const [msg, setMsg] = useState<Msg | null>(null)
   const years = [thisYear - 2, thisYear - 1, thisYear, thisYear + 1]
   const people = data?.people ?? []
   const overdueTotal = people.reduce((s, p) => s + p.overdue, 0)
+  const roleWord = (role: string) => t(`staff.roles.${role}`, { defaultValue: role })
   return (
     <div className="flex flex-col gap-4">
       <ActionRow>
@@ -305,23 +346,17 @@ function SalariesTab({ user, initialYear }: { user: StaffUser; initialYear?: num
             <Badge tone="red">{t('accounts.salaries.overdueCount', { count: overdueTotal })}</Badge>
           )}
         </div>
-        <ReportButtons
-          build={() =>
-            data ? payrollReport(data, info?.profile ?? CLINIC_PROFILE, user, t) : null
-          }
-        />
+        <div className="flex flex-wrap gap-2">
+          <ReportsLink id="finance.payroll" />
+          <ReportButtons
+            build={() =>
+              data ? payrollReport(data, info?.profile ?? CLINIC_PROFILE, user, t) : null
+            }
+          />
+        </div>
       </ActionRow>
       {error && <p className="text-red m-0 text-[14px] font-medium">{error.message}</p>}
-      {msg && (
-        <p
-          className={cn(
-            'm-0 rounded-md px-3 py-2 text-[14px] font-medium',
-            msg.ok ? 'bg-green-bg text-green' : 'bg-red-bg text-red',
-          )}
-        >
-          {msg.text}
-        </p>
-      )}
+      {msg && !who && <Note msg={msg} />}
       <Panel i={1} icon={Wallet} tint="amber" title={t('accounts.salaries.title', { year })}>
         {isLoading ? null : people.length === 0 ? (
           <Empty icon={Wallet}>{t('accounts.salaries.none')}</Empty>
@@ -334,7 +369,6 @@ function SalariesTab({ user, initialYear }: { user: StaffUser; initialYear?: num
                   <th className={cn(tableHead, 'text-right')}>
                     {t('accounts.salaries.cols.amount')}
                   </th>
-                  <th className={tableHead}>{t('accounts.salaries.cols.interval')}</th>
                   <th className={tableHead}>{t('accounts.salaries.cols.nextDue')}</th>
                   <th className={cn(tableHead, 'text-right')}>
                     {t('accounts.salaries.cols.paidYear')}
@@ -345,15 +379,57 @@ function SalariesTab({ user, initialYear }: { user: StaffUser; initialYear?: num
               </thead>
               <tbody>
                 {people.map((p) => (
-                  <PersonRows
-                    key={p.id}
-                    p={p}
-                    open={open === p.id}
-                    onToggle={() => setOpen(open === p.id ? null : p.id)}
-                    onEdit={() => setEditing({ id: p.id, name: p.name })}
-                    onPay={(period) => setPaying({ person: p, period })}
-                    onMsg={setMsg}
-                  />
+                  <tr key={p.id} className={tableRow}>
+                    <td className={tableFirstCell}>
+                      {p.name}
+                      <span className="text-ink-3 block text-[12px]">
+                        {roleWord(p.role)}
+                        {p.staffId ? ` · ${p.staffId}` : ''}
+                      </span>
+                    </td>
+                    <td className={cn(tableCell, 'text-right font-semibold tabular-nums')}>
+                      {formatRwf(p.amount)}
+                      <span className="text-ink-3 block text-[12px] font-normal">
+                        {intervalWords(t, p.intervalKind, p.customEvery, p.customUnit)}
+                      </span>
+                    </td>
+                    <td className={cn(tableCell, 'whitespace-nowrap')}>
+                      {p.nextDue ? formatDate(new Date(p.nextDue)) : '—'}
+                      {p.overdue > 0 && (
+                        <Badge tone="red" className="ml-2">
+                          {t('accounts.salaries.overdueCount', { count: p.overdue })}
+                        </Badge>
+                      )}
+                    </td>
+                    <td className={cn(tableCell, 'text-right tabular-nums')}>
+                      {formatRwf(p.paidThisYear)}
+                    </td>
+                    <td className={tableCell}>
+                      <span className="flex flex-wrap gap-1">
+                        {STATUSES.map((s) => {
+                          const n = p.periods.filter((x) => x.status === s).length
+                          return n > 0 ? (
+                            <Badge key={s} tone={STATUS_TONE[s]}>
+                              {n} {t(`accounts.status.${s}`)}
+                            </Badge>
+                          ) : null
+                        })}
+                      </span>
+                    </td>
+                    <td className={cn(tableCell, 'text-right whitespace-nowrap')}>
+                      <Button
+                        size="sm"
+                        variant="tint-blue"
+                        onClick={() => {
+                          setMsg(null)
+                          setWho({ id: p.id, name: p.name, role: p.role })
+                        }}
+                      >
+                        <Eye size={14} aria-hidden="true" />
+                        {t('accounts.salaries.view')}
+                      </Button>
+                    </td>
+                  </tr>
                 ))}
               </tbody>
             </table>
@@ -367,7 +443,10 @@ function SalariesTab({ user, initialYear }: { user: StaffUser; initialYear?: num
                 key={p.id}
                 size="sm"
                 variant="tint-grey"
-                onClick={() => setEditing({ id: p.id, name: p.name })}
+                onClick={() => {
+                  setMsg(null)
+                  setWho({ id: p.id, name: p.name, role: p.role })
+                }}
               >
                 {p.name}
               </Button>
@@ -375,59 +454,57 @@ function SalariesTab({ user, initialYear }: { user: StaffUser; initialYear?: num
           </div>
         )}
       </Panel>
-      {editing && (
-        <SalaryForm
-          profileId={editing.id}
-          name={editing.name}
-          current={people.find((p) => p.id === editing.id) ?? null}
-          onClose={() => setEditing(null)}
+      {who && (
+        <SalaryPanel
+          key={who.id}
+          who={who}
+          person={people.find((p) => p.id === who.id) ?? null}
+          msg={msg}
           onMsg={setMsg}
-        />
-      )}
-      {paying && (
-        <PayForm
-          person={paying.person}
-          period={paying.period}
-          onClose={() => setPaying(null)}
-          onMsg={setMsg}
+          onClose={() => {
+            setWho(null)
+            setMsg(null)
+          }}
         />
       )}
     </div>
   )
 }
 
-function PersonRows({
-  p,
-  open,
-  onToggle,
-  onEdit,
-  onPay,
+/** One employee: the salary set, the pay periods of the year and the actions (0181). */
+function SalaryPanel({
+  who,
+  person,
+  msg,
   onMsg,
+  onClose,
 }: {
-  p: SalaryPerson
-  open: boolean
-  onToggle: () => void
-  onEdit: () => void
-  onPay: (period: SalaryPeriod) => void
-  onMsg: (m: { ok: boolean; text: string }) => void
+  who: { id: string; name: string; role: string }
+  person: SalaryPerson | null
+  msg: Msg | null
+  onMsg: (m: Msg) => void
+  onClose: () => void
 }) {
   const { t } = useTranslation()
   const confirm = useConfirm()
   const { unpaySalary, skipSalary } = useAccountsActions()
+  // without a salary yet, the form opens straight away
+  const [editing, setEditing] = useState(!person)
+  const [paying, setPaying] = useState<SalaryPeriod | null>(null)
   const method = (m: string | null) =>
     m ? t(`visit.payment.methods.${m}`, { defaultValue: m }) : ''
   const undo = async (period: SalaryPeriod) => {
     if (!period.id) return
     const why = await confirm({
-      title: t('accounts.salaries.undoTitle', { name: p.name }),
+      title: t('accounts.salaries.undoTitle', { name: who.name }),
       body: t('accounts.salaries.undoBody', { date: formatDate(new Date(period.dueOn)) }),
       confirmLabel: t('accounts.salaries.undoYes'),
       tone: 'danger',
       input: { label: t('accounts.salaries.reason'), required: true },
     })
-    if (!why) return
+    if (!why.ok) return
     try {
-      await unpaySalary.mutateAsync({ periodId: period.id, reason: String(why) })
+      await unpaySalary.mutateAsync({ periodId: period.id, reason: why.value })
       onMsg({ ok: true, text: t('accounts.salaries.undone') })
     } catch (e) {
       onMsg({ ok: false, text: errText(e) })
@@ -435,75 +512,106 @@ function PersonRows({
   }
   const skip = async (period: SalaryPeriod) => {
     const why = await confirm({
-      title: t('accounts.salaries.skipTitle', { name: p.name }),
+      title: t('accounts.salaries.skipTitle', { name: who.name }),
       body: t('accounts.salaries.skipBody', { date: formatDate(new Date(period.dueOn)) }),
       confirmLabel: t('accounts.salaries.skipYes'),
       input: { label: t('accounts.salaries.reason'), required: true },
     })
-    if (!why) return
+    if (!why.ok) return
     try {
       await skipSalary.mutateAsync({
-        profileId: p.id,
+        profileId: who.id,
         periodStart: period.periodStart,
-        reason: String(why),
+        reason: why.value,
       })
+      setPaying(null)
       onMsg({ ok: true, text: t('accounts.salaries.skipped') })
     } catch (e) {
       onMsg({ ok: false, text: errText(e) })
     }
   }
+  const subtitle = [t(`staff.roles.${who.role}`, { defaultValue: who.role }), person?.staffId]
+    .filter(Boolean)
+    .join(' · ')
   return (
-    <>
-      <tr className={tableRow}>
-        <td className={tableFirstCell}>
-          {p.name}
-          <span className="text-ink-3 block text-[12px]">
-            {t(`staff.roles.${p.role}`, { defaultValue: p.role })}
-            {p.staffId ? ` · ${p.staffId}` : ''}
-          </span>
-        </td>
-        <td className={cn(tableCell, 'text-right font-semibold tabular-nums')}>
-          {formatRwf(p.amount)}
-        </td>
-        <td className={tableCell}>
-          {intervalWords(t, p.intervalKind, p.customEvery, p.customUnit)}
-          <span className="text-ink-3 block text-[12px]">
-            {t('accounts.salaries.from', { date: formatDate(new Date(p.anchorOn)) })}
-            {p.payDay ? ` · ${t('accounts.salaries.payDay', { day: p.payDay })}` : ''}
-          </span>
-        </td>
-        <td className={tableCell}>
-          {p.nextDue ? formatDate(new Date(p.nextDue)) : '—'}
-          {p.overdue > 0 && (
-            <Badge tone="red" className="ml-2">
-              {t('accounts.salaries.overdueCount', { count: p.overdue })}
-            </Badge>
-          )}
-        </td>
-        <td className={cn(tableCell, 'text-right tabular-nums')}>{formatRwf(p.paidThisYear)}</td>
-        <td className={tableCell}>
-          <span className="flex flex-wrap gap-1">
-            {p.periods.map((x) => (
-              <Badge key={x.periodStart} tone={STATUS_TONE[x.status]}>
-                {formatDate(new Date(x.periodStart)).slice(3, 5)}
-              </Badge>
-            ))}
-          </span>
-        </td>
-        <td className={cn(tableCell, 'whitespace-nowrap')}>
-          <Button size="sm" variant="tint-blue" onClick={onToggle}>
-            {open ? t('accounts.salaries.hide') : t('accounts.salaries.show')}
-          </Button>
-          <Button size="sm" variant="ghost" className="ml-1" onClick={onEdit}>
+    <SidePanel
+      open
+      onClose={onClose}
+      hue="amber"
+      icon={Wallet}
+      title={who.name}
+      subtitle={subtitle}
+      tags={
+        person && person.overdue > 0 ? (
+          <Badge tone="red">{t('accounts.salaries.overdueCount', { count: person.overdue })}</Badge>
+        ) : undefined
+      }
+      actions={
+        person && !editing ? (
+          <Button
+            size="sm"
+            variant="tint-amber"
+            onClick={() => {
+              setPaying(null)
+              setEditing(true)
+            }}
+          >
             {t('accounts.salaries.edit')}
           </Button>
-        </td>
-      </tr>
-      {open && (
-        <tr>
-          <td colSpan={7} className="bg-surface px-3 py-2">
+        ) : undefined
+      }
+    >
+      <div className="flex flex-col gap-4">
+        {msg && <Note msg={msg} />}
+        {person && !editing && (
+          <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-2 text-[14px] sm:grid-cols-3">
+            <div>
+              <dt className="text-ink-3 text-[12px]">{t('accounts.salaries.cols.amount')}</dt>
+              <dd className="m-0 font-semibold tabular-nums">{formatRwf(person.amount)}</dd>
+            </div>
+            <div>
+              <dt className="text-ink-3 text-[12px]">{t('accounts.salaries.cols.interval')}</dt>
+              <dd className="m-0">
+                {intervalWords(t, person.intervalKind, person.customEvery, person.customUnit)}
+                {person.payDay ? ` · ${t('accounts.salaries.payDay', { day: person.payDay })}` : ''}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-ink-3 text-[12px]">{t('accounts.salaries.anchor')}</dt>
+              <dd className="m-0">{formatDate(new Date(person.anchorOn))}</dd>
+            </div>
+            <div>
+              <dt className="text-ink-3 text-[12px]">{t('accounts.salaries.cols.paidYear')}</dt>
+              <dd className="m-0 tabular-nums">{formatRwf(person.paidThisYear)}</dd>
+            </div>
+            <div>
+              <dt className="text-ink-3 text-[12px]">{t('accounts.salaries.cols.nextDue')}</dt>
+              <dd className="m-0">{person.nextDue ? formatDate(new Date(person.nextDue)) : '—'}</dd>
+            </div>
+            {person.note && (
+              <div>
+                <dt className="text-ink-3 text-[12px]">{t('accounts.salaries.note')}</dt>
+                <dd className="m-0">{person.note}</dd>
+              </div>
+            )}
+          </dl>
+        )}
+        {editing && (
+          <SalaryForm
+            profileId={who.id}
+            name={who.name}
+            current={person}
+            onClose={() => (person ? setEditing(false) : onClose())}
+            onMsg={onMsg}
+          />
+        )}
+        {paying && person && !editing && (
+          <PayForm person={person} period={paying} onClose={() => setPaying(null)} onMsg={onMsg} />
+        )}
+        {person && !editing && (
+          <div className="overflow-x-auto">
             <table className="w-full border-collapse text-[13px]">
-              <thead>
+              <thead className="bg-surface">
                 <tr className="border-border border-b">
                   <th className={tableHead}>{t('accounts.salaries.cols.period')}</th>
                   <th className={tableHead}>{t('accounts.salaries.cols.dueOn')}</th>
@@ -511,70 +619,88 @@ function PersonRows({
                     {t('accounts.salaries.cols.amount')}
                   </th>
                   <th className={tableHead}>{t('accounts.salaries.cols.status')}</th>
-                  <th className={tableHead}>{t('accounts.salaries.cols.paid')}</th>
                   <th className={tableHead}></th>
                 </tr>
               </thead>
               <tbody>
-                {p.periods.map((x) => (
-                  <tr key={x.periodStart} className={tableRow}>
-                    <td className={cn(tableCell, 'whitespace-nowrap')}>
-                      {formatDate(new Date(x.periodStart))} – {formatDate(new Date(x.periodEnd))}
-                    </td>
-                    <td className={cn(tableCell, 'whitespace-nowrap')}>
-                      {formatDate(new Date(x.dueOn))}
-                    </td>
-                    <td className={cn(tableCell, 'text-right tabular-nums')}>
-                      {formatRwf(x.paidAmount ?? x.amount)}
-                    </td>
-                    <td className={tableCell}>
-                      <Badge tone={STATUS_TONE[x.status]}>{t(`accounts.status.${x.status}`)}</Badge>
-                    </td>
-                    <td className={tableCell}>
-                      {x.status === 'paid'
-                        ? [
-                            x.paidOn ? formatDate(new Date(x.paidOn)) : null,
-                            method(x.method),
-                            x.reference,
-                            x.paidBy,
-                          ]
-                            .filter(Boolean)
-                            .join(' · ')
-                        : x.status === 'skipped'
-                          ? x.note
-                          : ''}
-                    </td>
-                    <td className={cn(tableCell, 'text-right whitespace-nowrap')}>
-                      {x.status === 'due' || x.status === 'overdue' ? (
-                        <>
-                          <Button size="sm" variant="primary" onClick={() => onPay(x)}>
-                            <CalendarCheck size={14} aria-hidden="true" />
-                            {t('accounts.salaries.markPaid')}
+                {person.periods.map((x) => {
+                  const detail =
+                    x.status === 'paid'
+                      ? [
+                          x.paidOn ? formatDate(new Date(x.paidOn)) : null,
+                          method(x.method),
+                          x.reference,
+                          x.paidBy,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')
+                      : x.status === 'skipped'
+                        ? x.note
+                        : ''
+                  const here = paying?.periodStart === x.periodStart
+                  return (
+                    <tr key={x.periodStart} className={cn(tableRow, here && 'bg-yellow-bg')}>
+                      <td className={cn(tableFirstCell, 'whitespace-nowrap')}>
+                        {formatDate(new Date(x.periodStart))} – {formatDate(new Date(x.periodEnd))}
+                      </td>
+                      <td className={cn(tableCell, 'whitespace-nowrap')}>
+                        {formatDate(new Date(x.dueOn))}
+                      </td>
+                      <td className={cn(tableCell, 'text-right tabular-nums')}>
+                        {formatRwf(x.paidAmount ?? x.amount)}
+                      </td>
+                      <td className={tableCell}>
+                        <Badge tone={STATUS_TONE[x.status]}>
+                          {t(`accounts.status.${x.status}`)}
+                        </Badge>
+                        {detail && <span className="text-ink-3 block text-[12px]">{detail}</span>}
+                      </td>
+                      <td className={cn(tableCell, 'text-right whitespace-nowrap')}>
+                        {x.status === 'due' || x.status === 'overdue' ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant={here ? 'tint-grey' : 'primary'}
+                              onClick={() => setPaying(here ? null : x)}
+                            >
+                              <CalendarCheck size={14} aria-hidden="true" />
+                              {t('accounts.salaries.markPaid')}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="ml-1"
+                              onClick={() => void skip(x)}
+                            >
+                              {t('accounts.salaries.skip')}
+                            </Button>
+                          </>
+                        ) : (
+                          <Button size="sm" variant="tint-grey" onClick={() => void undo(x)}>
+                            <Undo2 size={14} aria-hidden="true" />
+                            {t('accounts.salaries.undo')}
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="ml-1"
-                            onClick={() => void skip(x)}
-                          >
-                            {t('accounts.salaries.skip')}
-                          </Button>
-                        </>
-                      ) : (
-                        <Button size="sm" variant="tint-grey" onClick={() => void undo(x)}>
-                          <Undo2 size={14} aria-hidden="true" />
-                          {t('accounts.salaries.undo')}
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
-          </td>
-        </tr>
-      )}
-    </>
+          </div>
+        )}
+      </div>
+    </SidePanel>
+  )
+}
+
+/** A form inside the side panel: a bordered box with its own heading. */
+function PanelForm({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="border-border bg-surface rounded-md border p-3">
+      <h3 className="text-ink m-0 mb-3 text-[15px] font-semibold">{title}</h3>
+      {children}
+    </div>
   )
 }
 
@@ -589,7 +715,7 @@ function SalaryForm({
   name: string
   current: SalaryPerson | null
   onClose: () => void
-  onMsg: (m: { ok: boolean; text: string }) => void
+  onMsg: (m: Msg) => void
 }) {
   const { t } = useTranslation()
   const { setSalary, removeSalary } = useAccountsActions()
@@ -647,9 +773,9 @@ function SalaryForm({
     }
   }
   return (
-    <Panel i={2} icon={Wallet} tint="amber" title={t('accounts.salaries.setTitle', { name })}>
+    <PanelForm title={t('accounts.salaries.setTitle', { name })}>
       <form onSubmit={submit} className="flex flex-col gap-3">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field
             label={t('accounts.salaries.cols.amount')}
             inputMode="numeric"
@@ -721,7 +847,7 @@ function SalaryForm({
           )}
         </div>
       </form>
-    </Panel>
+    </PanelForm>
   )
 }
 
@@ -734,7 +860,7 @@ function PayForm({
   person: SalaryPerson
   period: SalaryPeriod
   onClose: () => void
-  onMsg: (m: { ok: boolean; text: string }) => void
+  onMsg: (m: Msg) => void
 }) {
   const { t } = useTranslation()
   const { paySalary } = useAccountsActions()
@@ -771,17 +897,14 @@ function PayForm({
     }
   }
   return (
-    <Panel
-      i={3}
-      icon={CalendarCheck}
-      tint="mint"
+    <PanelForm
       title={t('accounts.salaries.payTitle', {
         name: person.name,
         period: `${formatDate(new Date(period.periodStart))} – ${formatDate(new Date(period.periodEnd))}`,
       })}
     >
       <form onSubmit={submit} className="flex flex-col gap-3">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field
             label={t('accounts.salaries.paidOn')}
             type="date"
@@ -825,7 +948,7 @@ function PayForm({
           <Button onClick={onClose}>{t('accounts.cancel')}</Button>
         </div>
       </form>
-    </Panel>
+    </PanelForm>
   )
 }
 
@@ -842,7 +965,7 @@ function ExpensesTab() {
   const [reference, setReference] = useState('')
   const [paidOn, setPaidOn] = useState(kigaliToday())
   const [note, setNote] = useState('')
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [msg, setMsg] = useState<Msg | null>(null)
   const methodWord = (m: string) => t(`visit.payment.methods.${m}`, { defaultValue: m })
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -876,9 +999,9 @@ function ExpensesTab() {
       tone: 'danger',
       input: { label: t('accounts.salaries.reason'), required: true },
     })
-    if (!why) return
+    if (!why.ok) return
     try {
-      await voidExpense.mutateAsync({ id, reason: String(why) })
+      await voidExpense.mutateAsync({ id, reason: why.value })
       setMsg({ ok: true, text: t('accounts.expenses.voided') })
     } catch (err) {
       setMsg({ ok: false, text: errText(err) })
@@ -889,22 +1012,16 @@ function ExpensesTab() {
     <div className="flex flex-col gap-4">
       <ActionRow>
         <PeriodSeg period={period} className="max-w-full flex-wrap" />
-        <BannerChip icon={Receipt}>
-          {t('accounts.expenses.total', { amount: formatRwf(total) })}
-        </BannerChip>
+        <div className="flex flex-wrap items-center gap-2">
+          <BannerChip icon={Receipt}>
+            {t('accounts.expenses.total', { amount: formatRwf(total) })}
+          </BannerChip>
+          <ReportsLink id="finance.expenses" />
+        </div>
       </ActionRow>
       <PeriodCustom period={period} />
       {error && <p className="text-red m-0 text-[14px] font-medium">{error.message}</p>}
-      {msg && (
-        <p
-          className={cn(
-            'm-0 rounded-md px-3 py-2 text-[14px] font-medium',
-            msg.ok ? 'bg-green-bg text-green' : 'bg-red-bg text-red',
-          )}
-        >
-          {msg.text}
-        </p>
-      )}
+      {msg && <Note msg={msg} />}
       <Panel i={1} icon={Receipt} tint="violet" title={t('accounts.expenses.add')}>
         <form onSubmit={submit} className="flex flex-col gap-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
