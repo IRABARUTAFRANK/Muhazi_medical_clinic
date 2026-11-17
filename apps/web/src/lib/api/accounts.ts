@@ -21,8 +21,25 @@ export const SALARY_INTERVALS = [
   'quarterly',
   'halfyearly',
   'yearly',
+  'custom',
 ] as const
 export type SalaryInterval = (typeof SALARY_INTERVALS)[number]
+export const CUSTOM_UNITS = ['days', 'weeks', 'months'] as const
+export type CustomUnit = (typeof CUSTOM_UNITS)[number]
+
+/** "Every month", or for a custom interval "Every 45 days" (0180). */
+export const intervalWords = (
+  t: (k: string, o?: Record<string, unknown>) => string,
+  kind: SalaryInterval,
+  every: number | null,
+  unit: CustomUnit | null,
+) =>
+  kind === 'custom'
+    ? t('accounts.intervals.customEvery', {
+        count: every ?? 0,
+        unit: t(`accounts.units.${unit ?? 'days'}`, { count: every ?? 0 }),
+      })
+    : t(`accounts.intervals.${kind}`)
 
 export type PeriodStatus = 'due' | 'overdue' | 'paid' | 'skipped'
 
@@ -49,6 +66,8 @@ export interface SalaryPerson {
   active: boolean
   amount: number
   intervalKind: SalaryInterval
+  customEvery: number | null
+  customUnit: CustomUnit | null
   anchorOn: string
   payDay: number | null
   note: string | null
@@ -168,6 +187,8 @@ const sampleOverview = (year: number): SalaryOverview => ({
       active: true,
       amount: 650000,
       intervalKind: 'monthly',
+      customEvery: null,
+      customUnit: null,
       anchorOn: `${year}-02-02`,
       payDay: null,
       note: null,
@@ -187,6 +208,8 @@ const sampleOverview = (year: number): SalaryOverview => ({
       active: true,
       amount: 180000,
       intervalKind: 'monthly',
+      customEvery: null,
+      customUnit: null,
       anchorOn: `${year}-01-05`,
       payDay: 28,
       note: null,
@@ -302,6 +325,8 @@ export function useSalaryOverview(year: number, enabled = true) {
           active: p.active !== false,
           amount: num(p.amount),
           intervalKind: (p.intervalKind ?? 'monthly') as SalaryInterval,
+          customEvery: numOrNull(p.customEvery),
+          customUnit: (p.customUnit ?? null) as CustomUnit | null,
           anchorOn: String(p.anchorOn ?? ''),
           payDay: numOrNull(p.payDay),
           note: p.note ?? null,
@@ -400,6 +425,9 @@ export function useExpenses(from: string, to: string, enabled = true) {
 export interface SalaryInput {
   amount: number
   interval: SalaryInterval
+  /** 0180: a custom interval: every N days, weeks or months. */
+  customEvery?: number | null
+  customUnit?: CustomUnit | null
   anchorOn: string
   payDay: number | null
   note?: string
@@ -418,6 +446,8 @@ export async function setSalaryQuietly(profileId: string, s: SalaryInput): Promi
     p_anchor_on: s.anchorOn,
     p_pay_day: s.payDay,
     p_note: s.note ?? null,
+    p_custom_every: s.interval === 'custom' ? (s.customEvery ?? null) : null,
+    p_custom_unit: s.interval === 'custom' ? (s.customUnit ?? null) : null,
   })
   if (error && !isMissingFunction(error)) throw apiError(error)
 }
@@ -443,6 +473,8 @@ export function useAccountsActions() {
         p_anchor_on: i.anchorOn,
         p_pay_day: i.payDay,
         p_note: i.note ?? null,
+        p_custom_every: i.interval === 'custom' ? (i.customEvery ?? null) : null,
+        p_custom_unit: i.interval === 'custom' ? (i.customUnit ?? null) : null,
       }),
     onSuccess: refresh,
   })

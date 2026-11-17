@@ -8591,7 +8591,8 @@
     "463da86b": "Cette période est déjà réglée (payée ou sautée).",
     "abd89c9b": "Dites pour quoi est la dépense.",
     "5b5d4b64": "Période de paie introuvable : elle a peut-être déjà été annulée.",
-    "382311f5": "Dépense introuvable : elle a peut-être déjà été annulée."
+    "382311f5": "Dépense introuvable : elle a peut-être déjà été annulée.",
+    "16324e52": "Un intervalle personnalisé va de 1 à 365 jours, semaines ou mois."
   },
   "panel": {
     "close": "Fermer",
@@ -11052,7 +11053,9 @@
       "every2months": "Tous les deux mois",
       "quarterly": "Tous les trois mois",
       "halfyearly": "Tous les six mois",
-      "yearly": "Chaque année"
+      "yearly": "Chaque année",
+      "custom": "Personnalisé (tous les N jours, semaines ou mois)",
+      "customEvery": "Tous les {{count}} {{unit}}"
     },
     "status": {
       "due": "À payer",
@@ -11129,8 +11132,11 @@
       "errors": {
         "amount": "Tapez le salaire (zéro ou plus).",
         "anchor": "Choisissez la date depuis laquelle le salaire compte.",
-        "paid": "Tapez le montant payé."
-      }
+        "paid": "Tapez le montant payé.",
+        "custom": "Un intervalle personnalisé va de 1 à 365 jours, semaines ou mois."
+      },
+      "customEvery": "Tous les",
+      "customUnit": "Unité"
     },
     "expenses": {
       "add": "Enregistrer une dépense",
@@ -11170,6 +11176,14 @@
       "periodsTable": "Périodes de paie",
       "periodStart": "Du",
       "periodEnd": "Au"
+    },
+    "units": {
+      "days_one": "jour",
+      "days_other": "jours",
+      "weeks_one": "semaine",
+      "weeks_other": "semaines",
+      "months_one": "mois",
+      "months_other": "mois"
     }
   }
 }

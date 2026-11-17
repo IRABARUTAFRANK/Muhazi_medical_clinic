@@ -8591,7 +8591,8 @@
     "463da86b": "This period is already settled (paid or skipped).",
     "abd89c9b": "Say what the expense is for.",
     "5b5d4b64": "Pay period not found: it may have been undone already.",
-    "382311f5": "Expense not found: it may have been cancelled already."
+    "382311f5": "Expense not found: it may have been cancelled already.",
+    "16324e52": "A custom interval is every 1 to 365 days, weeks or months."
   },
   "panel": {
     "close": "Close",
@@ -11052,7 +11053,9 @@
       "every2months": "Every two months",
       "quarterly": "Every three months",
       "halfyearly": "Every six months",
-      "yearly": "Every year"
+      "yearly": "Every year",
+      "custom": "Custom (every N days, weeks or months)",
+      "customEvery": "Every {{count}} {{unit}}"
     },
     "status": {
       "due": "Due",
@@ -11129,8 +11132,11 @@
       "errors": {
         "amount": "Type the salary (zero or more).",
         "anchor": "Choose the date the salary counts from.",
-        "paid": "Type the amount paid."
-      }
+        "paid": "Type the amount paid.",
+        "custom": "A custom interval is every 1 to 365 days, weeks or months."
+      },
+      "customEvery": "Every",
+      "customUnit": "Unit"
     },
     "expenses": {
       "add": "Record an expense",
@@ -11170,6 +11176,14 @@
       "periodsTable": "Pay periods",
       "periodStart": "From",
       "periodEnd": "To"
+    },
+    "units": {
+      "days_one": "day",
+      "days_other": "days",
+      "weeks_one": "week",
+      "weeks_other": "weeks",
+      "months_one": "month",
+      "months_other": "months"
     }
   }
 }

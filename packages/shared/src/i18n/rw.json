@@ -8600,7 +8600,8 @@
     "463da86b": "Iki gihe cyamaze gukemurwa (cyishyuwe cyangwa cyasimbutswe).",
     "abd89c9b": "Vuga icyo isohoka ari icyo.",
     "5b5d4b64": "Igihe cyo guhemba ntikibonetse: gishobora kuba cyarasubijweho.",
-    "382311f5": "Isohoka ntiribonetse: rishobora kuba ryarahagaritswe."
+    "382311f5": "Isohoka ntiribonetse: rishobora kuba ryarahagaritswe.",
+    "16324e52": "Igihe mwumvikanye kiri hagati y’umunsi 1 n’iminsi 365, ibyumweru cyangwa amezi."
   },
   "panel": {
     "close": "Funga",
@@ -11061,7 +11062,9 @@
       "every2months": "Buri mezi abiri",
       "quarterly": "Buri mezi atatu",
       "halfyearly": "Buri mezi atandatu",
-      "yearly": "Buri mwaka"
+      "yearly": "Buri mwaka",
+      "custom": "Uko mubyumvikanye (buri minsi, ibyumweru cyangwa amezi N)",
+      "customEvery": "Buri {{unit}} {{count}}"
     },
     "status": {
       "due": "Igomba kwishyurwa",
@@ -11138,8 +11141,11 @@
       "errors": {
         "amount": "Andika umushahara (zeru cyangwa irenze).",
         "anchor": "Hitamo itariki umushahara ubarwa guhera.",
-        "paid": "Andika amafaranga yishyuwe."
-      }
+        "paid": "Andika amafaranga yishyuwe.",
+        "custom": "Igihe mwumvikanye kiri hagati y’umunsi 1 n’iminsi 365, ibyumweru cyangwa amezi."
+      },
+      "customEvery": "Buri",
+      "customUnit": "Igipimo"
     },
     "expenses": {
       "add": "Andika isohoka",
@@ -11179,6 +11185,14 @@
       "periodsTable": "Ibihe byo guhemba",
       "periodStart": "Kuva",
       "periodEnd": "Kugeza"
+    },
+    "units": {
+      "days_one": "munsi",
+      "days_other": "minsi",
+      "weeks_one": "cyumweru",
+      "weeks_other": "byumweru",
+      "months_one": "kwezi",
+      "months_other": "mezi"
     }
   }
 }

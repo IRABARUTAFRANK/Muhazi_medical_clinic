@@ -7,7 +7,7 @@ import type { DashboardData } from '@/lib/api/dashboard'
 import type { CashierSummary } from '@/lib/api/finance'
 import type { LabOrder, LabSummary } from '@/lib/api/lab'
 import { isLowStock, type StockItem, type StockMovement, type StockSales } from '@/lib/api/stock'
-import type { FinanceSummary, SalaryOverview } from '@/lib/api/accounts'
+import { intervalWords, type FinanceSummary, type SalaryOverview } from '@/lib/api/accounts'
 import { docDate, kigaliParts, makeDocLabels } from '@/lib/doc-style'
 import type {
   Cell,
@@ -1120,7 +1120,7 @@ export function payrollReport(
               p.name,
               t(`staff.roles.${p.role}`, { defaultValue: p.role }),
               p.amount,
-              t(`accounts.intervals.${p.intervalKind}`),
+              intervalWords(t, p.intervalKind, p.customEvery, p.customUnit),
               p.anchorOn,
               p.paidThisYear,
               p.overdue,

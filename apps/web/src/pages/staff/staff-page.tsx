@@ -1713,7 +1713,7 @@ function EmployeeForm({
               value={salaryInterval}
               onChange={(e) => setSalaryInterval(e.target.value as SalaryInterval)}
             >
-              {SALARY_INTERVALS.map((k) => (
+              {SALARY_INTERVALS.filter((k) => k !== 'custom').map((k) => (
                 <option key={k} value={k}>
                   {t(`accounts.intervals.${k}`)}
                 </option>

@@ -25304,6 +25304,10 @@ await step(
     await db.exec(
       await readFile(path.join(migrationsDir, '20270204090000_finance_accounts.sql'), 'utf8'),
     )
+    // 0180 again: 0179 brings back the six-value set_salary, 0180 drops it (else the call is ambiguous)
+    await db.exec(
+      await readFile(path.join(migrationsDir, '20270205090000_salary_custom_interval.sql'), 'utf8'),
+    )
     const refused = await codeAs(d1, `select salary_overview(2026)`)
     await as(staff.cashier)
     await db.query(`select set_salary($1, 500000, 'monthly', '2026-02-02', null, 'contract')`, [d1])

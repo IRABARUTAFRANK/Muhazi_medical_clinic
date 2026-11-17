@@ -25,12 +25,15 @@ import { Field } from '@/components/ui/field'
 import { Seg } from '@/components/ui/seg'
 import { Select } from '@/components/ui/select'
 import {
+  CUSTOM_UNITS,
   SALARY_INTERVALS,
+  intervalWords,
   useAccountsActions,
   useDailySalaryAlertCheck,
   useExpenses,
   useFinanceSummary,
   useSalaryOverview,
+  type CustomUnit,
   type SalaryInterval,
   type SalaryPeriod,
   type SalaryPerson,
@@ -463,7 +466,7 @@ function PersonRows({
           {formatRwf(p.amount)}
         </td>
         <td className={tableCell}>
-          {t(`accounts.intervals.${p.intervalKind}`)}
+          {intervalWords(t, p.intervalKind, p.customEvery, p.customUnit)}
           <span className="text-ink-3 block text-[12px]">
             {t('accounts.salaries.from', { date: formatDate(new Date(p.anchorOn)) })}
             {p.payDay ? ` · ${t('accounts.salaries.payDay', { day: p.payDay })}` : ''}
@@ -593,6 +596,9 @@ function SalaryForm({
   const confirm = useConfirm()
   const [amount, setAmount] = useState(current ? String(current.amount) : '')
   const [interval, setInterval] = useState<SalaryInterval>(current?.intervalKind ?? 'monthly')
+  // 0180: a custom interval: every N days, weeks or months
+  const [every, setEvery] = useState(current?.customEvery ? String(current.customEvery) : '')
+  const [unit, setUnit] = useState<CustomUnit>(current?.customUnit ?? 'days')
   const [anchor, setAnchor] = useState(current?.anchorOn ?? kigaliToday())
   const [payDay, setPayDay] = useState(current?.payDay ? String(current.payDay) : '')
   const [note, setNote] = useState(current?.note ?? '')
@@ -602,11 +608,16 @@ function SalaryForm({
     if (!Number.isFinite(a) || a < 0)
       return onMsg({ ok: false, text: t('accounts.salaries.errors.amount') })
     if (!anchor) return onMsg({ ok: false, text: t('accounts.salaries.errors.anchor') })
+    const n = Number(every)
+    if (interval === 'custom' && (!Number.isInteger(n) || n < 1 || n > 365))
+      return onMsg({ ok: false, text: t('accounts.salaries.errors.custom') })
     try {
       await setSalary.mutateAsync({
         profileId,
         amount: Math.round(a),
         interval,
+        customEvery: interval === 'custom' ? n : null,
+        customUnit: interval === 'custom' ? unit : null,
         anchorOn: anchor,
         payDay: payDay ? Number(payDay) : null,
         note,
@@ -656,6 +667,28 @@ function SalaryForm({
               </option>
             ))}
           </Select>
+          {interval === 'custom' && (
+            <div className="flex items-end gap-2">
+              <Field
+                wrapperClassName="w-24"
+                label={t('accounts.salaries.customEvery')}
+                inputMode="numeric"
+                value={every}
+                onChange={(e) => setEvery(e.target.value.replace(/[^\d]/g, '').slice(0, 3))}
+              />
+              <Select
+                label={t('accounts.salaries.customUnit')}
+                value={unit}
+                onChange={(e) => setUnit(e.target.value as CustomUnit)}
+              >
+                {CUSTOM_UNITS.map((u) => (
+                  <option key={u} value={u}>
+                    {t(`accounts.units.${u}`, { count: Number(every) || 2 })}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
           <Field
             label={t('accounts.salaries.anchor')}
             type="date"

@@ -65,6 +65,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^sign-in not approved: sign in again with the e-mailed code$/, 'dbErrors.5cc5c060', 0], // check_request, mark_pin_changed, record_sign_in, …
   [/^too many codes were asked for this visit: wait ten minutes$/, 'dbErrors.b9f31c34', 0], // request_visit_edit
   [/^you may not take payments \(the manager has not allowed it\)$/, 'dbErrors.fd6af5fe', 0], // take_counter_payment, take_payment
+  [/^a custom interval is every 1 to 365 days, weeks or months$/, 'dbErrors.16324e52', 0], // set_salary
   [/^automatic charges are made by the desk that does the work$/, 'dbErrors.b9366b99', 0], // add_charge
   [/^not allowed: only the manager sees the documents expiring$/, 'dbErrors.33c23713', 0], // staff_documents_expiring
   [/^only the person who gave it \(or the manager\) puts it back$/, 'dbErrors.59c7579c', 0], // undo_given_here
