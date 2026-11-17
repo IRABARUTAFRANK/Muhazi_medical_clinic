@@ -117,7 +117,8 @@
     },
     "myBookings": "Mes rendez-vous",
     "documents": "Documents des patients",
-    "priceLists": "Listes de prix et assureurs"
+    "priceLists": "Listes de prix et assureurs",
+    "finance": "Finances"
   },
   "roles": {
     "receptionist": "Réceptionniste",
@@ -840,7 +841,12 @@
       "doctorHereHint": "Nommé par le gérant : dans ce service, la personne a tous les pouvoirs d’un médecin — le dossier en six étapes, les diagnostics, les ordres aux infirmiers, les examens, les médicaments, les actes, la clôture de la visite — et les droits du médecin. Sa profession ne change pas ; ailleurs rien ne change.",
       "doctorHereIsDoctor": "Un médecin a déjà tous les pouvoirs ici ; la coche le désigne médecin de ce service.",
       "isPharmacist": "Tient le stock de la pharmacie (fait office de pharmacien)",
-      "isPharmacistHint": "Donne le poste Pharmacie quels que soient les services : ordonnances à remettre, ventes au comptoir, Entrées de stock, dépôts des salles et rapports de stock, chaque action au nom de cette personne."
+      "isPharmacistHint": "Donne le poste Pharmacie quels que soient les services : ordonnances à remettre, ventes au comptoir, Entrées de stock, dépôts des salles et rapports de stock, chaque action au nom de cette personne.",
+      "salaryTitle": "Salaire (facultatif : le comptable le complète dans Finances)",
+      "salaryAmount": "Salaire (RWF)",
+      "salaryInterval": "Payé",
+      "salaryFrom": "Compte depuis (date du contrat)",
+      "salaryHint": "Les dates de paie suivent la date du contrat et l’intervalle. Laissez vide pour le définir plus tard dans Finances › Salaires."
     },
     "created": {
       "title": "Compte créé — remettez ceci à {{name}} en main propre",
@@ -3775,7 +3781,12 @@
     "unpricedTreatmentsBody": "Issus de « {{list}} » : donnez-leur un prix sous Prix › Actes (Sans prix comptant) pour pouvoir facturer les patients comptant. Les assurés paient déjà leur liste.",
     "apptOverdue": "Heure passée : {{name}}",
     "apptOverdueRequest": "L’heure demandée est passée : convenez d’une autre heure avec la personne ou refusez la demande.",
-    "apptOverdueBooking": "Le patient n’est pas venu : marquez l’absence, annulez ou réservez à nouveau."
+    "apptOverdueBooking": "Le patient n’est pas venu : marquez l’absence, annulez ou réservez à nouveau.",
+    "salaryDue_one": "Salaire de {{name}} dû dans {{count}} jour",
+    "salaryDue_other": "Salaire de {{name}} dû dans {{count}} jours",
+    "salaryOverdue_one": "Salaire de {{name}} en retard de {{count}} jour",
+    "salaryOverdue_other": "Salaire de {{name}} en retard de {{count}} jours",
+    "salaryBody": "{{amount}} · date de paie {{date}}"
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
@@ -8567,7 +8578,20 @@
     "e69735c5": "Le chemin de l’enregistrement n’est pas dans le dossier des extraits.",
     "6ab2b8ad": "Enregistrement inconnu.",
     "3a3b16b3": "Cet enregistrement n’existe pas.",
-    "aad443f8": "Ce médicament n’est sur aucune liste : choisissez-le sur la liste RHIA ou sur une liste téléversée, ou créez-le comme nouvel article."
+    "aad443f8": "Ce médicament n’est sur aucune liste : choisissez-le sur la liste RHIA ou sur une liste téléversée, ou créez-le comme nouvel article.",
+    "e3582f52": "Le jour de paie est un jour du mois, de 1 à 31.",
+    "bee6bf0d": "Un salaire payé s’annule sur sa période de paie (Finances › Salaires), pas ici.",
+    "f3e3d63c": "Tapez le montant payé : plus que zéro.",
+    "4a4ae7bd": "La date de paie ne peut pas être dans le futur.",
+    "bc5d0425": "Choisissez la date depuis laquelle le salaire compte (la date du contrat).",
+    "c2be7875": "Ce n’est pas une des périodes de paie de l’employé : ouvrez les périodes et choisissez-en une.",
+    "f33646bc": "Dites à quelle fréquence le salaire est payé (chaque mois, tous les trois mois…).",
+    "43b3e3cd": "Le salaire doit être zéro ou plus.",
+    "3a09ee96": "Cet employé n’a pas encore de salaire : définissez-le d’abord (Finances › Salaires).",
+    "463da86b": "Cette période est déjà réglée (payée ou sautée).",
+    "abd89c9b": "Dites pour quoi est la dépense.",
+    "5b5d4b64": "Période de paie introuvable : elle a peut-être déjà été annulée.",
+    "382311f5": "Dépense introuvable : elle a peut-être déjà été annulée."
   },
   "panel": {
     "close": "Fermer",
@@ -11010,5 +11034,142 @@
     "playFailed": "L’enregistrement n’a pas pu être joué.",
     "noRecorder": "Ce navigateur ne peut pas enregistrer. Utilisez Chrome ou Edge sur un ordinateur avec microphone.",
     "hint": "Un poste ajouté plus tard a besoin de son enregistrement aussi ; d’ici là, la voix du téléviseur dit ce morceau. Les enregistrements sont joués sur chaque écran réglé sur « Enregistrements du personnel »."
+  },
+  "accounts": {
+    "title": "Finances",
+    "lead": "Les comptes de la clinique : l’argent entré contre l’argent sorti, les salaires des employés avec chaque période de paie de l’année, les autres dépenses, et les rapports imprimés.",
+    "tabs": {
+      "money": "L’argent",
+      "salaries": "Salaires",
+      "expenses": "Autres dépenses"
+    },
+    "cancel": "Annuler",
+    "reference": "Référence (reçu, virement…)",
+    "intervals": {
+      "weekly": "Chaque semaine",
+      "fortnightly": "Toutes les deux semaines",
+      "monthly": "Chaque mois",
+      "every2months": "Tous les deux mois",
+      "quarterly": "Tous les trois mois",
+      "halfyearly": "Tous les six mois",
+      "yearly": "Chaque année"
+    },
+    "status": {
+      "due": "À payer",
+      "overdue": "En retard",
+      "paid": "Payé",
+      "skipped": "Sauté"
+    },
+    "money": {
+      "revenue": "Argent entré (recettes)",
+      "salaries": "Salaires payés",
+      "other": "Autres dépenses",
+      "stock": "Stock acheté",
+      "net": "Bénéfice net",
+      "salariesDue": "Salaires à payer dans la période",
+      "how": "Argent entré = chaque paiement pris ({{revenue}}) moins les remboursements ({{refunds}}). Bénéfice net = argent entré moins les salaires, les autres dépenses et le stock reçu au coût.",
+      "byMethod": "Argent entré par mode",
+      "byMonth": "Mois par mois",
+      "month": "Mois",
+      "none": "Rien sur cette période."
+    },
+    "salaries": {
+      "year": "Année",
+      "title": "Salaires {{year}}",
+      "none": "Aucun salaire défini : choisissez un employé ci-dessous.",
+      "without": "Sans salaire encore :",
+      "cols": {
+        "employee": "Employé",
+        "amount": "Salaire (RWF)",
+        "interval": "Payé",
+        "nextDue": "Prochaine paie",
+        "paidYear": "Payé cette année",
+        "periods": "Périodes",
+        "period": "Période",
+        "dueOn": "Date de paie",
+        "status": "Statut",
+        "paid": "Payé"
+      },
+      "from": "depuis le {{date}}",
+      "payDay": "jour de paie {{day}}",
+      "overdueCount_one": "{{count}} en retard",
+      "overdueCount_other": "{{count}} en retard",
+      "show": "Périodes",
+      "hide": "Fermer",
+      "edit": "Modifier",
+      "markPaid": "Marquer payé",
+      "skip": "Sauter",
+      "undo": "Annuler",
+      "reason": "Raison",
+      "setTitle": "Salaire de {{name}}",
+      "anchor": "Compte depuis (date du contrat)",
+      "payDayField": "Jour de paie du mois (facultatif)",
+      "payDayPh": "ex. 28",
+      "note": "Note (facultatif)",
+      "setHint": "Les périodes suivent la date du contrat et l’intervalle : payé chaque mois depuis le 2 février, c’est dû le 2 mars, le 2 avril… Un jour de paie du mois déplace chaque paie mensuelle ou plus longue à ce jour.",
+      "save": "Enregistrer le salaire",
+      "saved": "Salaire de {{name}} enregistré.",
+      "remove": "Retirer le salaire",
+      "removeTitle": "Retirer le salaire de {{name}} ?",
+      "removeBody": "Plus de période de paie désormais ; ce qui a été payé reste.",
+      "removeYes": "Retirer",
+      "removed": "Salaire de {{name}} retiré.",
+      "payTitle": "Marquer payé : {{name}} · {{period}}",
+      "paidOn": "Payé le",
+      "paidAmount": "Montant payé (RWF)",
+      "paidOk": "{{name}} marqué payé le {{date}} ; la dépense est enregistrée.",
+      "undoTitle": "Annuler le paiement de {{name}} ?",
+      "undoBody": "La période due le {{date}} redevient à payer et sa dépense est annulée.",
+      "undoYes": "Annuler",
+      "undone": "Paiement annulé.",
+      "skipTitle": "Sauter une période de {{name}} ?",
+      "skipBody": "La période due le {{date}} ne sera pas payée (congé sans solde, contrat suspendu…).",
+      "skipYes": "Sauter",
+      "skipped": "Période sautée.",
+      "errors": {
+        "amount": "Tapez le salaire (zéro ou plus).",
+        "anchor": "Choisissez la date depuis laquelle le salaire compte.",
+        "paid": "Tapez le montant payé."
+      }
+    },
+    "expenses": {
+      "add": "Enregistrer une dépense",
+      "label": "Pour quoi",
+      "labelPh": "ex. Électricité, loyer, nettoyage",
+      "paidOn": "Payé le",
+      "save": "Enregistrer",
+      "added": "Dépense enregistrée.",
+      "list": "Dépenses de la période",
+      "none": "Aucune dépense sur cette période.",
+      "total": "Total {{amount}}",
+      "kind": "Type",
+      "kinds": {
+        "salary": "Salaire",
+        "other": "Autre"
+      },
+      "void": "Annuler",
+      "voidTitle": "Annuler la dépense « {{what}} » ?",
+      "voidYes": "L’annuler",
+      "voided": "Dépense annulée.",
+      "voidedTag": "Annulée : {{why}}",
+      "errors": {
+        "label": "Dites pour quoi est la dépense.",
+        "amount": "Tapez le montant payé."
+      }
+    },
+    "report": {
+      "moneyTitle": "Argent entré et sorti",
+      "moneySummary": "Argent entré {{revenue}}, argent sorti {{expenses}}, bénéfice net {{net}}.",
+      "payrollTitle": "Paie {{year}}",
+      "payrollSummary": "{{count}} employés avec un salaire ; payé cette année {{paid}} ; encore dû {{due}}.",
+      "employees": "Employés",
+      "paidYear": "Payé cette année",
+      "dueYear": "Encore dû cette année",
+      "overduePeriods": "Périodes en retard",
+      "salariesTable": "Salaires",
+      "periodsTable": "Périodes de paie",
+      "periodStart": "Du",
+      "periodEnd": "Au"
+    }
   }
 }

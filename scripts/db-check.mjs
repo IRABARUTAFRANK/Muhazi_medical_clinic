@@ -25296,6 +25296,98 @@ await step(
     return `nurse with Manage stock, no price right: add_stock set the price to 377 and the pack to 20 with the delivery (nothing ignored); price put back to 350`
   },
 )
+// 0179: the clinic's accounts: salaries, expenses, the money
+await step(
+  '0179: the cashier sets a salary (monthly from 2 Feb → due 2 Mar, 2 Apr…), marks a period paid (an expense), undoes, skips; pay day 28; the money summary; the notices; a doctor refused',
+  async () => {
+    await asAdmin()
+    await db.exec(
+      await readFile(path.join(migrationsDir, '20270204090000_finance_accounts.sql'), 'utf8'),
+    )
+    const refused = await codeAs(d1, `select salary_overview(2026)`)
+    await as(staff.cashier)
+    await db.query(`select set_salary($1, 500000, 'monthly', '2026-02-02', null, 'contract')`, [d1])
+    const periods = (await one(`select salary_periods($1, 2026) as j`, [d1])).j
+    const paid = (
+      await one(
+        `select pay_salary($1, '2026-02-02', '2026-03-02', null, 'bank', 'TRF-1', null) as j`,
+        [d1],
+      )
+    ).j
+    const twice = await codeAs(staff.cashier, `select pay_salary($1, '2026-02-02')`, [d1])
+    const wrongStart = await codeAs(staff.cashier, `select pay_salary($1, '2026-02-03')`, [d1])
+    const after = (await one(`select salary_periods($1, 2026) as j`, [d1])).j
+    const skipped = (await one(`select skip_salary($1, '2026-03-02', 'unpaid leave') as id`, [d1]))
+      .id
+    const money = (await one(`select finance_summary('2026-03-01', '2026-03-31') as j`)).j
+    const exp = (await one(`select expenses_list('2026-03-01', '2026-03-31') as j`)).j
+    const other = (
+      await one(`select add_expense('Electricity', 85000, 'momo', 'MP1', '2026-03-10', null) as id`)
+    ).id
+    const money2 = (await one(`select finance_summary('2026-03-01', '2026-03-31') as j`)).j
+    await db.query(`select void_expense($1, 'typed twice')`, [other])
+    const money3 = (await one(`select finance_summary('2026-03-01', '2026-03-31') as j`)).j
+    await db.query(`select unpay_salary($1, 'wrong person')`, [paid.id])
+    const undone = (await one(`select salary_periods($1, 2026) as j`, [d1])).j
+    const money4 = (await one(`select finance_summary('2026-03-01', '2026-03-31') as j`)).j
+    // pay day 28: the monthly pay dates move to the 28th
+    await db.query(`select set_salary($1, 500000, 'monthly', '2026-02-02', 28, null)`, [d1])
+    const pd = (await one(`select salary_periods($1, 2026) as j`, [d1])).j
+    const overview = (await one(`select salary_overview(2026) as j`)).j
+    const alerts = (await one(`select salary_alert_check() as j`)).j
+    const alerts2 = (await one(`select salary_alert_check() as j`)).j
+    await asAdmin()
+    const notices = (
+      await one(
+        `select count(*)::int as n from notification where kind in ('salary_due', 'salary_overdue') and recipient_role = 'cashier'`,
+      )
+    ).n
+    const me = overview.people.find((x) => x.id === d1)
+    if (refused !== '42501') throw new Error('doctor not refused: ' + refused)
+    if (
+      periods.length !== 11 ||
+      periods[0].periodStart !== '2026-02-02' ||
+      periods[0].dueOn !== '2026-03-02' ||
+      periods[1].dueOn !== '2026-04-02' ||
+      periods[10].periodStart !== '2026-12-02'
+    )
+      throw new Error('periods: ' + JSON.stringify(periods.slice(0, 2)) + ' n=' + periods.length)
+    if (!paid.id || Number(paid.amount) !== 500000 || twice !== '23505' || wrongStart !== '22023')
+      throw new Error(JSON.stringify({ paid, twice, wrongStart }))
+    if (
+      after[0].status !== 'paid' ||
+      after[0].paidOn !== '2026-03-02' ||
+      after[0].method !== 'bank' ||
+      after[1].status === 'paid'
+    )
+      throw new Error('after: ' + JSON.stringify(after.slice(0, 2)))
+    if (
+      !skipped ||
+      Number(money.salaries) !== 500000 ||
+      exp.length !== 1 ||
+      exp[0].kind !== 'salary'
+    )
+      throw new Error(JSON.stringify({ skipped, money: money.salaries, exp }))
+    if (Number(money2.otherExpenses) !== 85000 || Number(money3.otherExpenses) !== 0)
+      throw new Error(JSON.stringify({ money2, money3 }))
+    if (
+      undone[0].status === 'paid' ||
+      Number(money4.salaries) !== 0 ||
+      undone[1].status !== 'skipped'
+    )
+      throw new Error('undone: ' + JSON.stringify({ u: undone.slice(0, 2), s: money4.salaries }))
+    if (pd[0].dueOn !== '2026-03-28' || pd[1].dueOn !== '2026-04-28')
+      throw new Error('pay day: ' + JSON.stringify(pd.slice(0, 2)))
+    if (!me || Number(me.amount) !== 500000 || me.intervalKind !== 'monthly' || me.payDay !== 28)
+      throw new Error('overview: ' + JSON.stringify(me))
+    if (alerts.created < 1 || alerts2.created !== 0 || notices < 1)
+      throw new Error(JSON.stringify({ alerts, alerts2, notices }))
+    await as(staff.cashier)
+    await db.query(`select remove_salary($1)`, [d1])
+    await asAdmin()
+    return `11 periods Feb–Dec, due 2 Mar / 2 Apr…; paid 2 Mar (expense 500,000), twice 23505, odd start 22023; Mar skipped; other expense 85,000 then voided; undo → due again, salaries 0; pay day 28 → due 28 Mar; alerts created ${alerts.created} (overdue ${alerts.overdue}), second run 0; doctor 42501`
+  },
+)
 // @@t141-end
 finish()
 

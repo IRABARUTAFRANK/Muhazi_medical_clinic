@@ -117,7 +117,8 @@
     },
     "myBookings": "My bookings",
     "documents": "Patients’ documents",
-    "priceLists": "Price lists & insurers"
+    "priceLists": "Price lists & insurers",
+    "finance": "Finance"
   },
   "roles": {
     "receptionist": "Receptionist",
@@ -840,7 +841,12 @@
       "doctorHereHint": "Appointed by the manager: in this department the person has every doctor power — the record in six steps, diagnoses, orders to the nurses, tests, medicines, acts, finishing the visit — and the doctor’s switches. Their profession stays the same; elsewhere nothing changes.",
       "doctorHereIsDoctor": "A doctor already has every doctor power here; the tick marks them the doctor of this department.",
       "isPharmacist": "Keeps the pharmacy stock (acts as the pharmacist)",
-      "isPharmacistHint": "Gives the Pharmacy desk whatever the departments: the prescriptions to hand over, walk-in sales, Add stock, the room stores and the stock reports, every action under this person’s name."
+      "isPharmacistHint": "Gives the Pharmacy desk whatever the departments: the prescriptions to hand over, walk-in sales, Add stock, the room stores and the stock reports, every action under this person’s name.",
+      "salaryTitle": "Salary (optional: the accountant completes it on Finance)",
+      "salaryAmount": "Salary (RWF)",
+      "salaryInterval": "Paid",
+      "salaryFrom": "Counts from (contract date)",
+      "salaryHint": "The pay dates follow the contract date and the interval. Leave it empty to set it later on Finance › Salaries."
     },
     "created": {
       "title": "Account created — give these to {{name}} in person",
@@ -3775,7 +3781,12 @@
     "unpricedTreatmentsBody": "Made from “{{list}}”: give them a price under Prices › Treatments (Without a cash price) so cash patients can be charged. Insured patients already pay their list.",
     "apptOverdue": "Time passed: {{name}}",
     "apptOverdueRequest": "The time asked for has passed: book another time with the person or reject the request.",
-    "apptOverdueBooking": "The patient has not arrived: mark no-show, cancel, or book again."
+    "apptOverdueBooking": "The patient has not arrived: mark no-show, cancel, or book again.",
+    "salaryDue_one": "Salary of {{name}} due in {{count}} day",
+    "salaryDue_other": "Salary of {{name}} due in {{count}} days",
+    "salaryOverdue_one": "Salary of {{name}} overdue by {{count}} day",
+    "salaryOverdue_other": "Salary of {{name}} overdue by {{count}} days",
+    "salaryBody": "{{amount}} · pay date {{date}}"
   },
   "identity": {
     "aria": "Signed in: {{name}}"
@@ -8567,7 +8578,20 @@
     "e69735c5": "The recording’s path is not in the clips folder.",
     "6ab2b8ad": "Unknown recording.",
     "3a3b16b3": "No such recording.",
-    "aad443f8": "This medicine is on no list: pick it on the RHIA list or on an uploaded list, or create it as a new item."
+    "aad443f8": "This medicine is on no list: pick it on the RHIA list or on an uploaded list, or create it as a new item.",
+    "e3582f52": "The pay day is a day of the month, 1 to 31.",
+    "bee6bf0d": "A salary paid is undone on its pay period (Finance › Salaries), not here.",
+    "f3e3d63c": "Type the amount paid: more than zero.",
+    "4a4ae7bd": "The pay date cannot be in the future.",
+    "bc5d0425": "Choose the date the salary counts from (the contract date).",
+    "c2be7875": "This is not one of the employee’s pay periods: open the periods and choose one.",
+    "f33646bc": "Say how often the salary is paid (every month, every three months…).",
+    "43b3e3cd": "The salary must be zero or more.",
+    "3a09ee96": "This employee has no salary set yet: set it first (Finance › Salaries).",
+    "463da86b": "This period is already settled (paid or skipped).",
+    "abd89c9b": "Say what the expense is for.",
+    "5b5d4b64": "Pay period not found: it may have been undone already.",
+    "382311f5": "Expense not found: it may have been cancelled already."
   },
   "panel": {
     "close": "Close",
@@ -11010,5 +11034,142 @@
     "playFailed": "The recording could not be played.",
     "noRecorder": "This browser cannot record. Use Chrome or Edge on a computer with a microphone.",
     "hint": "A desk you add later needs its recording too; until then the TV’s own voice says that piece. The recordings are played on every screen set to “Staff recordings”."
+  },
+  "accounts": {
+    "title": "Finance",
+    "lead": "The clinic’s accounts: the money in against the money out, the employees’ salaries with every pay period of the year, the other expenses, and the printed reports.",
+    "tabs": {
+      "money": "The money",
+      "salaries": "Salaries",
+      "expenses": "Other expenses"
+    },
+    "cancel": "Cancel",
+    "reference": "Reference (receipt, transfer…)",
+    "intervals": {
+      "weekly": "Every week",
+      "fortnightly": "Every two weeks",
+      "monthly": "Every month",
+      "every2months": "Every two months",
+      "quarterly": "Every three months",
+      "halfyearly": "Every six months",
+      "yearly": "Every year"
+    },
+    "status": {
+      "due": "Due",
+      "overdue": "Overdue",
+      "paid": "Paid",
+      "skipped": "Skipped"
+    },
+    "money": {
+      "revenue": "Money in (revenue)",
+      "salaries": "Salaries paid",
+      "other": "Other expenses",
+      "stock": "Stock bought",
+      "net": "Net profit",
+      "salariesDue": "Salaries due in the period",
+      "how": "Money in = every payment taken ({{revenue}}) less the refunds ({{refunds}}). Net profit = money in less salaries, other expenses and the stock received at cost.",
+      "byMethod": "Money in by method",
+      "byMonth": "Month by month",
+      "month": "Month",
+      "none": "Nothing in this period."
+    },
+    "salaries": {
+      "year": "Year",
+      "title": "Salaries {{year}}",
+      "none": "No salary set yet: choose an employee below.",
+      "without": "Without a salary yet:",
+      "cols": {
+        "employee": "Employee",
+        "amount": "Salary (RWF)",
+        "interval": "Paid",
+        "nextDue": "Next pay date",
+        "paidYear": "Paid this year",
+        "periods": "Periods",
+        "period": "Period",
+        "dueOn": "Pay date",
+        "status": "Status",
+        "paid": "Paid"
+      },
+      "from": "from {{date}}",
+      "payDay": "pay day {{day}}",
+      "overdueCount_one": "{{count}} overdue",
+      "overdueCount_other": "{{count}} overdue",
+      "show": "Periods",
+      "hide": "Close",
+      "edit": "Change",
+      "markPaid": "Mark paid",
+      "skip": "Skip",
+      "undo": "Undo",
+      "reason": "Reason",
+      "setTitle": "Salary of {{name}}",
+      "anchor": "Counts from (contract date)",
+      "payDayField": "Pay day of the month (optional)",
+      "payDayPh": "e.g. 28",
+      "note": "Note (optional)",
+      "setHint": "The periods follow the contract date and the interval: paid monthly from 2 February is due on 2 March, 2 April… A pay day of the month moves every monthly or longer pay date to that day.",
+      "save": "Save the salary",
+      "saved": "Salary of {{name}} saved.",
+      "remove": "Remove the salary",
+      "removeTitle": "Remove the salary of {{name}}?",
+      "removeBody": "No more pay periods from now on; what was paid stays.",
+      "removeYes": "Remove",
+      "removed": "Salary of {{name}} removed.",
+      "payTitle": "Mark paid: {{name}} · {{period}}",
+      "paidOn": "Paid on",
+      "paidAmount": "Amount paid (RWF)",
+      "paidOk": "{{name}} marked paid on {{date}}; the expense is recorded.",
+      "undoTitle": "Undo the payment of {{name}}?",
+      "undoBody": "The period due on {{date}} becomes due again and its expense is cancelled.",
+      "undoYes": "Undo",
+      "undone": "Payment undone.",
+      "skipTitle": "Skip a period of {{name}}?",
+      "skipBody": "The period due on {{date}} will not be paid (unpaid leave, contract paused…).",
+      "skipYes": "Skip",
+      "skipped": "Period skipped.",
+      "errors": {
+        "amount": "Type the salary (zero or more).",
+        "anchor": "Choose the date the salary counts from.",
+        "paid": "Type the amount paid."
+      }
+    },
+    "expenses": {
+      "add": "Record an expense",
+      "label": "What for",
+      "labelPh": "e.g. Electricity, rent, cleaning",
+      "paidOn": "Paid on",
+      "save": "Record",
+      "added": "Expense recorded.",
+      "list": "Expenses of the period",
+      "none": "No expense in this period.",
+      "total": "Total {{amount}}",
+      "kind": "Kind",
+      "kinds": {
+        "salary": "Salary",
+        "other": "Other"
+      },
+      "void": "Cancel",
+      "voidTitle": "Cancel the expense “{{what}}”?",
+      "voidYes": "Cancel it",
+      "voided": "Expense cancelled.",
+      "voidedTag": "Cancelled: {{why}}",
+      "errors": {
+        "label": "Say what the expense is for.",
+        "amount": "Type the amount paid."
+      }
+    },
+    "report": {
+      "moneyTitle": "Money in and out",
+      "moneySummary": "Money in {{revenue}}, money out {{expenses}}, net profit {{net}}.",
+      "payrollTitle": "Payroll {{year}}",
+      "payrollSummary": "{{count}} employees with a salary; paid this year {{paid}}; still due {{due}}.",
+      "employees": "Employees",
+      "paidYear": "Paid this year",
+      "dueYear": "Still due this year",
+      "overduePeriods": "Overdue periods",
+      "salariesTable": "Salaries",
+      "periodsTable": "Pay periods",
+      "periodStart": "From",
+      "periodEnd": "To"
+    }
   }
 }

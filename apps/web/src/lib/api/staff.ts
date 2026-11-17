@@ -4,6 +4,7 @@ import { STAFF } from '@mmc/shared'
 import i18n from '@/i18n'
 import { isLive, reportSessionRefused, supabase } from '@/lib/supabase'
 import { apiError, isMissingFunction } from './errors'
+import { setSalaryQuietly, type SalaryInput } from './accounts'
 
 /** All roles the database knows (doc §1.4); the UI has designed homes for five of them. 0128: the
  *  role is the PROFESSION; 'manager' stays for accounts of a database before 0128 only (the clinic
@@ -132,6 +133,8 @@ export interface EmployeeInput {
   isManager?: boolean
   /** 0170: keeps the pharmacy stock (left out: unchanged). */
   isPharmacist?: boolean
+  /** 0179: the salary the manager sets when creating the employee (the accountant completes it). */
+  salary?: SalaryInput
   /** Every department with the position held there and what the person does there (0128); the
    *  first is the main one. */
   departments: {
@@ -582,6 +585,7 @@ export function useStaffActions() {
         },
       )
       if (input.isPharmacist) await setKeeper(made.id, true)
+      if (input.salary) await setSalaryQuietly(made.id, input.salary)
       return made
     },
     onSuccess: refresh,
@@ -672,6 +676,7 @@ export function useStaffActions() {
         confirm_code: confirmCode,
       })
       if (input.isPharmacist !== undefined) await setKeeper(id, input.isPharmacist)
+      if (input.salary) await setSalaryQuietly(id, input.salary)
     },
     onSuccess: refresh,
   })

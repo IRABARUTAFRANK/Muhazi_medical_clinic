@@ -189,6 +189,23 @@ export function useWording() {
         }
       // 0141: an ultrasound a colleague asks me to do
       // 0145: treatments made from a list with no cash price yet
+      // 0179: a salary due in a few days, or overdue
+      case 'salary_due':
+        return {
+          title: t('notify.salaryDue', { name: p.name ?? '', count: Number(p.days ?? 0) }),
+          body: t('notify.salaryBody', {
+            amount: formatRwf(Number(p.amount ?? 0)),
+            date: p.dueOn ? formatDate(new Date(String(p.dueOn))) : '',
+          }),
+        }
+      case 'salary_overdue':
+        return {
+          title: t('notify.salaryOverdue', { name: p.name ?? '', count: Number(p.days ?? 0) }),
+          body: t('notify.salaryBody', {
+            amount: formatRwf(Number(p.amount ?? 0)),
+            date: p.dueOn ? formatDate(new Date(String(p.dueOn))) : '',
+          }),
+        }
       case 'unpriced_treatments':
         return {
           title: t('notify.unpricedTreatments', { count: Number(p.count ?? 0) }),

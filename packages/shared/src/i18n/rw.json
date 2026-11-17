@@ -126,7 +126,8 @@
     },
     "myBookings": "Gahunda zanjye",
     "documents": "Inyandiko z’abarwayi",
-    "priceLists": "Intonde z’ibiciro n’ubwishingizi"
+    "priceLists": "Intonde z’ibiciro n’ubwishingizi",
+    "finance": "Imari"
   },
   "roles": {
     "receptionist": "Umwakiranyi",
@@ -844,7 +845,12 @@
       "doctorHereHint": "Ashyirwaho n’umuyobozi: muri iri shami uyu muntu afite ububasha bwose bwa muganga — dosiye mu ntambwe esheshatu, indwara zemejwe, amabwiriza ku baforomo, ibizamini, imiti, ibikorwa by’ubuvuzi, gusoza kwivuza — n’uburenganzira bwa muganga. Umwuga we ntuhinduka; ahandi nta kihinduka.",
       "doctorHereIsDoctor": "Muganga asanzwe afite ububasha bwose hano; aka kamenyetso kamushyiraho nka muganga w’iri shami.",
       "isPharmacist": "Acunga ububiko bwa farumasi (akora nka farumasiye)",
-      "isPharmacistHint": "Bimuha aho bakorera ha Farumasi hatitawe ku mashami: imiti yo gutanga, kugurisha abaje nta kwivuza, Kongera ububiko, ububiko bw’ibyumba na raporo z’ububiko, buri gikorwa mu izina rye."
+      "isPharmacistHint": "Bimuha aho bakorera ha Farumasi hatitawe ku mashami: imiti yo gutanga, kugurisha abaje nta kwivuza, Kongera ububiko, ububiko bw’ibyumba na raporo z’ububiko, buri gikorwa mu izina rye.",
+      "salaryTitle": "Umushahara (si itegeko: umucungamari awuzuza muri Imari)",
+      "salaryAmount": "Umushahara (RWF)",
+      "salaryInterval": "Ahembwa",
+      "salaryFrom": "Ubarwa guhera (itariki y’amasezerano)",
+      "salaryHint": "Amatariki yo guhemba akurikira itariki y’amasezerano n’uko ahembwa. Usige ubusa ubishyireho nyuma muri Imari › Imishahara."
     },
     "created": {
       "title": "Konti yafunguwe — biha {{name}} imbonankubone",
@@ -3784,7 +3790,12 @@
     "unpricedTreatmentsBody": "Buturutse kuri “{{list}}”: buhe igiciro muri Ibiciro › Ubuvuzi (Nta giciro cy’amafaranga) kugira ngo abarwayi bishyura amafaranga bishyuzwe. Abafite ubwishingizi basanzwe bishyura urutonde rwabo.",
     "apptOverdue": "Isaha yarenze: {{name}}",
     "apptOverdueRequest": "Isaha yasabwe yarenze: mwumvikane indi saha cyangwa wange icyifuzo.",
-    "apptOverdueBooking": "Umurwayi ntiyaje: andika ko atagaragaye, uhagarike gahunda cyangwa ufate indi."
+    "apptOverdueBooking": "Umurwayi ntiyaje: andika ko atagaragaye, uhagarike gahunda cyangwa ufate indi.",
+    "salaryDue_one": "Umushahara wa {{name}} ugomba kwishyurwa mu munsi {{count}}",
+    "salaryDue_other": "Umushahara wa {{name}} ugomba kwishyurwa mu minsi {{count}}",
+    "salaryOverdue_one": "Umushahara wa {{name}} watinze umunsi {{count}}",
+    "salaryOverdue_other": "Umushahara wa {{name}} watinze iminsi {{count}}",
+    "salaryBody": "{{amount}} · itariki yo guhemba {{date}}"
   },
   "identity": {
     "aria": "Winjiye: {{name}}"
@@ -8576,7 +8587,20 @@
     "e69735c5": "Inzira y’ijwi ntiri mu bubiko bw’amajwi.",
     "6ab2b8ad": "Ijwi ritazwi.",
     "3a3b16b3": "Iryo jwi ntiribaho.",
-    "aad443f8": "Uyu muti nturi ku rutonde na rumwe: uhitemo ku rutonde rwa RHIA cyangwa ku rutonde rwashyizwemo, cyangwa umuremo nk’igicuruzwa gishya."
+    "aad443f8": "Uyu muti nturi ku rutonde na rumwe: uhitemo ku rutonde rwa RHIA cyangwa ku rutonde rwashyizwemo, cyangwa umuremo nk’igicuruzwa gishya.",
+    "e3582f52": "Umunsi wo guhemba ni umunsi w’ukwezi, kuva kuri 1 kugeza kuri 31.",
+    "bee6bf0d": "Umushahara wishyuwe usubizwaho ku gihe cyawo cyo guhemba (Imari › Imishahara), si hano.",
+    "f3e3d63c": "Andika amafaranga yishyuwe: arenze zeru.",
+    "4a4ae7bd": "Itariki yo guhemba ntishobora kuba mu gihe kizaza.",
+    "bc5d0425": "Hitamo itariki umushahara ubarwa guhera (itariki y’amasezerano).",
+    "c2be7875": "Iki si kimwe mu bihe byo guhemba by’umukozi: fungura ibihe uhitemo kimwe.",
+    "f33646bc": "Vuga uko umushahara uhembwa (buri kwezi, buri mezi atatu…).",
+    "43b3e3cd": "Umushahara ugomba kuba zeru cyangwa irenze.",
+    "3a09ee96": "Uyu mukozi ntaragira umushahara: banza uwushyireho (Imari › Imishahara).",
+    "463da86b": "Iki gihe cyamaze gukemurwa (cyishyuwe cyangwa cyasimbutswe).",
+    "abd89c9b": "Vuga icyo isohoka ari icyo.",
+    "5b5d4b64": "Igihe cyo guhemba ntikibonetse: gishobora kuba cyarasubijweho.",
+    "382311f5": "Isohoka ntiribonetse: rishobora kuba ryarahagaritswe."
   },
   "panel": {
     "close": "Funga",
@@ -11019,5 +11043,142 @@
     "playFailed": "Ijwi ntiryashoboye gucurangwa.",
     "noRecorder": "Iyi mushakisha ntishobora gufata amajwi. Koresha Chrome cyangwa Edge kuri mudasobwa ifite mikoro.",
     "hint": "Aho bakorera hongewemo nyuma hakeneye ijwi ryaho na ho; kugeza icyo gihe ijwi rya televiziyo rivuga icyo gice. Amajwi acurangwa kuri buri ecran yashyizwe kuri “Amajwi yafashwe n’abakozi”."
+  },
+  "accounts": {
+    "title": "Imari",
+    "lead": "Ibaruramari ry’ivuriro: amafaranga yinjiye ugereranyije n’ayasohotse, imishahara y’abakozi hamwe na buri gihe cyo guhembwa mu mwaka, andi masohoka, na raporo zicapwa.",
+    "tabs": {
+      "money": "Amafaranga",
+      "salaries": "Imishahara",
+      "expenses": "Andi masohoka"
+    },
+    "cancel": "Reka",
+    "reference": "Inyandiko (risiti, kohereza…)",
+    "intervals": {
+      "weekly": "Buri cyumweru",
+      "fortnightly": "Buri byumweru bibiri",
+      "monthly": "Buri kwezi",
+      "every2months": "Buri mezi abiri",
+      "quarterly": "Buri mezi atatu",
+      "halfyearly": "Buri mezi atandatu",
+      "yearly": "Buri mwaka"
+    },
+    "status": {
+      "due": "Igomba kwishyurwa",
+      "overdue": "Yatinze",
+      "paid": "Yishyuwe",
+      "skipped": "Yasimbutswe"
+    },
+    "money": {
+      "revenue": "Amafaranga yinjiye",
+      "salaries": "Imishahara yishyuwe",
+      "other": "Andi masohoka",
+      "stock": "Ububiko bwaguzwe",
+      "net": "Inyungu nyayo",
+      "salariesDue": "Imishahara igomba kwishyurwa muri iki gihe",
+      "how": "Amafaranga yinjiye = buri bwishyu bwakiriwe ({{revenue}}) hakuwemo ayasubijwe ({{refunds}}). Inyungu nyayo = amafaranga yinjiye hakuwemo imishahara, andi masohoka n’ububiko bwakiriwe ku giciro bwaguzwe.",
+      "byMethod": "Amafaranga yinjiye ku buryo",
+      "byMonth": "Ukwezi ku kundi",
+      "month": "Ukwezi",
+      "none": "Nta kintu muri iki gihe."
+    },
+    "salaries": {
+      "year": "Umwaka",
+      "title": "Imishahara {{year}}",
+      "none": "Nta mushahara urashyirwaho: hitamo umukozi hepfo.",
+      "without": "Bataragira umushahara:",
+      "cols": {
+        "employee": "Umukozi",
+        "amount": "Umushahara (RWF)",
+        "interval": "Ahembwa",
+        "nextDue": "Itariki ikurikira yo guhemba",
+        "paidYear": "Yishyuwe uyu mwaka",
+        "periods": "Ibihe",
+        "period": "Igihe",
+        "dueOn": "Itariki yo guhemba",
+        "status": "Uko bimeze",
+        "paid": "Yishyuwe"
+      },
+      "from": "guhera {{date}}",
+      "payDay": "umunsi wo guhemba {{day}}",
+      "overdueCount_one": "{{count}} yatinze",
+      "overdueCount_other": "{{count}} zatinze",
+      "show": "Ibihe",
+      "hide": "Funga",
+      "edit": "Hindura",
+      "markPaid": "Shyiraho ko yishyuwe",
+      "skip": "Simbuka",
+      "undo": "Subizaho",
+      "reason": "Impamvu",
+      "setTitle": "Umushahara wa {{name}}",
+      "anchor": "Ubarwa guhera (itariki y’amasezerano)",
+      "payDayField": "Umunsi wo guhemba mu kwezi (si itegeko)",
+      "payDayPh": "urugero: 28",
+      "note": "Icyitonderwa (si itegeko)",
+      "setHint": "Ibihe bikurikira itariki y’amasezerano n’uko ahembwa: uhembwa buri kwezi guhera ku ya 2 Gashyantare, agomba guhembwa ku ya 2 Werurwe, ku ya 2 Mata… Umunsi wo guhemba mu kwezi wimurira buri itariki yo guhemba ya buri kwezi cyangwa irenze kuri uwo munsi.",
+      "save": "Bika umushahara",
+      "saved": "Umushahara wa {{name}} wabitswe.",
+      "remove": "Kuraho umushahara",
+      "removeTitle": "Kuraho umushahara wa {{name}}?",
+      "removeBody": "Nta bihe byo guhemba bizongera kubaho; ibyishyuwe biraguma.",
+      "removeYes": "Kuraho",
+      "removed": "Umushahara wa {{name}} wakuweho.",
+      "payTitle": "Shyiraho ko yishyuwe: {{name}} · {{period}}",
+      "paidOn": "Yishyuwe ku",
+      "paidAmount": "Amafaranga yishyuwe (RWF)",
+      "paidOk": "{{name}} yashyizweho ko yishyuwe ku {{date}}; isohoka ryanditswe.",
+      "undoTitle": "Gusubizaho ubwishyu bwa {{name}}?",
+      "undoBody": "Igihe cyagombaga kwishyurwa ku {{date}} kirongera kuba icyo kwishyurwa, isohoka ryacyo rigahagarikwa.",
+      "undoYes": "Subizaho",
+      "undone": "Ubwishyu bwasubijweho.",
+      "skipTitle": "Gusimbuka igihe cya {{name}}?",
+      "skipBody": "Igihe cyagombaga kwishyurwa ku {{date}} ntikizishyurwa (ikiruhuko kidahemberwa, amasezerano yahagaritswe…).",
+      "skipYes": "Simbuka",
+      "skipped": "Igihe cyasimbutswe.",
+      "errors": {
+        "amount": "Andika umushahara (zeru cyangwa irenze).",
+        "anchor": "Hitamo itariki umushahara ubarwa guhera.",
+        "paid": "Andika amafaranga yishyuwe."
+      }
+    },
+    "expenses": {
+      "add": "Andika isohoka",
+      "label": "Icyo ari icyo",
+      "labelPh": "urugero: Amashanyarazi, ubukode, isuku",
+      "paidOn": "Yishyuwe ku",
+      "save": "Andika",
+      "added": "Isohoka ryanditswe.",
+      "list": "Amasohoka y’iki gihe",
+      "none": "Nta sohoka muri iki gihe.",
+      "total": "Igiteranyo {{amount}}",
+      "kind": "Ubwoko",
+      "kinds": {
+        "salary": "Umushahara",
+        "other": "Irindi"
+      },
+      "void": "Hagarika",
+      "voidTitle": "Guhagarika isohoka “{{what}}”?",
+      "voidYes": "Rihagarike",
+      "voided": "Isohoka ryahagaritswe.",
+      "voidedTag": "Ryahagaritswe: {{why}}",
+      "errors": {
+        "label": "Vuga icyo isohoka ari icyo.",
+        "amount": "Andika amafaranga yishyuwe."
+      }
+    },
+    "report": {
+      "moneyTitle": "Amafaranga yinjiye n’ayasohotse",
+      "moneySummary": "Yinjiye {{revenue}}, yasohotse {{expenses}}, inyungu nyayo {{net}}.",
+      "payrollTitle": "Urutonde rw’imishahara {{year}}",
+      "payrollSummary": "Abakozi {{count}} bafite umushahara; yishyuwe uyu mwaka {{paid}}; igisigaye {{due}}.",
+      "employees": "Abakozi",
+      "paidYear": "Yishyuwe uyu mwaka",
+      "dueYear": "Igisigaye uyu mwaka",
+      "overduePeriods": "Ibihe byatinze",
+      "salariesTable": "Imishahara",
+      "periodsTable": "Ibihe byo guhemba",
+      "periodStart": "Kuva",
+      "periodEnd": "Kugeza"
+    }
   }
 }

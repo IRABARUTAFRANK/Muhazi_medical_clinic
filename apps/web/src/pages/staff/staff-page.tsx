@@ -25,6 +25,7 @@ import {
   Wand2,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { SALARY_INTERVALS, type SalaryInterval } from '@/lib/api/accounts'
 import { useSearch } from '@tanstack/react-router'
 import { formatDate, formatTime, type StaffUser } from '@mmc/shared'
 import { PageBanner } from '@/components/dash/page-banner'
@@ -1378,6 +1379,10 @@ function EmployeeForm({
   const [isManager, setIsManager] = useState(employee?.isManager ?? false)
   // 0170: keeps the pharmacy stock (acts as the pharmacist)
   const [isPharmacist, setIsPharmacist] = useState(employee?.isPharmacist ?? false)
+  // 0179: the salary at creation (optional): amount, how often, the date it counts from
+  const [salaryAmount, setSalaryAmount] = useState('')
+  const [salaryInterval, setSalaryInterval] = useState<SalaryInterval>('monthly')
+  const [salaryFrom, setSalaryFrom] = useState('')
   // Every department of the employee with the position held there and what they do there (0128,
   // "Does here"); the first is the main one.
   type Line = { departmentId: string; position: Position; services: string[]; doctorHere: boolean }
@@ -1517,6 +1522,16 @@ function EmployeeForm({
         role,
         isManager,
         isPharmacist,
+        ...(salaryAmount && salaryFrom
+          ? {
+              salary: {
+                amount: Number(salaryAmount),
+                interval: salaryInterval,
+                anchorOn: salaryFrom,
+                payDay: null,
+              },
+            }
+          : {}),
         departments: chosen.map((m) => {
           const d = departments.find((x) => x.id === m.departmentId)
           return {
@@ -1682,6 +1697,38 @@ function EmployeeForm({
           </p>
         </div>
       </div>
+      {/* 0179: the salary, set here by the manager when creating (the accountant completes it on Finance) */}
+      {!employee && (
+        <div className="border-border flex flex-col gap-2 rounded-md border px-3 py-2.5">
+          <span className="block font-medium">{t('staff.form.salaryTitle')}</span>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <Field
+              label={t('staff.form.salaryAmount')}
+              inputMode="numeric"
+              value={salaryAmount}
+              onChange={(e) => setSalaryAmount(e.target.value.replace(/[^\d]/g, ''))}
+            />
+            <Select
+              label={t('staff.form.salaryInterval')}
+              value={salaryInterval}
+              onChange={(e) => setSalaryInterval(e.target.value as SalaryInterval)}
+            >
+              {SALARY_INTERVALS.map((k) => (
+                <option key={k} value={k}>
+                  {t(`accounts.intervals.${k}`)}
+                </option>
+              ))}
+            </Select>
+            <Field
+              label={t('staff.form.salaryFrom')}
+              type="date"
+              value={salaryFrom}
+              onChange={(e) => setSalaryFrom(e.target.value)}
+            />
+          </div>
+          <span className="text-ink-3 block text-[13px]">{t('staff.form.salaryHint')}</span>
+        </div>
+      )}
       {/* 0170: keeps the pharmacy stock: the Pharmacy desk whatever the departments */}
       <label
         className={cn(

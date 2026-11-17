@@ -7,6 +7,7 @@ import type { DashboardData } from '@/lib/api/dashboard'
 import type { CashierSummary } from '@/lib/api/finance'
 import type { LabOrder, LabSummary } from '@/lib/api/lab'
 import { isLowStock, type StockItem, type StockMovement, type StockSales } from '@/lib/api/stock'
+import type { FinanceSummary, SalaryOverview } from '@/lib/api/accounts'
 import { docDate, kigaliParts, makeDocLabels } from '@/lib/doc-style'
 import type {
   Cell,
@@ -970,5 +971,183 @@ export function visitsListReport(
       closed: v.closed,
     }),
     sections: [{ name: tx('documents.visitsTitle', 'Visits treated'), tables }],
+  }
+}
+
+/** 0179: the money in against the money out of a period, by method and by month. */
+export function financeMoneyReport(
+  s: FinanceSummary,
+  clinic: ClinicProfile,
+  user: StaffUser,
+  t: TFn,
+  method: (m: string) => string,
+): Report {
+  const base = common(t, clinic, user)
+  const figures: ReportFigure[] = [
+    { label: t('accounts.money.revenue'), value: Math.round(s.netRevenue), unit: 'RWF' },
+    { label: t('accounts.money.salaries'), value: Math.round(s.salaries), unit: 'RWF' },
+    { label: t('accounts.money.other'), value: Math.round(s.otherExpenses), unit: 'RWF' },
+    { label: t('accounts.money.stock'), value: Math.round(s.stockBought), unit: 'RWF' },
+    { label: t('accounts.money.net'), value: Math.round(s.net), unit: 'RWF' },
+  ]
+  return {
+    ...base,
+    title: t('accounts.report.moneyTitle'),
+    period: periodOf(s.from, s.to, t),
+    code: 'FIN',
+    periodKey: periodKeyOf(s.from, s.to),
+    fileName: stem('finance', s.from, s.to),
+    figures,
+    summaryText: t('accounts.report.moneySummary', {
+      revenue: formatRwf(Math.round(s.netRevenue)),
+      expenses: formatRwf(Math.round(s.expenses)),
+      net: formatRwf(Math.round(s.net)),
+    }),
+    sections: [
+      {
+        name: t('accounts.tabs.money'),
+        tables: [
+          {
+            title: t('accounts.money.byMethod'),
+            columns: [
+              { label: t('report.cols.method') },
+              { label: t('report.cols.count'), kind: 'number' },
+              { label: t('report.cols.amount'), kind: 'money' },
+            ],
+            rows: s.byMethod.map((x) => [method(x.method), x.count, x.amount]),
+            totals: [1, 2],
+          },
+          {
+            title: t('accounts.money.byMonth'),
+            columns: [
+              { label: t('accounts.money.month'), nowrap: true },
+              { label: t('accounts.money.revenue'), kind: 'money' },
+              { label: t('accounts.money.salaries'), kind: 'money' },
+              { label: t('accounts.money.other'), kind: 'money' },
+              { label: t('accounts.money.stock'), kind: 'money' },
+              { label: t('accounts.money.net'), kind: 'money', boldNegative: true },
+            ],
+            rows: s.byMonth.map((m) => [
+              m.month,
+              m.revenue - m.refunds,
+              m.salaries,
+              m.other,
+              m.stock,
+              m.revenue - m.refunds - m.salaries - m.other - m.stock,
+            ]),
+            totals: [1, 2, 3, 4, 5],
+          },
+        ],
+      },
+    ],
+  }
+}
+
+/** 0179: the payroll of a year: every employee's salary and each pay period paid or not. */
+export function payrollReport(
+  o: SalaryOverview,
+  clinic: ClinicProfile,
+  user: StaffUser,
+  t: TFn,
+): Report {
+  const base = common(t, clinic, user)
+  const method = base.doc.method
+  const from = `${o.year}-01-01`
+  const to = `${o.year}-12-31`
+  const paid = o.people.reduce((s, p) => s + p.paidThisYear, 0)
+  const due = o.people.reduce(
+    (s, p) =>
+      s +
+      p.periods
+        .filter((x) => x.status === 'due' || x.status === 'overdue')
+        .reduce((a, x) => a + x.amount, 0),
+    0,
+  )
+  const overdue = o.people.reduce((s, p) => s + p.overdue, 0)
+  const figures: ReportFigure[] = [
+    { label: t('accounts.report.employees'), value: o.people.length },
+    { label: t('accounts.report.paidYear'), value: Math.round(paid), unit: 'RWF' },
+    { label: t('accounts.report.dueYear'), value: Math.round(due), unit: 'RWF' },
+    { label: t('accounts.report.overduePeriods'), value: overdue },
+  ]
+  const rows: Cell[][] = []
+  for (const p of o.people)
+    for (const x of p.periods)
+      rows.push([
+        p.name,
+        t(`staff.roles.${p.role}`, { defaultValue: p.role }),
+        x.periodStart,
+        x.periodEnd,
+        x.dueOn,
+        x.amount,
+        t(`accounts.status.${x.status}`),
+        x.paidOn,
+        x.paidAmount,
+        x.method ? method(x.method) : null,
+        x.reference,
+        x.paidBy,
+      ])
+  return {
+    ...base,
+    title: t('accounts.report.payrollTitle', { year: o.year }),
+    period: periodOf(from, to, t),
+    code: 'PAY',
+    periodKey: periodKeyOf(from, to),
+    fileName: stem('payroll', from, to),
+    figures,
+    summaryText: t('accounts.report.payrollSummary', {
+      count: o.people.length,
+      paid: formatRwf(Math.round(paid)),
+      due: formatRwf(Math.round(due)),
+    }),
+    orientation: 'landscape',
+    sections: [
+      {
+        name: t('accounts.tabs.salaries'),
+        tables: [
+          {
+            title: t('accounts.report.salariesTable'),
+            columns: [
+              { label: t('accounts.salaries.cols.employee'), pdfWidth: '22%' },
+              { label: t('report.cols.role'), nowrap: true },
+              { label: t('accounts.salaries.cols.amount'), kind: 'money' },
+              { label: t('accounts.salaries.cols.interval') },
+              { label: t('accounts.salaries.anchor'), kind: 'date' },
+              { label: t('accounts.salaries.cols.paidYear'), kind: 'money' },
+              { label: t('accounts.report.overduePeriods'), kind: 'number' },
+            ],
+            rows: o.people.map((p) => [
+              p.name,
+              t(`staff.roles.${p.role}`, { defaultValue: p.role }),
+              p.amount,
+              t(`accounts.intervals.${p.intervalKind}`),
+              p.anchorOn,
+              p.paidThisYear,
+              p.overdue,
+            ]),
+            totals: [5, 6],
+          },
+          {
+            title: t('accounts.report.periodsTable'),
+            columns: [
+              { label: t('accounts.salaries.cols.employee'), pdfWidth: '16%' },
+              { label: t('report.cols.role'), nowrap: true },
+              { label: t('accounts.report.periodStart'), kind: 'date' },
+              { label: t('accounts.report.periodEnd'), kind: 'date' },
+              { label: t('accounts.salaries.cols.dueOn'), kind: 'date' },
+              { label: t('accounts.salaries.cols.amount'), kind: 'money' },
+              { label: t('accounts.salaries.cols.status'), nowrap: true },
+              { label: t('accounts.salaries.paidOn'), kind: 'date' },
+              { label: t('accounts.salaries.paidAmount'), kind: 'money' },
+              { label: t('report.cols.method'), nowrap: true },
+              { label: t('report.cols.reference'), under: true },
+              { label: t('report.cols.by'), nowrap: true },
+            ],
+            rows,
+            totals: [5, 8],
+          },
+        ],
+      },
+    ],
   }
 }

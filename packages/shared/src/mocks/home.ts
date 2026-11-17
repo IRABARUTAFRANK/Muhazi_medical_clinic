@@ -165,7 +165,13 @@ export const ROLE_HOME: Record<HomeRole, RoleHome> = {
   },
   cashier: {
     station: 'Cashier',
-    nav: [nav('home', 'home', '/app'), nav('bills', 'receipt'), nav('payments', 'wallet')],
+    // 0179: the cashier is the clinic's accountant: the Finance page (salaries, expenses, the money)
+    nav: [
+      nav('home', 'home', '/app'),
+      nav('bills', 'receipt'),
+      nav('payments', 'wallet'),
+      nav('finance', 'banknote'),
+    ],
     queue: [
       q('A-006', 'Iradukunda Sandrine', '35 F', 'green', 9, 'Cash'),
       q('A-011', 'Rukundo Kevin', '24 M', 'green', 7, 'MTN MoMo'),
