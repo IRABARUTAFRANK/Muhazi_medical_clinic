@@ -11434,7 +11434,8 @@
         "fixed": "Un montant fixé par période : la patente au 31 janvier (ou par trimestre), une redevance.",
         "withheld": "Impôt retenu par un payeur avant de payer la clinique (3 % sur un marché public). Marquer une période payée enregistre un crédit, pas une sortie d’argent : il se déduit de l’impôt annuel.",
         "other": "Tout autre impôt avec son propre calendrier."
-      }
+      },
+      "kindRule": "Seul un impôt de nature « Sur le bénéfice » compte contre l’impôt sur le revenu estimé dans la base imposable ; les autres natures sont listées à part."
     },
     "kinds": {
       "kind": "Nature",
@@ -11607,7 +11608,16 @@
       "stillToPay": "Estimation restant à payer",
       "paidKind": "Payé : {{kind}}",
       "taxesPaid": "Impôts payés cette année (toutes natures)",
-      "hint": "Le bénéfice imposable de la déclaration peut différer du résultat avant impôts : amortissements, dépenses non admises, revenus non imposés. Le comptable ajuste et déclare ; le système garde les chiffres et les paiements."
+      "hint": "Le bénéfice imposable de la déclaration peut différer du résultat avant impôts : amortissements, dépenses non admises, revenus non imposés. Le comptable ajuste et déclare ; le système garde les chiffres et les paiements.",
+      "incomeTax": "Impôt sur le revenu (sur le bénéfice)",
+      "noneOnProfit": "Aucun paiement sur un impôt de nature « Sur le bénéfice » cette année.",
+      "otherTaxes": "Autres impôts payés, par nature",
+      "oneOff": "Impôts ponctuels enregistrés dans Autres dépenses",
+      "noneOther": "Aucun autre impôt payé cette année.",
+      "otherTotal": "Autres impôts payés, total",
+      "allTaxes": "Tous les impôts",
+      "incomeTaxPaid": "Impôt sur le revenu payé",
+      "kindRule": "Seuls les paiements des impôts de nature « Sur le bénéfice » sont déduits de l’impôt sur le revenu estimé ; chaque autre nature est listée à part avec son total."
     }
   }
 }

@@ -11434,7 +11434,8 @@
         "fixed": "A set amount per period: the trading licence by 31 January (or quarterly), a fee.",
         "withheld": "Tax retained by a payer before paying the clinic (3% on a public tender). Marking a period paid records a credit, not money out: it is deducted from the annual income tax.",
         "other": "Any other tax with its own schedule."
-      }
+      },
+      "kindRule": "Only a tax of kind “On the profit” counts against the estimated income tax in the Tax base; the other kinds are listed apart."
     },
     "kinds": {
       "kind": "Kind",
@@ -11607,7 +11608,16 @@
       "stillToPay": "Estimated still to pay",
       "paidKind": "Paid: {{kind}}",
       "taxesPaid": "Taxes paid this year (all kinds)",
-      "hint": "The taxable profit of the declaration may differ from the result before tax: depreciation, expenses the law does not accept, income not taxed. The accountant adjusts and declares; the system keeps the figures and the payments."
+      "hint": "The taxable profit of the declaration may differ from the result before tax: depreciation, expenses the law does not accept, income not taxed. The accountant adjusts and declares; the system keeps the figures and the payments.",
+      "incomeTax": "Income tax (on the profit)",
+      "noneOnProfit": "No payment on a tax of kind “On the profit” this year.",
+      "otherTaxes": "Other taxes paid, by kind",
+      "oneOff": "One-off taxes recorded on Other expenses",
+      "noneOther": "No other tax paid this year.",
+      "otherTotal": "Other taxes paid, total",
+      "allTaxes": "All taxes",
+      "incomeTaxPaid": "Income tax paid",
+      "kindRule": "Only the payments of taxes of kind “On the profit” are taken off the estimated income tax; every other kind is listed apart with its total."
     }
   }
 }

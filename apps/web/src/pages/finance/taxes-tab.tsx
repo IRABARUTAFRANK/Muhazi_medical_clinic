@@ -513,7 +513,7 @@ function TaxForm({
             ))}
           </Select>
           <p className="text-ink-3 m-0 text-[13px] sm:col-span-2">
-            {t(`accounts.taxes.kindHints.${kind}`)}
+            {t(`accounts.taxes.kindHints.${kind}`)} {t('accounts.taxes.kindRule')}
           </p>
           <Field
             label={t('accounts.taxes.amountField')}

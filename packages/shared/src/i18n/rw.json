@@ -11443,7 +11443,8 @@
         "fixed": "Umubare washyizweho kuri buri gihe: patanti ku ya 31 Mutarama (cyangwa buri gihembwe), amahoro.",
         "withheld": "Umusoro ufatirwa n’uwishyura mbere yo kwishyura kiliniki (3% ku isoko rya Leta). Gushyiraho ko igihe cyishyuwe byandika inguzanyo y’umusoro, si amafaranga yasohotse: ikurwa ku musoro w’umwaka.",
         "other": "Undi musoro wose ufite gahunda yawo."
-      }
+      },
+      "kindRule": "Umusoro w’ubwoko “Ku nyungu” ni wo wonyine ubarirwa ku musoro ku nyungu ugereranyijwe mu Ishingiro ry’umusoro; ubundi bwoko bugaragazwa ukwabwo."
     },
     "kinds": {
       "kind": "Ubwoko",
@@ -11616,7 +11617,16 @@
       "stillToPay": "Igereranyo ry’igisigaye kwishyurwa",
       "paidKind": "Yishyuwe: {{kind}}",
       "taxesPaid": "Imisoro yishyuwe uyu mwaka (ubwoko bwose)",
-      "hint": "Inyungu isoreshwa yo mu itangazo ishobora gutandukana n’umusaruro mbere y’imisoro: ubushyuhe bw’ibikoresho, amasohoka amategeko atemera, amafaranga yinjiye adasoreshwa. Umucungamari arahindura agatangaza; sisitemu ibika imibare n’ubwishyu."
+      "hint": "Inyungu isoreshwa yo mu itangazo ishobora gutandukana n’umusaruro mbere y’imisoro: ubushyuhe bw’ibikoresho, amasohoka amategeko atemera, amafaranga yinjiye adasoreshwa. Umucungamari arahindura agatangaza; sisitemu ibika imibare n’ubwishyu.",
+      "incomeTax": "Umusoro ku nyungu",
+      "noneOnProfit": "Nta bwishyu ku musoro w’ubwoko “Ku nyungu” uyu mwaka.",
+      "otherTaxes": "Indi misoro yishyuwe, ku bwoko",
+      "oneOff": "Imisoro yishyuwe rimwe yanditswe mu Yandi masohoka",
+      "noneOther": "Nta wundi musoro wishyuwe uyu mwaka.",
+      "otherTotal": "Indi misoro yishyuwe, igiteranyo",
+      "allTaxes": "Imisoro yose",
+      "incomeTaxPaid": "Umusoro ku nyungu wishyuwe",
+      "kindRule": "Ubwishyu bw’imisoro y’ubwoko “Ku nyungu” ni bwo bwonyine bukurwa ku musoro ku nyungu ugereranyijwe; ubundi bwoko bwose bugaragazwa ukwabwo n’igiteranyo cyabwo."
     }
   }
 }
