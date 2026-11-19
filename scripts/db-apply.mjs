@@ -74,10 +74,18 @@ try {
       console.log(`would  ${f}`)
       continue
     }
-    await sql.begin(async (tx) => {
-      await tx.unsafe(body)
-      await tx`insert into mmc_migrations (name) values (${f})`
-    })
+    try {
+      await sql.begin(async (tx) => {
+        await tx.unsafe(body)
+        await tx`insert into mmc_migrations (name) values (${f})`
+      })
+    } catch (e) {
+      // say which file and what the database answered; nothing of this file was kept
+      console.error(`FAILED ${f}: ${e?.message ?? e}`)
+      if (e?.position) console.error(`  at character ${e.position} of the file`)
+      process.exitCode = 1
+      break
+    }
     console.log(`applied ${f}`)
   }
   if (withSeed && !dryRun) {
@@ -93,6 +101,10 @@ try {
     await sql`select count(*)::int as n from pg_tables where schemaname = 'public'`
   )[0].n
   console.log(`done · ${tables} tables in public`)
+} catch (e) {
+  console.error(`db:apply failed: ${e?.message ?? e}`)
+  process.exitCode = 1
 } finally {
-  await sql.end()
+  // a connection left in a bad state must not keep the process alive without a word
+  await sql.end({ timeout: 5 })
 }
