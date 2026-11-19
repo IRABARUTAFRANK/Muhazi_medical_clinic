@@ -9317,7 +9317,7 @@
       "agency": "Ikigo",
       "deductions": "Ibikurwaho",
       "people": "Abakozi",
-      "withheld": "Byakuwemo",
+      "withheld": "Byakuwe ku bakozi",
       "employerShare": "Umugabane wa kiliniki",
       "taxKind": "Ubwoko"
     },
@@ -9471,7 +9471,7 @@
       "incomeTotal": "Amafaranga yinjiye",
       "moneyIn": "Amafaranga yinjiye",
       "taxesApart": "Imisoro yishyuwe (ukwayo)",
-      "withheld": "Byakuwemo",
+      "withheld": "Byakuwe ku bakozi",
       "employerShare": "Umugabane wa kiliniki",
       "remitDue": "Bitaroherezwa"
     },
@@ -9520,10 +9520,10 @@
       "note2": "Ibyakuweho bisigara hanze keretse “Shyiramo ibyakuweho” gishyizweho akamenyetso."
     },
     "remittances": {
-      "title": "Ibyoherezwa bivuye ku mishahara",
-      "description": "Ku kwezi no ku kigo: PAYE yakuwemo ya RRA, imisanzu ya RSSB yakuwemo n’umugabane wa kiliniki, bigomba kwishyurwa, byishyuwe cyangwa byasimbutswe.",
+      "title": "PAYE na RSSB byoherejwe",
+      "description": "Ku kwezi: PAYE yakuwe ku mishahara ya RRA, imisanzu ya RSSB yakuwemo n’umugabane wa kiliniki, bigomba kwishyurwa, byishyuwe cyangwa byasimbutswe.",
       "note1": "Umurongo umwe ku kwezi no ku kigo, ushyizweho itariki yo kwishyura (ku ya 15 y’ukwezi gukurikira). Bibarwa ku mishahara yishyuwe mu kwezi.",
-      "note2": "Byakuwemo: byakuwe ku bakozi; umugabane wa kiliniki: wongeweho na kiliniki kandi usanzwe mu masohoka y’imishahara."
+      "note2": "Byakuwe ku bakozi: byakuwe ku mushahara wabo; umugabane wa kiliniki: wongeweho na kiliniki kandi usanzwe mu masohoka y’imishahara."
     }
   },
   "staffReports": {
@@ -11209,7 +11209,7 @@
       "salaries": "Imishahara",
       "expenses": "Andi masohoka",
       "taxes": "Imisoro",
-      "setup": "Ubwoko n’ibikurwa ku mushahara"
+      "setup": "Ubwoko bw’amafaranga n’ibikurwa ku mishahara"
     },
     "cancel": "Reka",
     "reference": "Inyandiko (risiti, kohereza…)",
@@ -11245,7 +11245,7 @@
       "taxes": "Imisoro yishyuwe",
       "taxesDue": "Imisoro igomba kwishyurwa muri icyo gihe",
       "otherIncome": "Andi mafaranga yinjiye",
-      "staffCost": "Imishahara n’imisanzu",
+      "staffCost": "Imishahara n’umugabane wa kiliniki muri RSSB",
       "byKindIn": "Amafaranga yinjiye ku bwoko",
       "byKindOut": "Amafaranga yasohotse ku bwoko",
       "taxesApart": "Imisoro, ukwayo",
@@ -11326,11 +11326,11 @@
       "net": "Usigaye wo kwishyurwa",
       "netPaid": "Usigaye wishyuwe (RWF)",
       "deductionsTotal": "Ibikuwemo",
-      "employerShare": "Imisanzu ya kiliniki",
+      "employerShare": "Byongerwaho na kiliniki (RSSB)",
       "payslip": "Urupapuro rw’umushahara",
       "payslipTitle": "Urupapuro rw’umushahara: {{name}} · {{period}}",
-      "payslipHint": "Igiciro kuri kiliniki {{cost}} (mbumbe hiyongereyeho imisanzu ya kiliniki); {{withheld}} byakuwemo, byoherezwa n’ibyoherezwa by’ukwezi.",
-      "payNetHint": "Mbumbe {{gross}}, {{withheld}} byakuwemo (PAYE n’ibikurwaho), imisanzu ya kiliniki {{employer}} yanditswe ukwayo. Ibyakuwemo bijya kuri RRA na RSSB n’ibyoherezwa by’ukwezi mu gice cy’Imisoro."
+      "payslipHint": "Igiciro kuri kiliniki {{cost}} (mbumbe hiyongereyeho ibyo kiliniki yongeraho); {{withheld}} byakuwemo, byoherezwa kuri RRA na RSSB n’ubwishyu bw’ukwezi.",
+      "payNetHint": "Mbumbe {{gross}}, {{withheld}} byakuwemo (PAYE n’ibindi), umugabane wa kiliniki {{employer}} wanditswe ukwawo. Ibyakuwemo bijya kuri RRA na RSSB n’ubwishyu bw’ukwezi mu gice cy’Imisoro."
     },
     "expenses": {
       "add": "Andika isohoka",
@@ -11431,11 +11431,11 @@
       },
       "kindField": "Ubwoko bw’umusoro",
       "kinds": {
-        "profit": "Ku nyungu",
-        "turnover": "Ku byacurujwe",
-        "fixed": "Umubare udahinduka",
-        "withheld": "Ufatirwa aho uturuka",
-        "other": "Undi"
+        "profit": "Umusoro ku nyungu",
+        "turnover": "Umusoro w’igipimo kimwe ku byagurishijwe (3%)",
+        "fixed": "Umubare udahinduka (patanti, amahoro)",
+        "withheld": "Ufatirwa n’uwishyura (3% ku masoko)",
+        "other": "Undi musoro"
       },
       "kindHints": {
         "profit": "Umusoro ku nyungu (CIT, 28% by’inyungu isoreshwa): ibyishyurwa mbere bitatu bya buri gihembwe ku ya 30 Kamena, 30 Nzeri na 31 Ukuboza, igisigaye ku ya 31 Werurwe. Siga umubare ubusa wandike buri mubare watangajwe igihe cyo kwishyura.",
@@ -11488,8 +11488,8 @@
         "bills": "Fagitire z’abarwayi",
         "walkin": "Ibigurishwa ku isanduku",
         "salary": "Imishahara",
-        "statutory": "Imisanzu ya kiliniki",
-        "remittance": "Ibyoherejwe bivuye ku mishahara",
+        "statutory": "Umugabane wa kiliniki wishyurwa RSSB",
+        "remittance": "PAYE na RSSB byoherejwe",
         "stock": "Ububiko bwaguzwe",
         "tax": "Imisoro",
         "other": "Andi masohoka"
@@ -11523,8 +11523,8 @@
       "payeBands": "Ibyiciro bya PAYE",
       "cols": {
         "name": "Igikurwaho",
-        "employee": "Umukozi yishyura",
-        "employer": "Kiliniki yongeraho",
+        "employee": "Bikurwa ku mukozi",
+        "employer": "Byongerwaho na kiliniki",
         "default": "Bireba"
       },
       "agency": "Byishyurwa",
@@ -11581,25 +11581,25 @@
         "bands": "Buri cyiciro gikeneye imbibi yo hasi n’ijanisha riri hagati ya 0 na 100."
       },
       "builtinNames": {
-        "paye": "PAYE (umusoro ku musaruro)",
-        "pension": "Pansiyo ya RSSB",
-        "maternity": "Ikigega cy’ikiruhuko cyo kubyara",
+        "paye": "PAYE (umusoro ku mishahara)",
+        "pension": "Pansiyo (RSSB)",
+        "maternity": "Ikiruhuko cyo kubyara (RSSB)",
         "cbhi": "Mituweli y’ubuzima (CBHI)",
-        "hazard": "Impanuka zo ku kazi",
-        "rama": "Ubwishingizi bw’indwara bwa RSSB (RAMA)"
+        "hazard": "Ubwishingizi bw’impanuka zo ku kazi (RSSB)",
+        "rama": "Ubwishingizi bw’indwara (RSSB RAMA)"
       }
     },
     "remittances": {
-      "title": "Ibyoherezwa bivuye ku mishahara {{year}}",
-      "lead": "Ku kwezi no ku kigo: ibyakuwe ku mishahara yishyuwe mu kwezi n’umugabane wa kiliniki, bigomba kwishyurwa ku ya 15 y’ukwezi gukurikira. Bibarwa ku mpapuro z’umushahara.",
+      "title": "PAYE na RSSB byo koherezwa {{year}}",
+      "lead": "Ku kwezi: ibyakuwe ku mishahara yishyuwe mu kwezi (PAYE ya RRA; pansiyo, kubyara, Mituweli bya RSSB) n’umugabane wa kiliniki, bigomba kwishyurwa ku ya 15 y’ukwezi gukurikira. Bibarwa ku mpapuro z’umushahara, ntibyandikwa.",
       "none": "Nta mushahara urishyurwa ufite ibikuwemo.",
-      "withheld": "Byakuwemo",
+      "withheld": "Byakuwe ku bakozi",
       "employer": "Umugabane wa kiliniki",
       "total": "Byo koherezwa",
       "people_one": "umukozi {{count}}",
       "people_other": "abakozi {{count}}",
       "payTitle": "Shyiraho ko byoherejwe: {{name}}",
-      "payHint": "Ibyakuwemo {{withheld}} byandikwa nk’amafaranga yasohotse ubu; umugabane wa kiliniki {{employer}} wanditswe n’imishahara. Andika ibyishyuwe nyabyo.",
+      "payHint": "Ibyakuwe ku bakozi ({{withheld}}) byandikwa nk’amafaranga yasohotse ubu; umugabane wa kiliniki ({{employer}}) wanditswe n’imishahara. Andika ibyishyuwe nyabyo.",
       "paidOk": "{{name}} byashyizweho ko byoherejwe ku ya {{date}}.",
       "undoTitle": "Gusubizaho ibyoherejwe {{name}}?",
       "skipTitle": "Gusimbuka ibyoherezwa {{name}}?"
@@ -11612,8 +11612,8 @@
       "rate": "Igipimo %",
       "rateHint": "U Rwanda: 28% by’inyungu isoreshwa; 3% by’ibyacurujwe ku bucuruzi buto.",
       "estimate": "Umusoro ku nyungu ugereranyijwe kuri {{rate}}%",
-      "withheld": "Hakuwemo: ufatirwa aho uturuka (inguzanyo)",
-      "paidOnProfit": "Hakuwemo: ibyishyuwe mbere n’igisigaye cyishyuwe",
+      "withheld": "Hakuwemo: ufatirwa n’abishyura ku masoko (inguzanyo)",
+      "paidOnProfit": "Hakuwemo: umusoro ku nyungu wamaze kwishyurwa",
       "stillToPay": "Igereranyo ry’igisigaye kwishyurwa",
       "paidKind": "Yishyuwe: {{kind}}",
       "taxesPaid": "Imisoro yishyuwe uyu mwaka (ubwoko bwose)",
@@ -11626,9 +11626,9 @@
       "otherTotal": "Indi misoro yishyuwe, igiteranyo",
       "allTaxes": "Imisoro yose",
       "incomeTaxPaid": "Umusoro ku nyungu wishyuwe",
-      "kindRule": "Ubwishyu bw’imisoro y’ubwoko “Ku nyungu” ni bwo bwonyine bukurwa ku musoro ku nyungu ugereranyijwe; ubundi bwoko bwose bugaragazwa ukwabwo n’igiteranyo cyabwo.",
+      "kindRule": "Ubwishyu bw’imisoro y’ubwoko “Umusoro ku nyungu” ni bwo bwonyine bukurwa ku igereranyo; ubundi bwoko bwose bugaragazwa ukwabwo n’igiteranyo cyabwo.",
       "yearFigures": "Imibare y’umwaka",
-      "title2": "Ishingiro ry’umusoro",
+      "title2": "Igereranyo ry’umusoro ku nyungu",
       "periodFigures": "Imibare y’igihe",
       "taxesPaid2": "Imisoro yishyuwe muri icyo gihe (ubwoko bwose)"
     }

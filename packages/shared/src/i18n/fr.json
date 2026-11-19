@@ -9302,13 +9302,13 @@
       "otherIncome": "Autres entrées",
       "moneyIn": "Argent entré",
       "gross": "Brut",
-      "deductionsTotal": "Retenues",
+      "deductionsTotal": "Retenu",
       "employerTotal": "Part de la clinique",
       "payeMode": "PAYE (impôt)",
       "agency": "Organisme",
       "deductions": "Retenues",
       "people": "Employés",
-      "withheld": "Retenu",
+      "withheld": "Retenu aux employés",
       "employerShare": "Part de la clinique",
       "taxKind": "Nature"
     },
@@ -9462,7 +9462,7 @@
       "incomeTotal": "Argent entré",
       "moneyIn": "Argent entré",
       "taxesApart": "Impôts payés (à part)",
-      "withheld": "Retenu",
+      "withheld": "Retenu aux employés",
       "employerShare": "Part de la clinique",
       "remitDue": "Encore à reverser"
     },
@@ -9481,7 +9481,7 @@
       "remittances": "Reversements"
     },
     "payroll": {
-      "title": "Paie : les périodes de paie",
+      "title": "Salaires : les périodes de paie",
       "description": "Chaque période de paie arrivant à échéance dans la période, par employé : payée, à payer, en retard ou sautée, avec ce qui a été payé et comment.",
       "note1": "Une ligne par période de paie, à la date de paie (le jour où la période arrive à échéance).",
       "note2": "Payée : le montant marqué payé (sa dépense est dans le rapport des dépenses) ; les périodes à payer et en retard montrent le salaire fixé."
@@ -9511,10 +9511,10 @@
       "note2": "Les entrées annulées sont laissées de côté sauf si « Inclure les annulées » est coché."
     },
     "remittances": {
-      "title": "Reversements sur salaires",
-      "description": "Par mois et organisme : le PAYE retenu pour la RRA, les cotisations RSSB retenues et la part de la clinique, dus, payés ou sautés.",
+      "title": "PAYE et RSSB reversés",
+      "description": "Par mois : le PAYE retenu sur les salaires pour la RRA, les cotisations RSSB retenues et la part de la clinique, dus, payés ou sautés.",
       "note1": "Une ligne par mois et organisme, datée de l’échéance (le 15 du mois suivant). Calculé à partir des salaires payés dans le mois.",
-      "note2": "Retenu : pris aux employés ; part de la clinique : ajoutée par la clinique et déjà dans les dépenses de salaires."
+      "note2": "Retenu aux employés : pris sur leur paie ; part de la clinique : ajoutée par la clinique et déjà dans les dépenses de salaires."
     }
   },
   "staffReports": {
@@ -11200,7 +11200,7 @@
       "salaries": "Salaires",
       "expenses": "Autres dépenses",
       "taxes": "Impôts",
-      "setup": "Natures et retenues"
+      "setup": "Natures d’argent et retenues sur salaires"
     },
     "cancel": "Annuler",
     "reference": "Référence (reçu, virement…)",
@@ -11236,7 +11236,7 @@
       "taxes": "Impôts payés",
       "taxesDue": "Impôts dus dans la période",
       "otherIncome": "Autres entrées",
-      "staffCost": "Salaires et cotisations",
+      "staffCost": "Salaires et part RSSB de la clinique",
       "byKindIn": "Argent entré par nature",
       "byKindOut": "Argent sorti par nature",
       "taxesApart": "Impôts, à part",
@@ -11309,19 +11309,19 @@
         "none": "Pas de PAYE",
         "casual": "Travailleur occasionnel (15 %)"
       },
-      "deductionsTitle": "Retenues sur ce salaire",
+      "deductionsTitle": "Retenu sur ce salaire",
       "deductionsHint": "Décoché : rien n’est retenu pour cela. Une retenue fixe (un prêt) peut s’arrêter à une date.",
       "until": "Jusqu’au",
       "employerPlus": "la clinique ajoute {{share}}",
       "gross": "Brut",
       "net": "Net à payer",
       "netPaid": "Net payé (RWF)",
-      "deductionsTotal": "Retenues",
-      "employerShare": "Cotisations de la clinique",
+      "deductionsTotal": "Retenu",
+      "employerShare": "Ajouté par la clinique (RSSB)",
       "payslip": "Fiche de paie",
       "payslipTitle": "Fiche de paie : {{name}} · {{period}}",
-      "payslipHint": "Coût pour la clinique {{cost}} (brut plus les cotisations de la clinique) ; {{withheld}} retenus, reversés avec les reversements du mois.",
-      "payNetHint": "Brut {{gross}}, {{withheld}} retenus (PAYE et retenues), cotisations de la clinique {{employer}} enregistrées à part. Les montants retenus vont à la RRA et à la RSSB avec les reversements du mois, dans l’onglet Impôts."
+      "payslipHint": "Coût pour la clinique {{cost}} (brut plus ce que la clinique ajoute) ; {{withheld}} retenus, reversés à la RRA et à la RSSB avec le paiement du mois.",
+      "payNetHint": "Brut {{gross}}, {{withheld}} retenus (PAYE et le reste), part de la clinique {{employer}} enregistrée à part. Les montants retenus vont à la RRA et à la RSSB avec le paiement du mois, dans l’onglet Impôts."
     },
     "expenses": {
       "add": "Enregistrer une dépense",
@@ -11422,11 +11422,11 @@
       },
       "kindField": "Nature de l’impôt",
       "kinds": {
-        "profit": "Sur le bénéfice",
-        "turnover": "Sur le chiffre d’affaires",
-        "fixed": "Montant fixe",
-        "withheld": "Retenu à la source",
-        "other": "Autre"
+        "profit": "Impôt sur le revenu (sur le bénéfice)",
+        "turnover": "Impôt forfaitaire sur les ventes (3 %)",
+        "fixed": "Montant fixe (patente, redevance)",
+        "withheld": "Retenu par le payeur (3 % sur marchés)",
+        "other": "Autre impôt"
       },
       "kindHints": {
         "profit": "Impôt sur le revenu (CIT, 28 % du bénéfice imposable) : les trois acomptes trimestriels au 30 juin, 30 septembre et 31 décembre, le solde au 31 mars. Laissez le montant vide et saisissez chaque montant déclaré au paiement.",
@@ -11479,8 +11479,8 @@
         "bills": "Factures des patients",
         "walkin": "Ventes au comptoir",
         "salary": "Salaires",
-        "statutory": "Cotisations patronales",
-        "remittance": "Reversements sur salaires",
+        "statutory": "Part de la clinique versée à la RSSB",
+        "remittance": "PAYE et RSSB reversés",
         "stock": "Stock acheté",
         "tax": "Impôts",
         "other": "Autres dépenses"
@@ -11507,15 +11507,15 @@
       }
     },
     "deductions": {
-      "title": "Retenues sur salaires",
+      "title": "Ce qui est retenu sur les salaires",
       "lead": "Le PAYE et ce qui est retenu sur un salaire ou ajouté par la clinique : un pourcentage ou un montant fixe, la part de l’employé et celle de la clinique. Le salaire de chaque employé coche ce qui s’applique.",
       "add": "Ajouter une retenue",
       "none": "Aucune retenue.",
       "payeBands": "Tranches du PAYE",
       "cols": {
         "name": "Retenue",
-        "employee": "Part de l’employé",
-        "employer": "Part de la clinique",
+        "employee": "Retenu à l’employé",
+        "employer": "Ajouté par la clinique",
         "default": "S’applique"
       },
       "agency": "Versé à",
@@ -11572,25 +11572,25 @@
         "bands": "Chaque tranche a besoin d’une borne inférieure et d’un taux de 0 à 100."
       },
       "builtinNames": {
-        "paye": "PAYE (impôt sur le revenu)",
-        "pension": "Pension RSSB",
-        "maternity": "Fonds de congé de maternité",
-        "cbhi": "Assurance maladie communautaire (Mutuelle, CBHI)",
-        "hazard": "Risques professionnels",
-        "rama": "Assurance maladie RSSB (RAMA)"
+        "paye": "PAYE (impôt sur les salaires)",
+        "pension": "Pension (RSSB)",
+        "maternity": "Congé de maternité (RSSB)",
+        "cbhi": "Mutuelle de santé (CBHI)",
+        "hazard": "Assurance accidents du travail (RSSB)",
+        "rama": "Assurance maladie (RSSB RAMA)"
       }
     },
     "remittances": {
-      "title": "Reversements sur salaires {{year}}",
-      "lead": "Par mois et organisme : ce qui a été retenu sur les salaires payés dans le mois et la part de la clinique, dû le 15 du mois suivant. Calculé à partir des fiches de paie.",
+      "title": "PAYE et RSSB à reverser {{year}}",
+      "lead": "Par mois : ce qui a été retenu sur les salaires payés dans le mois (PAYE pour la RRA ; pension, maternité, Mutuelle pour la RSSB) et la part de la clinique, dû le 15 du mois suivant. Calculé à partir des fiches de paie, jamais saisi.",
       "none": "Aucun salaire payé avec retenues pour l’instant.",
-      "withheld": "Retenu",
+      "withheld": "Retenu aux employés",
       "employer": "Part de la clinique",
       "total": "À reverser",
       "people_one": "{{count}} employé",
       "people_other": "{{count}} employés",
       "payTitle": "Marquer reversé : {{name}}",
-      "payHint": "Le retenu {{withheld}} est enregistré en argent sorti maintenant ; la part de la clinique {{employer}} l’a été avec les salaires. Saisissez ce qui a réellement été payé.",
+      "payHint": "La part retenue aux employés ({{withheld}}) est enregistrée en argent sorti maintenant ; la part de la clinique ({{employer}}) l’a été avec les salaires. Saisissez ce qui a réellement été payé.",
       "paidOk": "{{name}} marqué reversé le {{date}}.",
       "undoTitle": "Annuler le reversement {{name}} ?",
       "skipTitle": "Sauter le reversement {{name}} ?"
@@ -11603,13 +11603,13 @@
       "rate": "Taux %",
       "rateHint": "Rwanda : 28 % du bénéfice imposable ; 3 % du chiffre d’affaires pour une petite entreprise.",
       "estimate": "Impôt sur le revenu estimé à {{rate}} %",
-      "withheld": "Moins : retenu à la source (crédits)",
-      "paidOnProfit": "Moins : acomptes et solde payés",
+      "withheld": "Moins : retenu par les payeurs sur marchés (crédits)",
+      "paidOnProfit": "Moins : impôt sur le revenu déjà payé",
       "stillToPay": "Estimation restant à payer",
       "paidKind": "Payé : {{kind}}",
       "taxesPaid": "Impôts payés cette année (toutes natures)",
       "hint": "Le bénéfice imposable de la déclaration peut différer du résultat avant impôts : amortissements, dépenses non admises, revenus non imposés. Le comptable ajuste et déclare ; le système garde les chiffres et les paiements.",
-      "incomeTax": "Impôt sur le revenu (sur le bénéfice)",
+      "incomeTax": "Impôt sur le revenu",
       "noneOnProfit": "Aucun paiement sur un impôt de nature « Sur le bénéfice » cette année.",
       "otherTaxes": "Autres impôts payés, par nature",
       "oneOff": "Impôts ponctuels enregistrés dans Autres dépenses",
@@ -11617,9 +11617,9 @@
       "otherTotal": "Autres impôts payés, total",
       "allTaxes": "Tous les impôts",
       "incomeTaxPaid": "Impôt sur le revenu payé",
-      "kindRule": "Seuls les paiements des impôts de nature « Sur le bénéfice » sont déduits de l’impôt sur le revenu estimé ; chaque autre nature est listée à part avec son total.",
+      "kindRule": "Seuls les paiements des impôts de nature « Impôt sur le revenu (sur le bénéfice) » sont déduits de l’estimation ; chaque autre nature est listée à part avec son total.",
       "yearFigures": "Chiffres de l’année",
-      "title2": "Base imposable",
+      "title2": "Estimation de l’impôt sur le revenu",
       "periodFigures": "Chiffres de la période",
       "taxesPaid2": "Impôts payés dans la période (toutes natures)"
     }

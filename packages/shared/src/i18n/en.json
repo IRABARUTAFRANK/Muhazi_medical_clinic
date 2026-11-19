@@ -9302,14 +9302,14 @@
       "otherIncome": "Other money in",
       "moneyIn": "Money in",
       "gross": "Gross",
-      "deductionsTotal": "Deductions",
-      "employerTotal": "Clinic’s share",
+      "deductionsTotal": "Taken off",
+      "employerTotal": "Clinic’s part",
       "payeMode": "PAYE",
       "agency": "Agency",
       "deductions": "Deductions",
       "people": "Employees",
-      "withheld": "Withheld",
-      "employerShare": "Clinic’s share",
+      "withheld": "Taken from employees",
+      "employerShare": "Clinic’s part",
       "taxKind": "Kind"
     },
     "filters": {
@@ -9462,8 +9462,8 @@
       "incomeTotal": "Money in",
       "moneyIn": "Money in",
       "taxesApart": "Taxes paid (apart)",
-      "withheld": "Withheld",
-      "employerShare": "Clinic’s share",
+      "withheld": "Taken from employees",
+      "employerShare": "Clinic’s part",
       "remitDue": "Still to hand over"
     },
     "count": {
@@ -9481,7 +9481,7 @@
       "remittances": "Remittances"
     },
     "payroll": {
-      "title": "Payroll: the pay periods",
+      "title": "Salaries: the pay periods",
       "description": "Every pay period falling due in the period, per employee: paid, due, overdue or skipped, with what was paid and how.",
       "note1": "One row per pay period, dated by its pay date (the day the period falls due).",
       "note2": "Paid: the amount marked paid (its expense is in the expenses report); due and overdue periods show the salary set."
@@ -9511,10 +9511,10 @@
       "note2": "Cancelled entries are left out unless “Include cancelled” is ticked."
     },
     "remittances": {
-      "title": "Payroll remittances",
-      "description": "Per month and agency: PAYE withheld for RRA, the RSSB contributions withheld and the clinic’s share, due, paid or skipped.",
+      "title": "PAYE and RSSB handed over",
+      "description": "Per month: PAYE taken off the salaries for RRA, the RSSB contributions taken off and the clinic’s part, due, paid or skipped.",
       "note1": "One row per month and agency, dated by the due date (the 15th of the next month). Worked out from the salaries paid in the month.",
-      "note2": "Withheld: taken from the employees; clinic’s share: added by the clinic and already in the salaries’ expenses."
+      "note2": "Taken from employees: taken off their pay; clinic’s part: added by the clinic and already in the salaries’ expenses."
     }
   },
   "staffReports": {
@@ -11200,7 +11200,7 @@
       "salaries": "Salaries",
       "expenses": "Other expenses",
       "taxes": "Taxes",
-      "setup": "Kinds and deductions"
+      "setup": "Money kinds and salary deductions"
     },
     "cancel": "Cancel",
     "reference": "Reference (receipt, transfer…)",
@@ -11236,7 +11236,7 @@
       "taxes": "Taxes paid",
       "taxesDue": "Taxes due in the period",
       "otherIncome": "Other money in",
-      "staffCost": "Salaries and contributions",
+      "staffCost": "Salaries and the clinic’s RSSB share",
       "byKindIn": "Money in by kind",
       "byKindOut": "Money out by kind",
       "taxesApart": "Taxes, kept apart",
@@ -11309,19 +11309,19 @@
         "none": "No PAYE",
         "casual": "Casual worker (15%)"
       },
-      "deductionsTitle": "Deductions on this salary",
+      "deductionsTitle": "Taken from this salary",
       "deductionsHint": "Unticked: nothing taken for it. A fixed deduction (a loan) can stop on a date.",
       "until": "Until",
       "employerPlus": "clinic adds {{share}}",
       "gross": "Gross",
       "net": "Net to pay",
       "netPaid": "Net paid (RWF)",
-      "deductionsTotal": "Deductions",
-      "employerShare": "Clinic’s contributions",
+      "deductionsTotal": "Taken off",
+      "employerShare": "Added by the clinic (RSSB)",
       "payslip": "Pay slip",
       "payslipTitle": "Pay slip: {{name}} · {{period}}",
-      "payslipHint": "Cost to the clinic {{cost}} (gross plus the clinic’s contributions); {{withheld}} withheld, handed over with the month’s remittances.",
-      "payNetHint": "Gross {{gross}}, {{withheld}} withheld (PAYE and the deductions), clinic’s contributions {{employer}} recorded apart. The withheld amounts go to RRA and RSSB with the month’s remittances on the Taxes tab."
+      "payslipHint": "Cost to the clinic {{cost}} (gross plus what the clinic adds); {{withheld}} taken off, handed over to RRA and RSSB with the month’s payment.",
+      "payNetHint": "Gross {{gross}}, {{withheld}} taken off (PAYE and the rest), clinic’s part {{employer}} recorded apart. The amounts taken off go to RRA and RSSB with the month’s payment on the Taxes tab."
     },
     "expenses": {
       "add": "Record an expense",
@@ -11422,11 +11422,11 @@
       },
       "kindField": "Kind of tax",
       "kinds": {
-        "profit": "On the profit",
-        "turnover": "On the turnover",
-        "fixed": "A fixed amount",
-        "withheld": "Withheld at source",
-        "other": "Other"
+        "profit": "Income tax (on the profit)",
+        "turnover": "Flat tax on sales (3%)",
+        "fixed": "Fixed amount (licence, fee)",
+        "withheld": "Kept by the payer (3% on tenders)",
+        "other": "Other tax"
       },
       "kindHints": {
         "profit": "Income tax (CIT, 28% of the taxable profit): the three quarterly prepayments by 30 June, 30 September and 31 December, the balance by 31 March. Leave the amount empty and type each declared amount when paying.",
@@ -11479,8 +11479,8 @@
         "bills": "Patient bills",
         "walkin": "Walk-in sales",
         "salary": "Salaries",
-        "statutory": "Statutory contributions",
-        "remittance": "Payroll remittances",
+        "statutory": "Clinic’s share paid to RSSB",
+        "remittance": "PAYE and RSSB handed over",
         "stock": "Stock bought",
         "tax": "Taxes",
         "other": "Other expenses"
@@ -11507,15 +11507,15 @@
       }
     },
     "deductions": {
-      "title": "Deductions on salaries",
-      "lead": "PAYE and what else is taken from a salary or added by the clinic: a percentage or a fixed amount, the employee’s share and the clinic’s share. Each employee’s salary ticks which apply.",
+      "title": "What is taken from salaries",
+      "lead": "PAYE and what else is taken off a salary or added by the clinic: a percentage or a fixed amount, the employee’s part and the clinic’s part. Each employee’s salary ticks which apply.",
       "add": "Add a deduction",
       "none": "No deduction yet.",
       "payeBands": "PAYE bands",
       "cols": {
         "name": "Deduction",
-        "employee": "Employee pays",
-        "employer": "Clinic adds",
+        "employee": "Taken from the employee",
+        "employer": "Added by the clinic",
         "default": "Applies"
       },
       "agency": "Paid to",
@@ -11572,25 +11572,25 @@
         "bands": "Each band needs a lower bound and a rate from 0 to 100."
       },
       "builtinNames": {
-        "paye": "PAYE (income tax)",
-        "pension": "RSSB pension",
-        "maternity": "Maternity leave fund",
+        "paye": "PAYE (income tax on salaries)",
+        "pension": "Pension (RSSB)",
+        "maternity": "Maternity leave (RSSB)",
         "cbhi": "Mutuelle de santé (CBHI)",
-        "hazard": "Occupational hazards",
-        "rama": "RSSB medical (RAMA)"
+        "hazard": "Work accident insurance (RSSB)",
+        "rama": "Medical insurance (RSSB RAMA)"
       }
     },
     "remittances": {
-      "title": "Payroll remittances {{year}}",
-      "lead": "Per month and agency: what was withheld from the salaries paid in the month and the clinic’s own share, due on the 15th of the next month. Worked out from the pay slips.",
+      "title": "PAYE and RSSB to hand over {{year}}",
+      "lead": "Per month: what was taken off the salaries paid in the month (PAYE for RRA; pension, maternity, Mutuelle for RSSB) and the clinic’s own part, due on the 15th of the next month. Worked out from the pay slips, never typed.",
       "none": "No salary paid with deductions yet.",
-      "withheld": "Withheld",
-      "employer": "Clinic’s share",
+      "withheld": "Taken from employees",
+      "employer": "Clinic’s part",
       "total": "To hand over",
       "people_one": "{{count}} employee",
       "people_other": "{{count}} employees",
       "payTitle": "Mark handed over: {{name}}",
-      "payHint": "Withheld {{withheld}} is recorded as money out now; the clinic’s share {{employer}} was recorded with the salaries. Type what was actually paid.",
+      "payHint": "The part taken from employees ({{withheld}}) is recorded as money out now; the clinic’s part ({{employer}}) was recorded with the salaries. Type what was actually paid.",
       "paidOk": "{{name}} marked handed over on {{date}}.",
       "undoTitle": "Undo the remittance {{name}}?",
       "skipTitle": "Skip the remittance {{name}}?"
@@ -11603,13 +11603,13 @@
       "rate": "Rate %",
       "rateHint": "Rwanda: 28% of the taxable profit; 3% of the turnover for a small business.",
       "estimate": "Estimated income tax at {{rate}}%",
-      "withheld": "Less: withheld at source (credits)",
-      "paidOnProfit": "Less: prepayments and balance paid",
+      "withheld": "Less: kept by payers on tenders (credits)",
+      "paidOnProfit": "Less: income tax already paid",
       "stillToPay": "Estimated still to pay",
       "paidKind": "Paid: {{kind}}",
       "taxesPaid": "Taxes paid this year (all kinds)",
       "hint": "The taxable profit of the declaration may differ from the result before tax: depreciation, expenses the law does not accept, income not taxed. The accountant adjusts and declares; the system keeps the figures and the payments.",
-      "incomeTax": "Income tax (on the profit)",
+      "incomeTax": "Income tax",
       "noneOnProfit": "No payment on a tax of kind “On the profit” this year.",
       "otherTaxes": "Other taxes paid, by kind",
       "oneOff": "One-off taxes recorded on Other expenses",
@@ -11617,9 +11617,9 @@
       "otherTotal": "Other taxes paid, total",
       "allTaxes": "All taxes",
       "incomeTaxPaid": "Income tax paid",
-      "kindRule": "Only the payments of taxes of kind “On the profit” are taken off the estimated income tax; every other kind is listed apart with its total.",
+      "kindRule": "Only the payments of taxes of kind “Income tax (on the profit)” are taken off the estimate; every other kind is listed apart with its total.",
       "yearFigures": "Figures of the year",
-      "title2": "Tax base",
+      "title2": "Income tax estimate",
       "periodFigures": "Figures of the period",
       "taxesPaid2": "Taxes paid in the period (all kinds)"
     }
