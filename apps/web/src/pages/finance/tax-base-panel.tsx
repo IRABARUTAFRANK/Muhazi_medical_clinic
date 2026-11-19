@@ -17,7 +17,6 @@ import { cn } from '@/lib/utils'
  * every figure can be traced: the income tax (estimated at the rate typed, less the credits
  * withheld at source and what was paid on the taxes of kind "on the profit" in the period), the
  * other taxes paid by kind with their totals, then all taxes and the result after taxes paid.
- * A quarter chosen with last year's tax and turnover typed also gives RRA's prepayment formula.
  * Information for the accountant, who types the declared amount on the tax itself; nothing
  * here is booked.
  */
@@ -58,8 +57,6 @@ export function TaxBasePanel({ i }: { i: number }) {
     queryFn: () => fetchTaxesPaid(period.from, period.to),
   })
   const [rate, setRate] = useState('28')
-  const [lastTax, setLastTax] = useState('')
-  const [lastTurnover, setLastTurnover] = useState('')
   const r = Number(rate) || 0
   const result = s?.net ?? 0
   const estimate = Math.max(0, Math.round((result * r) / 100))
@@ -79,10 +76,6 @@ export function TaxBasePanel({ i }: { i: number }) {
   const otherTotal = otherKinds.reduce((a, k) => a + paidOf(byKind(k)), 0) + oneOff
   const kindWord = (k: TaxKind) => t(`accounts.taxes.kinds.${k}`)
   const resultTone = (v: number) => (v >= 0 ? 'text-green' : 'text-red')
-  // RRA's quarterly prepayment: last year's tax ÷ last year's turnover × this period's turnover
-  const lt = Number(lastTax)
-  const lto = Number(lastTurnover)
-  const prepayment = lt > 0 && lto > 0 && s ? Math.round((lt / lto) * s.moneyIn) : null
   return (
     <Panel i={i} icon={Calculator} tint="violet" title={t('accounts.taxBase.title2')}>
       <div className="flex flex-col gap-4">
@@ -136,42 +129,6 @@ export function TaxBasePanel({ i }: { i: number }) {
                 />
               </Group>
             </div>
-            <Group title={t('accounts.taxBase.prepayment')}>
-              <tr>
-                <td colSpan={2} className="pb-2">
-                  <p className="text-ink-3 m-0 mb-2 text-[12px]">
-                    {t('accounts.taxBase.prepaymentHint')}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Field
-                      wrapperClassName="w-44"
-                      label={t('accounts.taxBase.lastYearTax')}
-                      inputMode="numeric"
-                      value={lastTax}
-                      onChange={(e) => setLastTax(e.target.value.replace(/[^\d]/g, ''))}
-                    />
-                    <Field
-                      wrapperClassName="w-44"
-                      label={t('accounts.taxBase.lastYearTurnover')}
-                      inputMode="numeric"
-                      value={lastTurnover}
-                      onChange={(e) => setLastTurnover(e.target.value.replace(/[^\d]/g, ''))}
-                    />
-                  </div>
-                </td>
-              </tr>
-              <Row label={t('accounts.taxBase.periodTurnover')} value={s.moneyIn} />
-              {prepayment != null ? (
-                <Row
-                  label={t('accounts.taxBase.prepaymentDue')}
-                  value={prepayment}
-                  strong
-                  tone="text-amber"
-                />
-              ) : (
-                <Note>{t('accounts.taxBase.prepaymentNone')}</Note>
-              )}
-            </Group>
             <Group title={t('accounts.taxBase.otherTaxes')}>
               {otherKinds.map((k) => {
                 const list = byKind(k)

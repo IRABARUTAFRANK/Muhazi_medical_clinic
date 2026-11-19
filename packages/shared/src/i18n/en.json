@@ -11621,14 +11621,7 @@
       "yearFigures": "Figures of the year",
       "title2": "Tax base",
       "periodFigures": "Figures of the period",
-      "taxesPaid2": "Taxes paid in the period (all kinds)",
-      "prepayment": "Quarterly prepayment (RRA’s formula)",
-      "prepaymentHint": "RRA’s prepayment for a quarter = last year’s income tax ÷ last year’s turnover × this quarter’s turnover. Choose the quarter above and type last year’s figures.",
-      "lastYearTax": "Last year’s income tax",
-      "lastYearTurnover": "Last year’s turnover",
-      "periodTurnover": "Turnover of the period (money in)",
-      "prepaymentDue": "Prepayment by the formula",
-      "prepaymentNone": "Type last year’s income tax and turnover to see the prepayment."
+      "taxesPaid2": "Taxes paid in the period (all kinds)"
     }
   }
 }

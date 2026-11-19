@@ -11621,14 +11621,7 @@
       "yearFigures": "Chiffres de l’année",
       "title2": "Base imposable",
       "periodFigures": "Chiffres de la période",
-      "taxesPaid2": "Impôts payés dans la période (toutes natures)",
-      "prepayment": "Acompte trimestriel (formule de la RRA)",
-      "prepaymentHint": "Acompte de la RRA pour un trimestre = impôt sur le revenu de l’an dernier ÷ chiffre d’affaires de l’an dernier × chiffre d’affaires du trimestre. Choisissez le trimestre ci-dessus et saisissez les chiffres de l’an dernier.",
-      "lastYearTax": "Impôt sur le revenu de l’an dernier",
-      "lastYearTurnover": "Chiffre d’affaires de l’an dernier",
-      "periodTurnover": "Chiffre d’affaires de la période (argent entré)",
-      "prepaymentDue": "Acompte selon la formule",
-      "prepaymentNone": "Saisissez l’impôt et le chiffre d’affaires de l’an dernier pour voir l’acompte."
+      "taxesPaid2": "Impôts payés dans la période (toutes natures)"
     }
   }
 }

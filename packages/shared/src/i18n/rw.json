@@ -11630,14 +11630,7 @@
       "yearFigures": "Imibare y’umwaka",
       "title2": "Ishingiro ry’umusoro",
       "periodFigures": "Imibare y’igihe",
-      "taxesPaid2": "Imisoro yishyuwe muri icyo gihe (ubwoko bwose)",
-      "prepayment": "Ubwishyu bwo mbere bwa buri gihembwe (uburyo bwa RRA)",
-      "prepaymentHint": "Ubwishyu bwo mbere bwa RRA ku gihembwe = umusoro ku nyungu w’umwaka ushize ÷ ibyacurujwe by’umwaka ushize × ibyacurujwe by’iki gihembwe. Hitamo igihembwe hejuru wandike imibare y’umwaka ushize.",
-      "lastYearTax": "Umusoro ku nyungu w’umwaka ushize",
-      "lastYearTurnover": "Ibyacurujwe by’umwaka ushize",
-      "periodTurnover": "Ibyacurujwe by’igihe (amafaranga yinjiye)",
-      "prepaymentDue": "Ubwishyu bwo mbere ku buryo",
-      "prepaymentNone": "Andika umusoro n’ibyacurujwe by’umwaka ushize kugira ngo ubone ubwishyu bwo mbere."
+      "taxesPaid2": "Imisoro yishyuwe muri icyo gihe (ubwoko bwose)"
     }
   }
 }
