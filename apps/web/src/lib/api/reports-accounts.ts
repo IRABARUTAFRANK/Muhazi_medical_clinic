@@ -6,10 +6,13 @@ import {
   fetchFinanceSummary,
   fetchIncomes,
   fetchMoneyKinds,
+  fetchRemittances,
   fetchSalaryOverview,
   fetchTaxOverview,
   kindName,
+  type Agency,
   type Income,
+  type Remittance,
   type CustomUnit,
   type Expense,
   type PeriodStatus,
@@ -43,6 +46,12 @@ export interface PayrollRow {
   periodEnd: string
   dueOn: string
   amount: number
+  /** 0186: the slip. */
+  gross: number
+  deductionsTotal: number
+  net: number
+  employerTotal: number
+  payeMode: string
   status: PeriodStatus
   paidOn: string | null
   paidAmount: number | null
@@ -90,6 +99,11 @@ export async function loadPayroll(
           periodEnd: x.periodEnd,
           dueOn: x.dueOn,
           amount: x.amount,
+          gross: x.gross,
+          deductionsTotal: x.gross - x.net,
+          net: x.net,
+          employerTotal: x.employerTotal,
+          payeMode: p.payeMode,
           status: x.status,
           paidOn: x.paidOn,
           paidAmount: x.paidAmount,
@@ -115,12 +129,34 @@ export async function payrollEmployees(ctx: ReportContext): Promise<ReportOption
     .sort((a, b) => a.label.localeCompare(b.label))
 }
 
+// ------------------------------------------------------------------ remittances (0186)
+
+export interface RemittanceRow extends Remittance {
+  id: string
+}
+
+export async function loadRemittanceRows(
+  f: ReportFilterValues,
+  ctx: ReportContext,
+): Promise<RemittanceRow[]> {
+  const { from, to } = f.period
+  const lists = await Promise.all(yearsOf(from, to).map((y) => fetchRemittances(y, ctx.sample)))
+  const agencies = chosen(f, 'agency') as Agency[]
+  const statuses = chosen(f, 'status')
+  return lists
+    .flat()
+    .filter((r) => r.dueOn >= from && r.dueOn <= to)
+    .filter((r) => inChosen(agencies, r.agency) && inChosen(statuses, r.status))
+    .map((r) => ({ ...r, id: `${r.month}:${r.agency}` }))
+}
+
 // ------------------------------------------------------------------ taxes (0184)
 
 export interface TaxRow {
   id: string
   taxId: string
   tax: string
+  kind: string
   intervalKind: SalaryInterval
   customEvery: number | null
   customUnit: CustomUnit | null
@@ -142,6 +178,7 @@ export async function loadTaxRows(f: ReportFilterValues, ctx: ReportContext): Pr
   const { from, to } = f.period
   const overviews = await Promise.all(yearsOf(from, to).map((y) => fetchTaxOverview(y, ctx.sample)))
   const tax = selected(f, 'tax')
+  const kinds = chosen(f, 'kind')
   const statuses = chosen(f, 'status')
   const q = searchText(f)
   const rows: TaxRow[] = []
@@ -153,6 +190,7 @@ export async function loadTaxRows(f: ReportFilterValues, ctx: ReportContext): Pr
           id: `${x.id}:${p.periodStart}`,
           taxId: x.id,
           tax: x.name,
+          kind: x.kind,
           intervalKind: x.intervalKind,
           customEvery: x.customEvery,
           customUnit: x.customUnit,
@@ -172,6 +210,7 @@ export async function loadTaxRows(f: ReportFilterValues, ctx: ReportContext): Pr
   return rows.filter(
     (r) =>
       (!tax || r.taxId === tax) &&
+      inChosen(kinds, r.kind) &&
       inChosen(statuses, r.status) &&
       matches(q, r.tax, r.reference, r.paidBy, r.note),
   )

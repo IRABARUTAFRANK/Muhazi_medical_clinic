@@ -45,11 +45,98 @@ export const intervalWords = (
 
 export type PeriodStatus = 'due' | 'overdue' | 'paid' | 'skipped'
 
+/** PAYE on a salary (0186): by the bands, not at all, or the casual worker's flat rate. */
+export type PayeMode = 'normal' | 'none' | 'casual'
+export const PAYE_MODES: readonly PayeMode[] = ['normal', 'none', 'casual']
+export const AGENCIES = ['rra', 'rssb', 'other'] as const
+export type Agency = (typeof AGENCIES)[number]
+
+/** One line of a pay slip (0186): what the employee gives up and what the employer adds. */
+export interface PayslipLine {
+  code: string | null
+  ruleId: string
+  name: string
+  agency: Agency
+  base: 'gross' | 'net'
+  employee: number
+  employer: number
+}
+
 export interface SalaryPeriod {
   periodStart: string
   periodEnd: string
   dueOn: string
   amount: number
+  status: PeriodStatus
+  id: string | null
+  paidOn: string | null
+  paidAmount: number | null
+  method: string | null
+  reference: string | null
+  note: string | null
+  paidBy: string | null
+  /** 0186: the pay slip — stored when paid, worked out on the pay date otherwise. */
+  gross: number
+  net: number
+  employerTotal: number
+  deductions: PayslipLine[]
+}
+
+export interface DeductionRate {
+  validFrom: string
+  employeeRate: number | null
+  employeeAmount: number | null
+  employerRate: number | null
+  employerAmount: number | null
+}
+/** A deduction on salaries (0186): built in (code) or the accountant's; its rates by date. */
+export interface DeductionRule {
+  id: string
+  code: string | null
+  name: string
+  agency: Agency
+  base: 'gross' | 'net'
+  defaultOn: boolean
+  active: boolean
+  note: string | null
+  sortOrder: number
+  current: DeductionRate | null
+  rates: DeductionRate[]
+  /** Employees it is switched on for by name. */
+  people: number
+}
+export interface PayeBand {
+  validFrom: string
+  lower: number
+  rate: number
+}
+export interface Deductions {
+  rules: DeductionRule[]
+  payeBands: PayeBand[]
+  today: string
+}
+export const deductionName = (
+  t: (k: string, o?: Record<string, unknown>) => string,
+  r: Pick<DeductionRule, 'code' | 'name'>,
+) => (r.code ? t(`accounts.deductions.builtinNames.${r.code}`, { defaultValue: r.name }) : r.name)
+/** "6%" or "RWF 5,000" or "—". */
+export const rateWords = (
+  t: (k: string, o?: Record<string, unknown>) => string,
+  rate: number | null,
+  amount: number | null,
+) =>
+  amount != null ? t('accounts.deductions.fixedWords', { amount }) : rate != null ? `${rate}%` : '—'
+
+/** A month's remittance to an agency (0186): the withheld part and the employer's share. */
+export interface Remittance {
+  month: string
+  agency: Agency
+  dueOn: string
+  employeeTotal: number
+  employerTotal: number
+  total: number
+  people: number
+  lines: { code: string | null; name: string }[]
   status: PeriodStatus
   id: string | null
   paidOn: string | null
@@ -72,6 +159,9 @@ export interface SalaryPerson {
   customUnit: CustomUnit | null
   anchorOn: string
   payDay: number | null
+  /** 0186 */
+  payeMode: PayeMode
+  deductions: { ruleId: string; applies: boolean; until: string | null }[]
   note: string | null
   setAt: string | null
   setBy: string | null
@@ -91,12 +181,20 @@ export interface SalaryOverview {
 
 /** A tax the clinic pays (0184): built like a salary; the amount is null when the accountant
  *  works it out each time and types it when paying. */
-export interface TaxPeriod extends Omit<SalaryPeriod, 'amount'> {
+export interface TaxPeriod extends Omit<
+  SalaryPeriod,
+  'amount' | 'gross' | 'net' | 'employerTotal' | 'deductions'
+> {
   amount: number | null
 }
+/** How a tax is computed (0187): on the profit, on the turnover, a fixed amount, withheld at
+ *  source by a payer (a credit, not money out), or other. */
+export const TAX_KINDS = ['profit', 'turnover', 'fixed', 'withheld', 'other'] as const
+export type TaxKind = (typeof TAX_KINDS)[number]
 export interface Tax {
   id: string
   name: string
+  kind: TaxKind
   amount: number | null
   intervalKind: SalaryInterval
   customEvery: number | null
@@ -111,9 +209,25 @@ export interface Tax {
   overdue: number
   nextDue: string | null
 }
+/** The year's tax base (0187): the figures the income tax is estimated from. */
+export interface TaxBase {
+  moneyIn: number
+  netRevenue: number
+  otherIncome: number
+  salaries: number
+  statutory: number
+  remittances: number
+  otherExpenses: number
+  stockBought: number
+  expenses: number
+  resultBeforeTax: number
+  taxesPaid: number
+  paidByKind: Partial<Record<TaxKind, number>>
+}
 export interface TaxOverview {
   year: number
   taxes: Tax[]
+  base: TaxBase
   today: string
 }
 
@@ -226,6 +340,198 @@ const addMonths = (iso: string, n: number) => {
   d.setDate(Math.min(day, last))
   return d.toISOString().slice(0, 10)
 }
+/** Rwanda 2025: PAYE by bands, pension 6% + 6%, maternity 0.3% + 0.3%, Mutuelle 0.5% of the net. */
+const samplePaye = (g: number) =>
+  Math.round(
+    Math.max(Math.min(g, 100000) - 60000, 0) * 0.1 +
+      Math.max(Math.min(g, 200000) - 100000, 0) * 0.2 +
+      Math.max(g - 200000, 0) * 0.3,
+  )
+const sampleSlip = (
+  gross: number,
+): Pick<SalaryPeriod, 'gross' | 'net' | 'employerTotal' | 'deductions'> => {
+  const paye = samplePaye(gross)
+  const pension = Math.round(gross * 0.06)
+  const maternity = Math.round(gross * 0.003)
+  const cbhi = Math.round((gross - paye - pension - maternity) * 0.005)
+  const hazard = Math.round(gross * 0.02)
+  return {
+    gross,
+    net: gross - paye - pension - maternity - cbhi,
+    employerTotal: pension + maternity + hazard,
+    deductions: [
+      {
+        code: 'paye',
+        ruleId: 'd-paye',
+        name: 'PAYE (income tax)',
+        agency: 'rra',
+        base: 'gross',
+        employee: paye,
+        employer: 0,
+      },
+      {
+        code: 'pension',
+        ruleId: 'd-pension',
+        name: 'RSSB pension',
+        agency: 'rssb',
+        base: 'gross',
+        employee: pension,
+        employer: pension,
+      },
+      {
+        code: 'maternity',
+        ruleId: 'd-maternity',
+        name: 'Maternity leave fund',
+        agency: 'rssb',
+        base: 'gross',
+        employee: maternity,
+        employer: maternity,
+      },
+      {
+        code: 'hazard',
+        ruleId: 'd-hazard',
+        name: 'Occupational hazards',
+        agency: 'rssb',
+        base: 'gross',
+        employee: 0,
+        employer: hazard,
+      },
+      {
+        code: 'cbhi',
+        ruleId: 'd-cbhi',
+        name: 'Mutuelle de santé (CBHI)',
+        agency: 'rssb',
+        base: 'net',
+        employee: cbhi,
+        employer: 0,
+      },
+    ],
+  }
+}
+const sampleRule = (
+  id: string,
+  code: string,
+  name: string,
+  agency: Agency,
+  base: 'gross' | 'net',
+  er: number | null,
+  yr: number | null,
+  defaultOn = true,
+  note: string | null = null,
+): DeductionRule => ({
+  id,
+  code,
+  name,
+  agency,
+  base,
+  defaultOn,
+  active: true,
+  note,
+  sortOrder: 10,
+  current: {
+    validFrom: '2025-01-01',
+    employeeRate: er,
+    employeeAmount: null,
+    employerRate: yr,
+    employerAmount: null,
+  },
+  rates: [
+    {
+      validFrom: '2025-01-01',
+      employeeRate: er,
+      employeeAmount: null,
+      employerRate: yr,
+      employerAmount: null,
+    },
+  ],
+  people: 2,
+})
+const sampleDeductions: Deductions = {
+  today: kigaliToday(),
+  rules: [
+    sampleRule(
+      'd-paye',
+      'paye',
+      'PAYE (income tax)',
+      'rra',
+      'gross',
+      null,
+      null,
+      true,
+      'By bands on the gross pay',
+    ),
+    sampleRule(
+      'd-pension',
+      'pension',
+      'RSSB pension',
+      'rssb',
+      'gross',
+      6,
+      6,
+      true,
+      '7% + 7% from 1 January 2027',
+    ),
+    sampleRule('d-maternity', 'maternity', 'Maternity leave fund', 'rssb', 'gross', 0.3, 0.3),
+    sampleRule('d-cbhi', 'cbhi', 'Mutuelle de santé (CBHI)', 'rssb', 'net', 0.5, null),
+    sampleRule('d-hazard', 'hazard', 'Occupational hazards', 'rssb', 'gross', null, 2),
+    sampleRule('d-rama', 'rama', 'RSSB medical (RAMA)', 'rssb', 'gross', 7.5, 7.5, false),
+  ],
+  payeBands: [
+    { validFrom: '2024-01-01', lower: 0, rate: 0 },
+    { validFrom: '2024-01-01', lower: 60000, rate: 10 },
+    { validFrom: '2024-01-01', lower: 100000, rate: 20 },
+    { validFrom: '2024-01-01', lower: 200000, rate: 30 },
+  ],
+}
+const sampleRemittances = (year: number): Remittance[] =>
+  ['01', '02', '03'].flatMap((m, i) => {
+    const month = `${year}-${m}`
+    const due = `${year}-${String(i + 2).padStart(2, '0')}-15`
+    const paid = i < 2
+    return [
+      {
+        month,
+        agency: 'rra' as Agency,
+        dueOn: due,
+        employeeTotal: 162000,
+        employerTotal: 0,
+        total: 162000,
+        people: 2,
+        lines: [{ code: 'paye', name: 'PAYE (income tax)' }],
+        status: (paid ? 'paid' : 'due') as PeriodStatus,
+        id: paid ? `rm-${m}-rra` : null,
+        paidOn: paid ? due : null,
+        paidAmount: paid ? 162000 : null,
+        method: paid ? 'bank' : null,
+        reference: paid ? `RRA-${m}` : null,
+        note: null,
+        paidBy: paid ? 'Mugisha Samuel' : null,
+      },
+      {
+        month,
+        agency: 'rssb' as Agency,
+        dueOn: due,
+        employeeTotal: 56000,
+        employerTotal: 69000,
+        total: 125000,
+        people: 2,
+        lines: [
+          { code: 'pension', name: 'RSSB pension' },
+          { code: 'maternity', name: 'Maternity leave fund' },
+          { code: 'cbhi', name: 'Mutuelle de santé (CBHI)' },
+          { code: 'hazard', name: 'Occupational hazards' },
+        ],
+        status: (paid ? 'paid' : 'due') as PeriodStatus,
+        id: paid ? `rm-${m}-rssb` : null,
+        paidOn: paid ? due : null,
+        paidAmount: paid ? 125000 : null,
+        method: paid ? 'bank' : null,
+        reference: paid ? `RSSB-${m}` : null,
+        note: null,
+        paidBy: paid ? 'Mugisha Samuel' : null,
+      },
+    ]
+  })
 const samplePeriods = (
   anchor: string,
   year: number,
@@ -257,6 +563,7 @@ const samplePeriods = (
       reference: isPaid ? `TRF-${year}-${String(k + 1).padStart(2, '0')}` : null,
       note: null,
       paidBy: isPaid ? 'Mugisha Samuel' : null,
+      ...sampleSlip(amount),
     })
   }
   return out
@@ -278,6 +585,8 @@ const sampleOverview = (year: number): SalaryOverview => ({
       customUnit: null,
       anchorOn: `${year}-02-02`,
       payDay: null,
+      payeMode: 'normal',
+      deductions: [],
       note: null,
       setAt: `${year}-02-02T09:00:00Z`,
       setBy: 'Mugisha Samuel',
@@ -299,6 +608,8 @@ const sampleOverview = (year: number): SalaryOverview => ({
       customUnit: null,
       anchorOn: `${year}-01-05`,
       payDay: 28,
+      payeMode: 'normal',
+      deductions: [],
       note: null,
       setAt: `${year}-01-05T09:00:00Z`,
       setBy: 'Mugisha Samuel',
@@ -319,8 +630,27 @@ const sampleTaxOverview = (year: number): TaxOverview => ({
   today: kigaliToday(),
   taxes: [
     {
+      id: 'tx-cit',
+      name: 'Income tax (CIT) · quarterly prepayments',
+      kind: 'profit',
+      amount: null,
+      intervalKind: 'quarterly',
+      customEvery: null,
+      customUnit: null,
+      anchorOn: `${year}-04-01`,
+      payDay: 30,
+      note: 'Last year’s tax ÷ turnover × the quarter’s turnover',
+      setAt: `${year}-01-05T09:00:00Z`,
+      setBy: 'Mugisha Samuel',
+      periods: [],
+      paidThisYear: 2_100_000,
+      overdue: 0,
+      nextDue: `${year}-12-31`,
+    },
+    {
       id: 'tx-paye',
       name: 'PAYE (salaries)',
+      kind: 'other',
       amount: 420000,
       intervalKind: 'monthly',
       customEvery: null,
@@ -338,6 +668,7 @@ const sampleTaxOverview = (year: number): TaxOverview => ({
     {
       id: 'tx-vat',
       name: 'VAT',
+      kind: 'turnover',
       amount: null,
       intervalKind: 'quarterly',
       customEvery: null,
@@ -355,6 +686,7 @@ const sampleTaxOverview = (year: number): TaxOverview => ({
     {
       id: 'tx-licence',
       name: 'Trading licence',
+      kind: 'fixed',
       amount: 60000,
       intervalKind: 'yearly',
       customEvery: null,
@@ -370,6 +702,20 @@ const sampleTaxOverview = (year: number): TaxOverview => ({
       nextDue: null,
     },
   ],
+  base: {
+    moneyIn: 58_300_000,
+    netRevenue: 56_020_000,
+    otherIncome: 2_280_000,
+    salaries: 21_600_000,
+    statutory: 2_700_000,
+    remittances: 4_100_000,
+    otherExpenses: 4_900_000,
+    stockBought: 13_400_000,
+    expenses: 46_700_000,
+    resultBeforeTax: 11_600_000,
+    taxesPaid: 5_940_000,
+    paidByKind: { profit: 2_100_000, other: 3_780_000, fixed: 60_000 },
+  },
 })
 const sampleKinds: MoneyKind[] = [
   {
@@ -664,6 +1010,12 @@ export async function fetchSalaryOverview(
       customUnit: (p.customUnit ?? null) as CustomUnit | null,
       anchorOn: String(p.anchorOn ?? ''),
       payDay: numOrNull(p.payDay),
+      payeMode: (p.payeMode ?? 'normal') as PayeMode,
+      deductions: (p.deductions ?? []).map((d) => ({
+        ruleId: String(d.ruleId),
+        applies: d.applies !== false,
+        until: d.until ?? null,
+      })),
       note: p.note ?? null,
       setAt: p.setAt ?? null,
       setBy: p.setBy ?? null,
@@ -681,12 +1033,105 @@ export async function fetchSalaryOverview(
         reference: x.reference ?? null,
         note: x.note ?? null,
         paidBy: x.paidBy ?? null,
+        gross: x.gross == null ? num(x.amount) : num(x.gross),
+        net: x.net == null ? num(x.paidAmount ?? x.amount) : num(x.net),
+        employerTotal: num(x.employerTotal),
+        deductions: (x.deductions ?? []).map(toLine),
       })),
       paidThisYear: num(p.paidThisYear),
       overdue: num(p.overdue),
       nextDue: p.nextDue ?? null,
     })),
   }
+}
+
+const toLine = (l: Partial<PayslipLine>): PayslipLine => ({
+  code: l.code ?? null,
+  ruleId: String(l.ruleId ?? ''),
+  name: String(l.name ?? ''),
+  agency: (l.agency ?? 'other') as Agency,
+  base: l.base === 'net' ? 'net' : 'gross',
+  employee: num(l.employee),
+  employer: num(l.employer),
+})
+const toRate = (x: Partial<DeductionRate>): DeductionRate => ({
+  validFrom: String(x.validFrom ?? ''),
+  employeeRate: numOrNull(x.employeeRate),
+  employeeAmount: numOrNull(x.employeeAmount),
+  employerRate: numOrNull(x.employerRate),
+  employerAmount: numOrNull(x.employerAmount),
+})
+
+/** The deductions on salaries and the PAYE bands (0186). */
+export async function fetchDeductions(sample = !supabase): Promise<Deductions> {
+  if (sample || !supabase) return sampleDeductions
+  const { data, error } = await supabase.rpc('deductions_list')
+  if (error) throw apiError(error)
+  const d = data as Partial<Deductions> & { rules?: Partial<DeductionRule>[] }
+  return {
+    today: String(d.today ?? kigaliToday()),
+    rules: (d.rules ?? []).map((r) => ({
+      id: String(r.id),
+      code: r.code ?? null,
+      name: String(r.name ?? ''),
+      agency: (r.agency ?? 'other') as Agency,
+      base: r.base === 'net' ? 'net' : 'gross',
+      defaultOn: !!r.defaultOn,
+      active: r.active !== false,
+      note: r.note ?? null,
+      sortOrder: num(r.sortOrder),
+      current: r.current ? toRate(r.current) : null,
+      rates: (r.rates ?? []).map(toRate),
+      people: num(r.people),
+    })),
+    payeBands: (d.payeBands ?? []).map((b) => ({
+      validFrom: String(b.validFrom ?? ''),
+      lower: num(b.lower),
+      rate: num(b.rate),
+    })),
+  }
+}
+
+export function useDeductions(enabled = true) {
+  return useQuery({
+    queryKey: [...KEY, 'deductions'],
+    enabled,
+    staleTime: 60_000,
+    queryFn: () => fetchDeductions(),
+  })
+}
+
+/** The payroll remittances of a year (0186). */
+export async function fetchRemittances(year: number, sample = !supabase): Promise<Remittance[]> {
+  if (sample || !supabase) return sampleRemittances(year)
+  const { data, error } = await supabase.rpc('remittances_due', { p_year: year })
+  if (error) throw apiError(error)
+  return ((data ?? []) as Partial<Remittance>[]).map((r) => ({
+    month: String(r.month ?? ''),
+    agency: (r.agency ?? 'other') as Agency,
+    dueOn: String(r.dueOn ?? ''),
+    employeeTotal: num(r.employeeTotal),
+    employerTotal: num(r.employerTotal),
+    total: num(r.total),
+    people: num(r.people),
+    lines: (r.lines ?? []).map((l) => ({ code: l.code ?? null, name: String(l.name ?? '') })),
+    status: (r.status ?? 'due') as PeriodStatus,
+    id: r.id ?? null,
+    paidOn: r.paidOn ?? null,
+    paidAmount: numOrNull(r.paidAmount),
+    method: r.method ?? null,
+    reference: r.reference ?? null,
+    note: r.note ?? null,
+    paidBy: r.paidBy ?? null,
+  }))
+}
+
+export function useRemittances(year: number, enabled = true) {
+  return useQuery({
+    queryKey: [...KEY, 'remittances', year],
+    enabled,
+    queryFn: () => fetchRemittances(year),
+  })
 }
 
 export function useSalaryOverview(year: number, enabled = true) {
@@ -712,7 +1157,24 @@ const toTaxPeriod = (x: Partial<TaxPeriod>): TaxPeriod => ({
   paidBy: x.paidBy ?? null,
 })
 
-/** The taxes and their periods of a year (0184). */
+const toTaxBase = (b: Partial<TaxBase>): TaxBase => ({
+  moneyIn: num(b.moneyIn),
+  netRevenue: num(b.netRevenue),
+  otherIncome: num(b.otherIncome),
+  salaries: num(b.salaries),
+  statutory: num(b.statutory),
+  remittances: num(b.remittances),
+  otherExpenses: num(b.otherExpenses),
+  stockBought: num(b.stockBought),
+  expenses: num(b.expenses),
+  resultBeforeTax: num(b.resultBeforeTax),
+  taxesPaid: num(b.taxesPaid),
+  paidByKind: Object.fromEntries(
+    Object.entries(b.paidByKind ?? {}).map(([k, v]) => [k, num(v)]),
+  ) as Partial<Record<TaxKind, number>>,
+})
+
+/** The taxes and their periods of a year (0184), with the year's tax base (0187). */
 export async function fetchTaxOverview(year: number, sample = !supabase): Promise<TaxOverview> {
   if (sample || !supabase) return sampleTaxOverview(year)
   const { data, error } = await supabase.rpc('tax_overview', { p_year: year })
@@ -721,23 +1183,30 @@ export async function fetchTaxOverview(year: number, sample = !supabase): Promis
   return {
     year: Number(d.year ?? year),
     today: String(d.today ?? kigaliToday()),
-    taxes: (d.taxes ?? []).map((x) => ({
-      id: String(x.id),
-      name: String(x.name ?? ''),
-      amount: numOrNull(x.amount),
-      intervalKind: (x.intervalKind ?? 'monthly') as SalaryInterval,
-      customEvery: numOrNull(x.customEvery),
-      customUnit: (x.customUnit ?? null) as CustomUnit | null,
-      anchorOn: String(x.anchorOn ?? ''),
-      payDay: numOrNull(x.payDay),
-      note: x.note ?? null,
-      setAt: x.setAt ?? null,
-      setBy: x.setBy ?? null,
-      periods: (x.periods ?? []).map(toTaxPeriod),
-      paidThisYear: num(x.paidThisYear),
-      overdue: num(x.overdue),
-      nextDue: x.nextDue ?? null,
-    })),
+    base: toTaxBase(d.base ?? {}),
+    taxes: (d.taxes ?? [])
+      .map((x) => ({
+        id: String(x.id),
+        name: String(x.name ?? ''),
+        kind: (TAX_KINDS.includes(x.kind as TaxKind) ? x.kind : 'other') as TaxKind,
+        amount: numOrNull(x.amount),
+        intervalKind: (x.intervalKind ?? 'monthly') as SalaryInterval,
+        customEvery: numOrNull(x.customEvery),
+        customUnit: (x.customUnit ?? null) as CustomUnit | null,
+        anchorOn: String(x.anchorOn ?? ''),
+        payDay: numOrNull(x.payDay),
+        note: x.note ?? null,
+        setAt: x.setAt ?? null,
+        setBy: x.setBy ?? null,
+        periods: (x.periods ?? []).map(toTaxPeriod),
+        paidThisYear: num(x.paidThisYear),
+        overdue: num(x.overdue),
+        nextDue: x.nextDue ?? null,
+      }))
+      .sort(
+        (a, b) =>
+          TAX_KINDS.indexOf(a.kind) - TAX_KINDS.indexOf(b.kind) || a.name.localeCompare(b.name),
+      ),
   }
 }
 
@@ -910,6 +1379,7 @@ export function useIncomes(from: string, to: string, enabled = true) {
 /* ---------------------------------------------------------------- actions */
 /** A tax's settings (0184): the amount null when worked out each time. */
 export interface TaxInput {
+  kind: TaxKind
   amount: number | null
   interval: SalaryInterval
   customEvery?: number | null
@@ -927,6 +1397,8 @@ export interface SalaryInput {
   customUnit?: CustomUnit | null
   anchorOn: string
   payDay: number | null
+  /** 0186: PAYE by the bands, none, or the casual rate. */
+  payeMode?: PayeMode
   note?: string
 }
 
@@ -945,6 +1417,7 @@ export async function setSalaryQuietly(profileId: string, s: SalaryInput): Promi
     p_note: s.note ?? null,
     p_custom_every: s.interval === 'custom' ? (s.customEvery ?? null) : null,
     p_custom_unit: s.interval === 'custom' ? (s.customUnit ?? null) : null,
+    p_paye_mode: s.payeMode ?? 'normal',
   })
   if (error && !isMissingFunction(error)) throw apiError(error)
 }
@@ -972,7 +1445,95 @@ export function useAccountsActions() {
         p_note: i.note ?? null,
         p_custom_every: i.interval === 'custom' ? (i.customEvery ?? null) : null,
         p_custom_unit: i.interval === 'custom' ? (i.customUnit ?? null) : null,
+        p_paye_mode: i.payeMode ?? 'normal',
       }),
+    onSuccess: refresh,
+  })
+  // 0186: the deductions on salaries, per employee, the PAYE bands, the remittances
+  const setDeduction = useMutation({
+    mutationFn: (i: {
+      id: string | null
+      name: string
+      agency: string
+      base: string
+      defaultOn: boolean
+      employeeRate: number | null
+      employeeAmount: number | null
+      employerRate: number | null
+      employerAmount: number | null
+      validFrom: string | null
+      note: string
+      active: boolean
+    }) =>
+      rpc('set_deduction', {
+        p_id: i.id,
+        p_name: i.name,
+        p_agency: i.agency,
+        p_base: i.base,
+        p_default_on: i.defaultOn,
+        p_employee_rate: i.employeeRate,
+        p_employee_amount: i.employeeAmount,
+        p_employer_rate: i.employerRate,
+        p_employer_amount: i.employerAmount,
+        p_valid_from: i.validFrom,
+        p_note: i.note || null,
+        p_active: i.active,
+      }),
+    onSuccess: refresh,
+  })
+  const removeDeduction = useMutation({
+    mutationFn: (id: string) => rpc('remove_deduction', { p_id: id }),
+    onSuccess: refresh,
+  })
+  const setPayeBands = useMutation({
+    mutationFn: (i: { validFrom: string; bands: { lower: number; rate: number }[] }) =>
+      rpc('set_paye_bands', { p_valid_from: i.validFrom, p_bands: i.bands }),
+    onSuccess: refresh,
+  })
+  const setStaffDeduction = useMutation({
+    mutationFn: (i: {
+      profileId: string
+      ruleId: string
+      applies: boolean
+      until: string | null
+    }) =>
+      rpc('set_staff_deduction', {
+        p_profile: i.profileId,
+        p_rule: i.ruleId,
+        p_applies: i.applies,
+        p_until: i.until,
+      }),
+    onSuccess: refresh,
+  })
+  const payRemittance = useMutation({
+    mutationFn: (i: {
+      agency: string
+      month: string
+      paidOn: string
+      amount: number
+      method: string
+      reference: string
+      note: string
+    }) =>
+      rpc('pay_remittance', {
+        p_agency: i.agency,
+        p_month: i.month,
+        p_paid_on: i.paidOn,
+        p_amount: i.amount,
+        p_method: i.method,
+        p_reference: i.reference || null,
+        p_note: i.note || null,
+      }),
+    onSuccess: refresh,
+  })
+  const unpayRemittance = useMutation({
+    mutationFn: (i: { id: string; reason: string }) =>
+      rpc('unpay_remittance', { p_id: i.id, p_reason: i.reason }),
+    onSuccess: refresh,
+  })
+  const skipRemittance = useMutation({
+    mutationFn: (i: { agency: string; month: string; reason: string }) =>
+      rpc('skip_remittance', { p_agency: i.agency, p_month: i.month, p_reason: i.reason }),
     onSuccess: refresh,
   })
   const removeSalary = useMutation({
@@ -1027,6 +1588,7 @@ export function useAccountsActions() {
         p_note: i.note ?? null,
         p_custom_every: i.interval === 'custom' ? (i.customEvery ?? null) : null,
         p_custom_unit: i.interval === 'custom' ? (i.customUnit ?? null) : null,
+        p_kind: i.kind,
       }),
     onSuccess: refresh,
   })
@@ -1158,6 +1720,13 @@ export function useAccountsActions() {
     removeKind,
     addIncome,
     voidIncome,
+    setDeduction,
+    removeDeduction,
+    setPayeBands,
+    setStaffDeduction,
+    payRemittance,
+    unpayRemittance,
+    skipRemittance,
   }
 }
 

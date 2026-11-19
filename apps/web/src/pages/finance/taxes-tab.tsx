@@ -14,12 +14,14 @@ import { SidePanel } from '@/components/ui/side-panel'
 import {
   CUSTOM_UNITS,
   SALARY_INTERVALS,
+  TAX_KINDS,
   intervalWords,
   useAccountsActions,
   useTaxOverview,
   type CustomUnit,
   type SalaryInterval,
   type Tax,
+  type TaxKind,
   type TaxPeriod,
 } from '@/lib/api/accounts'
 import { useClinicInfo } from '@/lib/api/public'
@@ -29,6 +31,8 @@ import { taxesReport } from '@/lib/reports/build'
 import { cn } from '@/lib/utils'
 import { Note, PanelForm, ReportsLink } from './accounts-kit'
 import { METHODS, STATUSES, STATUS_TONE, errText, type Msg } from './accounts-tabs'
+import { RemittancesPanel } from './remittances-panel'
+import { TaxBasePanel } from './tax-base-panel'
 
 /**
  * Taxes (0184): the taxes the clinic pays, each with its schedule (monthly, quarterly, yearly,
@@ -111,9 +115,14 @@ export function TaxesTab({ user, initialYear }: { user: StaffUser; initialYear?:
                 </tr>
               </thead>
               <tbody>
-                {taxes.map((x) => (
+                {taxes.map((x, i) => (
                   <tr key={x.id} className={tableRow}>
                     <td className={tableFirstCell}>
+                      {(i === 0 || taxes[i - 1]?.kind !== x.kind) && (
+                        <span className="text-violet mb-0.5 block text-[11px] font-semibold tracking-wide uppercase">
+                          {t(`accounts.taxes.kinds.${x.kind}`)}
+                        </span>
+                      )}
                       {x.name}
                       {x.note && <span className="text-ink-3 block text-[12px]">{x.note}</span>}
                     </td>
@@ -167,6 +176,8 @@ export function TaxesTab({ user, initialYear }: { user: StaffUser; initialYear?:
         )}
         <p className="text-ink-3 m-0 pt-2 text-[13px]">{t('accounts.taxes.oneOffHint')}</p>
       </Panel>
+      <RemittancesPanel i={2} year={year} />
+      {data && <TaxBasePanel i={3} o={data} />}
       {who && (who === 'new' || current) && (
         <TaxPanel
           key={who}
@@ -249,7 +260,9 @@ function TaxPanel({
       icon={Percent}
       title={name}
       subtitle={
-        tax ? intervalWords(t, tax.intervalKind, tax.customEvery, tax.customUnit) : undefined
+        tax
+          ? `${t(`accounts.taxes.kinds.${tax.kind}`)} · ${intervalWords(t, tax.intervalKind, tax.customEvery, tax.customUnit)}`
+          : undefined
       }
       tags={
         tax && tax.overdue > 0 ? (
@@ -416,6 +429,7 @@ function TaxForm({
   const { setTax, removeTax } = useAccountsActions()
   const confirm = useConfirm()
   const [name, setName] = useState(current?.name ?? '')
+  const [kind, setKind] = useState<TaxKind>(current?.kind ?? 'other')
   const [amount, setAmount] = useState(current?.amount != null ? String(current.amount) : '')
   const [interval, setInterval] = useState<SalaryInterval>(current?.intervalKind ?? 'monthly')
   const [every, setEvery] = useState(current?.customEvery ? String(current.customEvery) : '')
@@ -437,6 +451,7 @@ function TaxForm({
       await setTax.mutateAsync({
         id: current?.id ?? null,
         name: name.trim(),
+        kind,
         amount: a == null ? null : Math.round(a),
         interval,
         customEvery: interval === 'custom' ? n : null,
@@ -486,6 +501,20 @@ function TaxForm({
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
+          <Select
+            label={t('accounts.taxes.kindField')}
+            value={kind}
+            onChange={(e) => setKind(e.target.value as TaxKind)}
+          >
+            {TAX_KINDS.map((k) => (
+              <option key={k} value={k}>
+                {t(`accounts.taxes.kinds.${k}`)}
+              </option>
+            ))}
+          </Select>
+          <p className="text-ink-3 m-0 text-[13px] sm:col-span-2">
+            {t(`accounts.taxes.kindHints.${kind}`)}
+          </p>
           <Field
             label={t('accounts.taxes.amountField')}
             inputMode="numeric"

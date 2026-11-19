@@ -25,7 +25,7 @@ import {
   type PaymentRow,
   type RefundRow,
 } from '@/lib/api/reports-finance'
-import { intervalWords } from '@/lib/api/accounts'
+import { AGENCIES, TAX_KINDS, intervalWords } from '@/lib/api/accounts'
 import {
   EXPENSE_KINDS,
   SALARY_STATUSES,
@@ -34,6 +34,7 @@ import {
   inKindOptions,
   loadIncomeRows,
   loadPayroll,
+  loadRemittanceRows,
   loadTaxRows,
   outKindOptions,
   payrollEmployees,
@@ -42,6 +43,7 @@ import {
   type MoneyRow,
   type IncomeRow,
   type PayrollRow,
+  type RemittanceRow,
   type TaxRow,
 } from '@/lib/api/reports-accounts'
 import {
@@ -1189,9 +1191,47 @@ const payroll: ReportDef<PayrollRow> = {
       key: 'amount',
       label: `${K}.cols.amount`,
       kind: 'money',
-      default: true,
+      default: false,
       total: 'sum',
       value: (r) => r.amount,
+    },
+    {
+      key: 'gross',
+      label: `${K}.cols.gross`,
+      kind: 'money',
+      default: true,
+      total: 'sum',
+      value: (r) => r.gross,
+    },
+    {
+      key: 'deductionsTotal',
+      label: `${K}.cols.deductionsTotal`,
+      kind: 'money',
+      default: true,
+      total: 'sum',
+      value: (r) => r.deductionsTotal,
+    },
+    {
+      key: 'net',
+      label: `${K}.cols.net`,
+      kind: 'money',
+      default: true,
+      total: 'sum',
+      value: (r) => r.net,
+    },
+    {
+      key: 'employerTotal',
+      label: `${K}.cols.employerTotal`,
+      kind: 'money',
+      default: true,
+      total: 'sum',
+      value: (r) => r.employerTotal,
+    },
+    {
+      key: 'payeMode',
+      label: `${K}.cols.payeMode`,
+      value: (r) => t(`accounts.salaries.payeModes.${r.payeMode}`),
+      nowrap: true,
     },
     {
       key: 'status',
@@ -1212,7 +1252,7 @@ const payroll: ReportDef<PayrollRow> = {
       key: 'paidAmount',
       label: `${K}.cols.paidAmount`,
       kind: 'money',
-      default: true,
+      default: false,
       total: 'sum',
       value: (r) => r.paidAmount,
     },
@@ -1231,12 +1271,22 @@ const payroll: ReportDef<PayrollRow> = {
     { label: `${K}.figures.payPeriods`, value: rows.length },
     {
       label: `${K}.figures.salariesPaid`,
-      value: sum(rows, (r) => (r.status === 'paid' ? (r.paidAmount ?? r.amount) : 0)),
+      value: sum(rows, (r) => (r.status === 'paid' ? (r.paidAmount ?? r.net) : 0)),
       unit: 'RWF',
     },
     {
       label: `${K}.figures.salariesDue`,
-      value: sum(rows, (r) => (r.status === 'due' || r.status === 'overdue' ? r.amount : 0)),
+      value: sum(rows, (r) => (r.status === 'due' || r.status === 'overdue' ? r.net : 0)),
+      unit: 'RWF',
+    },
+    {
+      label: `${K}.figures.withheld`,
+      value: sum(rows, (r) => (r.status === 'paid' ? r.deductionsTotal : 0)),
+      unit: 'RWF',
+    },
+    {
+      label: `${K}.figures.employerShare`,
+      value: sum(rows, (r) => (r.status === 'paid' ? r.employerTotal : 0)),
       unit: 'RWF',
     },
     {
@@ -1260,6 +1310,139 @@ const payroll: ReportDef<PayrollRow> = {
   countLabel: `${K}.count.periods`,
 }
 
+/** 0186: the payroll remittances, per month and agency. */
+const remittances: ReportDef<RemittanceRow> = {
+  id: 'finance.remittances',
+  group: 'finance',
+  title: `${K}.remittances.title`,
+  description: `${K}.remittances.description`,
+  code: 'RMT',
+  load: loadRemittanceRows,
+  allowed: keepsAccounts,
+  filters: [
+    periodFilter('month'),
+    {
+      key: 'agency',
+      label: `${K}.filters.agency`,
+      kind: 'multi',
+      options: keyOptions('accounts.deductions.agencies', AGENCIES),
+    },
+    {
+      key: 'status',
+      label: `${K}.filters.salaryStatus`,
+      kind: 'multi',
+      options: keyOptions('accounts.status', SALARY_STATUSES),
+    },
+  ],
+  columns: [
+    {
+      key: 'month',
+      label: `${K}.cols.month`,
+      default: true,
+      value: (r) => monthLabel(r.month),
+      nowrap: true,
+    },
+    {
+      key: 'agency',
+      label: `${K}.cols.agency`,
+      default: true,
+      value: (r) => t(`accounts.deductions.agencies.${r.agency}`),
+      nowrap: true,
+    },
+    {
+      key: 'lines',
+      label: `${K}.cols.deductions`,
+      default: true,
+      value: (r) => r.lines.map((l) => l.name).join(', '),
+    },
+    {
+      key: 'people',
+      label: `${K}.cols.people`,
+      kind: 'number',
+      default: true,
+      value: (r) => r.people,
+    },
+    {
+      key: 'withheld',
+      label: `${K}.cols.withheld`,
+      kind: 'money',
+      default: true,
+      total: 'sum',
+      value: (r) => r.employeeTotal,
+    },
+    {
+      key: 'employerShare',
+      label: `${K}.cols.employerShare`,
+      kind: 'money',
+      default: true,
+      total: 'sum',
+      value: (r) => r.employerTotal,
+    },
+    {
+      key: 'total',
+      label: `${K}.cols.total`,
+      kind: 'money',
+      default: true,
+      total: 'sum',
+      value: (r) => r.total,
+    },
+    {
+      key: 'dueOn',
+      label: `${K}.cols.dueOn`,
+      kind: 'date',
+      default: true,
+      value: (r) => r.dueOn,
+      nowrap: true,
+    },
+    {
+      key: 'status',
+      label: `${K}.cols.status`,
+      default: true,
+      value: (r) => t(`accounts.status.${r.status}`),
+      nowrap: true,
+    },
+    {
+      key: 'paidOn',
+      label: `${K}.cols.paidOn`,
+      kind: 'date',
+      default: true,
+      value: (r) => r.paidOn,
+      nowrap: true,
+    },
+    {
+      key: 'paidAmount',
+      label: `${K}.cols.paidAmount`,
+      kind: 'money',
+      total: 'sum',
+      value: (r) => r.paidAmount,
+    },
+    { key: 'method', label: `${K}.cols.method`, value: (r) => methodLabel(r.method), nowrap: true },
+    { key: 'reference', label: `${K}.cols.reference`, value: (r) => r.reference, nowrap: true },
+    { key: 'paidBy', label: `${K}.cols.paidBy`, value: (r) => r.paidBy },
+  ],
+  figures: (rows) => [
+    { label: `${K}.figures.withheld`, value: sum(rows, (r) => r.employeeTotal), unit: 'RWF' },
+    { label: `${K}.figures.employerShare`, value: sum(rows, (r) => r.employerTotal), unit: 'RWF' },
+    {
+      label: `${K}.figures.remitDue`,
+      value: sum(rows, (r) => (r.status === 'due' || r.status === 'overdue' ? r.total : 0)),
+      unit: 'RWF',
+    },
+  ],
+  groups: [
+    {
+      key: 'agency',
+      label: `${K}.groups.agency`,
+      value: (r) => t(`accounts.deductions.agencies.${r.agency}`),
+    },
+    byMonth<RemittanceRow>((r) => r.dueOn),
+  ],
+  defaultSort: { key: 'dueOn', dir: 'asc' },
+  notes: [`${K}.remittances.note1`, `${K}.remittances.note2`],
+  wide: true,
+  countLabel: `${K}.count.remittances`,
+}
+
 /** 0184: the taxes' periods, like the payroll. */
 const taxes: ReportDef<TaxRow> = {
   id: 'finance.taxes',
@@ -1273,6 +1456,12 @@ const taxes: ReportDef<TaxRow> = {
     periodFilter('month'),
     { key: 'tax', label: `${K}.filters.tax`, kind: 'select', loadOptions: taxOptions },
     {
+      key: 'kind',
+      label: `${K}.filters.taxKind`,
+      kind: 'multi',
+      options: keyOptions('accounts.taxes.kinds', TAX_KINDS),
+    },
+    {
       key: 'status',
       label: `${K}.filters.salaryStatus`,
       kind: 'multi',
@@ -1282,6 +1471,13 @@ const taxes: ReportDef<TaxRow> = {
   ],
   columns: [
     { key: 'tax', label: `${K}.cols.tax`, default: true, value: (r) => r.tax },
+    {
+      key: 'kind',
+      label: `${K}.cols.taxKind`,
+      default: true,
+      value: (r) => t(`accounts.taxes.kinds.${r.kind}`),
+      nowrap: true,
+    },
     {
       key: 'period',
       label: `${K}.cols.period`,
@@ -1363,6 +1559,12 @@ const taxes: ReportDef<TaxRow> = {
   ],
   groups: [
     { key: 'tax', label: `${K}.groups.tax`, value: (r) => r.tax },
+    {
+      key: 'kind',
+      label: `${K}.groups.taxKind`,
+      value: (r) => t(`accounts.taxes.kinds.${r.kind}`),
+      order: (r) => TAX_KINDS.indexOf(r.kind as (typeof TAX_KINDS)[number]),
+    },
     {
       key: 'status',
       label: `${K}.groups.status`,
@@ -1608,6 +1810,7 @@ export const FINANCE_REPORTS: AnyReportDef[] = [
   moneyInOut,
   otherIncome,
   payroll,
+  remittances,
   taxes,
   expenses,
 ]

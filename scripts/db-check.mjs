@@ -25332,6 +25332,12 @@ await step(
     await db.exec(
       await readFile(path.join(migrationsDir, '20270209090000_money_kinds.sql'), 'utf8'),
     )
+    // 0186 again: 0180 brings back the eight-value set_salary and the slip-less pay_salary
+    await db.exec(
+      await readFile(path.join(migrationsDir, '20270210090000_salary_deductions.sql'), 'utf8'),
+    )
+    // 0187 again: 0184 brings back the nine-value set_tax (ambiguous with 0187's ten)
+    await db.exec(await readFile(path.join(migrationsDir, '20270211090000_tax_kinds.sql'), 'utf8'))
     const refused = await codeAs(d1, `select salary_overview(2026)`)
     await as(staff.cashier)
     await db.query(`select set_salary($1, 500000, 'monthly', '2026-02-02', null, 'contract')`, [d1])
@@ -25391,7 +25397,8 @@ await step(
       periods[10].periodStart !== '2026-12-02'
     )
       throw new Error('periods: ' + JSON.stringify(periods.slice(0, 2)) + ' n=' + periods.length)
-    if (!paid.id || Number(paid.amount) !== 500000 || twice !== '23505' || wrongStart !== '22023')
+    // 0186: the net of 500,000 after PAYE, pension, maternity and Mutuelle
+    if (!paid.id || Number(paid.amount) !== 352727 || twice !== '23505' || wrongStart !== '22023')
       throw new Error(JSON.stringify({ paid, twice, wrongStart }))
     if (
       after[0].status !== 'paid' ||
@@ -25402,9 +25409,10 @@ await step(
       throw new Error('after: ' + JSON.stringify(after.slice(0, 2)))
     if (
       !skipped ||
-      Number(money.salaries) !== 500000 ||
-      exp.length !== 1 ||
-      exp[0].kind !== 'salary'
+      Number(money.salaries) !== 352727 ||
+      Number(money.statutory) !== 41500 ||
+      exp.filter((e) => e.kind === 'salary').length !== 1 ||
+      !exp.some((e) => e.kindCode === 'statutory' && Number(e.amount) === 41500)
     )
       throw new Error(JSON.stringify({ skipped, money: money.salaries, exp }))
     if (Number(money2.otherExpenses) !== 85000 || Number(money3.otherExpenses) !== 0)
@@ -25430,7 +25438,7 @@ await step(
     await as(staff.cashier)
     await db.query(`select remove_salary($1)`, [d1])
     await asAdmin()
-    return `11 periods Feb–Dec, due 2 Mar / 2 Apr…; paid 2 Mar (expense 500,000), twice 23505, odd start 22023; Mar skipped; other expense 85,000 then voided; undo → due again, salaries 0, paid again then undone again (0183); pay day 28 → due 28 Mar; alerts created ${alerts.created} (overdue ${alerts.overdue}), second run 0; doctor 42501`
+    return `11 periods Feb–Dec, due 2 Mar / 2 Apr…; paid 2 Mar (net 352,727 + statutory 41,500 — 0186), twice 23505, odd start 22023; Mar skipped; other expense 85,000 then voided; undo → due again, salaries 0, paid again then undone again (0183); pay day 28 → due 28 Mar; alerts created ${alerts.created} (overdue ${alerts.overdue}), second run 0; doctor 42501`
   },
 )
 
@@ -25738,6 +25746,232 @@ await step(
     if (Number(money2.otherIncome) !== 0)
       throw new Error('voided income still counted: ' + money2.otherIncome)
     return `8 built-in kinds; Rent received + Electricity added, duplicate 23505, blank 22023; built-in keeps its name, description changed; rent 150,000 recorded (into a built-in kind / a future date refused), expense 85,000 under Electricity (a system kind refused), a one-off tax 20,000 under Taxes; money: other in 150,000, other out 85,000, taxes 20,000 apart, result = money in − expenses; in-use kind retired not removed, built-in not removed, unused one removed; voided income not counted; doctor 42501`
+  },
+)
+
+// 0186: the deductions on salaries, the pay slip, the remittances
+await step(
+  '0186: PAYE by bands (500,000 → 114,000; casual 15%), the pay slip (pension 6%, maternity 0.3%, Mutuelle 0.5% of the net, hazards 2% employer), a salary paid records net + employer share, a loan deducted until a date, the month’s remittances to RRA and RSSB paid and undone; a doctor refused',
+  async () => {
+    const refused = await codeAs(d1, `select deductions_list()`)
+    await as(staff.cashier)
+    const paye = (await one(`select paye_of(500000, '2026-03-01') as n`)).n
+    const payeLow = (await one(`select paye_of(60000, '2026-03-01') as n`)).n
+    const payeMid = (await one(`select paye_of(100000, '2026-03-01') as n`)).n
+    const casual = (await one(`select paye_of(500000, '2026-03-01', 'casual') as n`)).n
+    const list = (await one(`select deductions_list() as j`)).j
+    // the doctor's salary from 0179 (500,000 monthly from 2 Feb, pay day 28): the slip of a due period
+    const slip = (await one(`select payslip_of($1, 500000, '2026-03-28') as j`, [d1])).j
+    const lines = Object.fromEntries((slip.lines ?? []).map((l) => [l.code ?? l.name, l]))
+    // a loan: 20,000 a month from the salary until 30 June
+    const loan = (
+      await one(
+        `select set_deduction(null, 'Staff loan', 'other', 'gross', false, null, 20000, null, null, '2026-01-01') as id`,
+      )
+    ).id
+    const both = await codeAs(
+      staff.cashier,
+      `select set_deduction(null, 'x', 'other', 'gross', false, 1, 1, null, null, '2026-01-01')`,
+    )
+    await db.query(`select set_staff_deduction($1, $2, true, '2026-06-30')`, [d1, loan])
+    const slipLoan = (await one(`select payslip_of($1, 500000, '2026-03-28') as j`, [d1])).j
+    const slipAfter = (await one(`select payslip_of($1, 500000, '2026-07-28') as j`, [d1])).j
+    // pension 7% from 2027: the earlier periods keep 6%
+    const pensionId = list.rules.find((r) => r.code === 'pension').id
+    const slip2027 = (await one(`select payslip_of($1, 500000, '2027-01-28') as j`, [d1])).j
+    // RAMA off by default, ticked for this employee
+    const ramaId = list.rules.find((r) => r.code === 'rama').id
+    await db.query(`select set_staff_deduction($1, $2, true, null)`, [d1, ramaId])
+    const slipRama = (await one(`select payslip_of($1, 500000, '2026-03-28') as j`, [d1])).j
+    await db.query(`select set_staff_deduction($1, $2, false, null)`, [d1, ramaId])
+    // the 0179 step removed the salary at its end: set it again (500,000 monthly from 2 Feb, pay day 28)
+    await db.query(`select set_salary($1, 500000, 'monthly', '2026-02-02', 28, null)`, [d1])
+    // the period due 28 May (2 Apr – 1 May) paid on 28 May: net to the employee, the employer's share apart
+    const periodsBefore = (await one(`select salary_periods($1, 2026) as j`, [d1])).j
+    const april = periodsBefore.find(
+      (p) => p.dueOn === '2026-05-28' && p.status !== 'paid' && p.status !== 'skipped',
+    )
+    if (!april)
+      throw new Error(
+        'no period due 28 May: ' + JSON.stringify(periodsBefore.map((p) => [p.dueOn, p.status])),
+      )
+    const paid = (
+      await one(`select pay_salary($1, $2, '2026-05-28', null, 'bank', 'TRF-MAY', null) as j`, [
+        d1,
+        april.periodStart,
+      ])
+    ).j
+    const exp = (await one(`select expenses_list('2026-05-01', '2026-05-31') as j`)).j
+    const money = (await one(`select finance_summary('2026-05-01', '2026-05-31') as j`)).j
+    const remits = (await one(`select remittances_due(2026) as j`)).j
+    const rra = remits.find((r) => r.month === '2026-05' && r.agency === 'rra')
+    const rssb = remits.find((r) => r.month === '2026-05' && r.agency === 'rssb')
+    const paidRra = (
+      await one(
+        `select pay_remittance('rra', '2026-05-01', '2026-06-14', null, 'bank', 'RRA-MAY', null) as j`,
+      )
+    ).j
+    const twice = await codeAs(staff.cashier, `select pay_remittance('rra', '2026-05-01')`)
+    const nothing = await codeAs(staff.cashier, `select pay_remittance('other', '2026-01-01')`)
+    const undoLocked = await codeAs(staff.cashier, `select unpay_salary($1, 'wrong')`, [paid.id])
+    const money2 = (await one(`select finance_summary('2026-06-01', '2026-06-30') as j`)).j
+    await db.query(`select unpay_remittance($1, 'wrong reference')`, [paidRra.id])
+    await db.query(`select unpay_salary($1, 'wrong month')`, [paid.id])
+    const exp2 = (await one(`select expenses_list('2026-05-01', '2026-05-31') as j`)).j
+    // a salary without PAYE
+    await db.query(
+      `select set_salary($1, 500000, 'monthly', '2026-02-02', 28, null, null, null, 'none')`,
+      [d1],
+    )
+    const slipNone = (await one(`select payslip_of($1, 500000, '2026-03-28') as j`, [d1])).j
+    await db.query(
+      `select set_salary($1, 500000, 'monthly', '2026-02-02', 28, null, null, null, 'normal')`,
+      [d1],
+    )
+    await db.query(`select set_staff_deduction($1, $2, false, null)`, [d1, loan])
+    const alerts = (await one(`select finance_alert_check() as j`)).j
+    await asAdmin()
+    if (refused !== '42501') throw new Error('doctor not refused: ' + refused)
+    if (
+      Number(paye) !== 114000 ||
+      Number(payeLow) !== 0 ||
+      Number(payeMid) !== 4000 ||
+      Number(casual) !== 66000
+    )
+      throw new Error(JSON.stringify({ paye, payeLow, payeMid, casual }))
+    if (list.rules.length < 6 || list.payeBands.length !== 4)
+      throw new Error('list: ' + JSON.stringify({ n: list.rules.length, b: list.payeBands.length }))
+    if (
+      Number(slip.gross) !== 500000 ||
+      Number(lines.paye?.employee) !== 114000 ||
+      Number(lines.pension?.employee) !== 30000 ||
+      Number(lines.pension?.employer) !== 30000 ||
+      Number(lines.maternity?.employee) !== 1500 ||
+      Number(lines.maternity?.employer) !== 1500 ||
+      Number(lines.hazard?.employee) !== 0 ||
+      Number(lines.hazard?.employer) !== 10000 ||
+      Number(lines.cbhi?.employee) !== 1773 ||
+      lines.rama ||
+      Number(slip.net) !== 352727 ||
+      Number(slip.employerTotal) !== 41500
+    )
+      throw new Error('slip: ' + JSON.stringify(slip))
+    if (
+      !loan ||
+      both !== '22023' ||
+      Number(slipLoan.net) !== 332727 ||
+      Number(slipAfter.net) !== 352727
+    )
+      throw new Error(JSON.stringify({ loan, both, net: slipLoan.net, after: slipAfter.net }))
+    const p27 = (slip2027.lines ?? []).find((l) => l.code === 'pension')
+    if (Number(p27?.employee) !== 35000 || !pensionId)
+      throw new Error('2027 pension: ' + JSON.stringify(p27))
+    if (!(slipRama.lines ?? []).some((l) => l.code === 'rama' && Number(l.employee) === 37500))
+      throw new Error('rama: ' + JSON.stringify(slipRama.lines))
+    if (
+      !april ||
+      !paid.id ||
+      Number(paid.amount) !== 332727 ||
+      Number(paid.employerTotal) !== 41500 ||
+      !paid.statutoryExpenseId
+    )
+      throw new Error('paid: ' + JSON.stringify({ april, paid }))
+    const salaryExp = exp.find((e) => e.id === paid.expenseId)
+    const statExp = exp.find((e) => e.id === paid.statutoryExpenseId)
+    if (
+      !salaryExp ||
+      Number(salaryExp.amount) !== 332727 ||
+      !statExp ||
+      statExp.kindCode !== 'statutory' ||
+      Number(statExp.amount) !== 41500
+    )
+      throw new Error('expenses: ' + JSON.stringify({ salaryExp, statExp }))
+    if (
+      Number(money.salaries) !== 332727 ||
+      Number(money.statutory) !== 41500 ||
+      Number(money.otherExpenses) !== 0
+    )
+      throw new Error(
+        'money: ' +
+          JSON.stringify({ s: money.salaries, st: money.statutory, o: money.otherExpenses }),
+      )
+    if (
+      !rra ||
+      Number(rra.employeeTotal) !== 114000 ||
+      rra.dueOn !== '2026-06-15' ||
+      !rssb ||
+      Number(rssb.employeeTotal) !== 33273 ||
+      Number(rssb.employerTotal) !== 41500 ||
+      (rssb.status !== 'due' && rssb.status !== 'overdue')
+    )
+      throw new Error('remits: ' + JSON.stringify({ rra, rssb }))
+    if (
+      !paidRra.id ||
+      Number(paidRra.employeeTotal) !== 114000 ||
+      twice !== '23505' ||
+      nothing !== '22023' ||
+      undoLocked !== '22023'
+    )
+      throw new Error(JSON.stringify({ paidRra, twice, nothing, undoLocked }))
+    if (Number(money2.remittances) !== 114000)
+      throw new Error('remittance expense: ' + money2.remittances)
+    if (
+      exp2.some((e) => (e.id === paid.expenseId || e.id === paid.statutoryExpenseId) && !e.voided)
+    )
+      throw new Error('undo left an expense live')
+    if (
+      Number(slipNone.net) !==
+      500000 - 30000 - 1500 - 20000 - Math.round((500000 - 31500) * 0.005)
+    )
+      throw new Error('no PAYE: ' + JSON.stringify(slipNone))
+    if (!alerts.remittances) throw new Error('alerts: ' + JSON.stringify(alerts))
+    // 0187: the taxes by kind; a tax withheld at source is a credit, not money out; the year's base
+    await as(staff.cashier)
+    const wht = (
+      await one(
+        `select set_tax(null, 'Withheld on RSSB tender', null, 'monthly', '2026-01-01', null, null, null, null, 'withheld') as j`,
+      )
+    ).j
+    const badKind = await codeAs(
+      staff.cashier,
+      `select set_tax(null, 'x', null, 'monthly', '2026-01-01', null, null, null, null, 'odd')`,
+    )
+    const credit = (
+      await one(
+        `select pay_tax($1, '2026-03-01', '2026-03-20', 90000, 'bank', 'TENDER-3', null) as j`,
+        [wht.id],
+      )
+    ).j
+    const ov = (await one(`select tax_overview(2026) as j`)).j
+    const whtRow = ov.taxes.find((x) => x.id === wht.id)
+    const moneyMar = (await one(`select finance_summary('2026-03-01', '2026-03-31') as j`)).j
+    await asAdmin()
+    if (
+      !wht.id ||
+      wht.kind !== 'withheld' ||
+      badKind !== '22023' ||
+      !credit.id ||
+      credit.expenseId != null ||
+      credit.kind !== 'withheld'
+    )
+      throw new Error('withheld: ' + JSON.stringify({ wht, badKind, credit }))
+    if (
+      !whtRow ||
+      whtRow.kind !== 'withheld' ||
+      Number(whtRow.paidThisYear) !== 90000 ||
+      Number(ov.base?.paidByKind?.withheld) !== 90000 ||
+      ov.base.resultBeforeTax == null
+    )
+      throw new Error('overview: ' + JSON.stringify({ whtRow, base: ov.base }))
+    if (
+      !ov.taxes.every((x) => x.kind) ||
+      (ov.taxes[0].kind > ov.taxes[ov.taxes.length - 1].kind && false)
+    )
+      throw new Error('kinds missing')
+    // the March taxes paid did not grow by the credit (0185 recorded 20,000 of one-off tax in March)
+    if (Number(moneyMar.taxes) !== 20000)
+      throw new Error('withheld counted as money out: ' + moneyMar.taxes)
+    return `PAYE 500,000 → 114,000 (60,000 → 0; 100,000 → 4,000; casual → 66,000); slip: pension 30,000 + 30,000, maternity 1,500 + 1,500, hazards 0 + 10,000, Mutuelle 1,773, net 352,727, employer 41,500; loan 20,000 until 30 June (net 332,727, back to 352,727 in July); pension 7% in 2027 (35,000); RAMA ticked → 37,500; the period due 28 May paid: net 332,727 + statutory 41,500 (money: salaries / statutory apart); remittances due 15 June: RRA 114,000, RSSB 33,273 + 41,500; RRA paid (twice 23505, nothing 22023), salary undo refused while remitted, then both undone; PAYE none → net ${slipNone.net}; alerts ran; 0187: a tax withheld at source (kind withheld) paid 90,000 as a credit with no expense, the base of the year carries it (paidByKind.withheld), an odd kind 22023; doctor 42501`
   },
 )
 // @@t141-end

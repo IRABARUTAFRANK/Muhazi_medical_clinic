@@ -13,6 +13,7 @@ import { useConfirm } from '@/lib/confirm'
 import { cn } from '@/lib/utils'
 import { Note, PanelForm } from './accounts-kit'
 import { errText, type Msg } from './accounts-tabs'
+import { DeductionsPanel } from './deductions-panel'
 
 /**
  * The kinds of money (0185): what money in and money out the clinic has, each with a description
@@ -92,6 +93,7 @@ export function KindsTab() {
           )
         })}
       </div>
+      <DeductionsPanel i={3} />
     </div>
   )
 }

@@ -31,11 +31,14 @@ import { Select } from '@/components/ui/select'
 import { SidePanel } from '@/components/ui/side-panel'
 import {
   CUSTOM_UNITS,
+  PAYE_MODES,
   SALARY_INTERVALS,
   SYSTEM_OUT_KINDS,
   intervalWords,
+  deductionName,
   kindName,
   useAccountsActions,
+  useDeductions,
   useDailySalaryAlertCheck,
   useExpenses,
   useFinanceSummary,
@@ -44,6 +47,7 @@ import {
   type CustomUnit,
   type ExpenseKind,
   type FinanceSummary,
+  type PayeMode,
   type SalaryInterval,
   type SalaryPeriod,
   type SalaryPerson,
@@ -53,7 +57,8 @@ import { useConfirm } from '@/lib/confirm'
 import { kigaliToday } from '@/lib/clock'
 import { navForUser } from '@/lib/nav'
 import { usePeriod } from '@/lib/period'
-import { financeMoneyReport, payrollReport } from '@/lib/reports/build'
+import { useSession } from '@/store/session'
+import { financeMoneyReport, payrollReport, payslipReport } from '@/lib/reports/build'
 import { cn } from '@/lib/utils'
 import { CLINIC_PROFILE } from '@mmc/shared'
 
@@ -548,6 +553,8 @@ function SalaryPanel({
   // without a salary yet, the form opens straight away
   const [editing, setEditing] = useState(!person)
   const [paying, setPaying] = useState<SalaryPeriod | null>(null)
+  // 0186: the pay slip of one period, opened from its row
+  const [slip, setSlip] = useState<SalaryPeriod | null>(null)
   const method = (m: string | null) =>
     m ? t(`visit.payment.methods.${m}`, { defaultValue: m }) : ''
   const undo = async (period: SalaryPeriod) => {
@@ -645,6 +652,10 @@ function SalaryPanel({
               <dt className="text-ink-3 text-[12px]">{t('accounts.salaries.cols.nextDue')}</dt>
               <dd className="m-0">{person.nextDue ? formatDate(new Date(person.nextDue)) : '—'}</dd>
             </div>
+            <div>
+              <dt className="text-ink-3 text-[12px]">{t('accounts.salaries.payeMode')}</dt>
+              <dd className="m-0">{t(`accounts.salaries.payeModes.${person.payeMode}`)}</dd>
+            </div>
             {person.note && (
               <div>
                 <dt className="text-ink-3 text-[12px]">{t('accounts.salaries.note')}</dt>
@@ -665,6 +676,9 @@ function SalaryPanel({
         {paying && person && !editing && (
           <PayForm person={person} period={paying} onClose={() => setPaying(null)} onMsg={onMsg} />
         )}
+        {slip && person && !editing && (
+          <PayslipView person={person} period={slip} onClose={() => setSlip(null)} />
+        )}
         {person && !editing && (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-[13px]">
@@ -672,9 +686,8 @@ function SalaryPanel({
                 <tr className="border-border border-b">
                   <th className={tableHead}>{t('accounts.salaries.cols.period')}</th>
                   <th className={tableHead}>{t('accounts.salaries.cols.dueOn')}</th>
-                  <th className={cn(tableHead, 'text-right')}>
-                    {t('accounts.salaries.cols.amount')}
-                  </th>
+                  <th className={cn(tableHead, 'text-right')}>{t('accounts.salaries.gross')}</th>
+                  <th className={cn(tableHead, 'text-right')}>{t('accounts.salaries.net')}</th>
                   <th className={tableHead}>{t('accounts.salaries.cols.status')}</th>
                   <th className={tableHead}></th>
                 </tr>
@@ -695,16 +708,30 @@ function SalaryPanel({
                         ? x.note
                         : ''
                   const here = paying?.periodStart === x.periodStart
+                  const open = slip?.periodStart === x.periodStart
                   return (
-                    <tr key={x.periodStart} className={cn(tableRow, here && 'bg-yellow-bg')}>
+                    <tr
+                      key={x.periodStart}
+                      className={cn(tableRow, (here || open) && 'bg-yellow-bg')}
+                    >
                       <td className={cn(tableFirstCell, 'whitespace-nowrap')}>
                         {formatDate(new Date(x.periodStart))} – {formatDate(new Date(x.periodEnd))}
+                        <button
+                          type="button"
+                          className="text-teal block text-[12px] underline-offset-2 hover:underline"
+                          onClick={() => setSlip(open ? null : x)}
+                        >
+                          {t('accounts.salaries.payslip')}
+                        </button>
                       </td>
                       <td className={cn(tableCell, 'whitespace-nowrap')}>
                         {formatDate(new Date(x.dueOn))}
                       </td>
                       <td className={cn(tableCell, 'text-right tabular-nums')}>
-                        {formatRwf(x.paidAmount ?? x.amount)}
+                        {formatRwf(x.gross)}
+                      </td>
+                      <td className={cn(tableCell, 'text-right font-semibold tabular-nums')}>
+                        {formatRwf(x.status === 'paid' ? (x.paidAmount ?? x.net) : x.net)}
                       </td>
                       <td className={tableCell}>
                         <Badge tone={STATUS_TONE[x.status]}>
@@ -751,6 +778,87 @@ function SalaryPanel({
   )
 }
 
+/** The pay slip of one period (0186): gross, each deduction, net, the employer's contributions. */
+function PayslipView({
+  person,
+  period,
+  onClose,
+}: {
+  person: SalaryPerson
+  period: SalaryPeriod
+  onClose: () => void
+}) {
+  const { t } = useTranslation()
+  const { data: info } = useClinicInfo()
+  const user = useSession((s) => s.user)
+  const agency = (a: string) => t(`accounts.deductions.agencies.${a}`)
+  return (
+    <PanelForm
+      title={t('accounts.salaries.payslipTitle', {
+        name: person.name,
+        period: `${formatDate(new Date(period.periodStart))} – ${formatDate(new Date(period.periodEnd))}`,
+      })}
+    >
+      <div className="flex flex-col gap-3">
+        <table className="w-full border-collapse text-[13px]">
+          <tbody>
+            <tr className={tableRow}>
+              <td className={cn(tableFirstCell, 'font-semibold')}>
+                {t('accounts.salaries.gross')}
+              </td>
+              <td className={cn(tableCell, 'text-right font-semibold tabular-nums')}>
+                {formatRwf(period.gross)}
+              </td>
+              <td className={cn(tableCell, 'text-ink-3 text-right text-[12px]')}>
+                {t('accounts.salaries.employerShare')}
+              </td>
+            </tr>
+            {period.deductions.map((l) => (
+              <tr key={l.ruleId} className={tableRow}>
+                <td className={tableFirstCell}>
+                  {l.code ? deductionName(t, l) : l.name}
+                  <span className="text-ink-3 block text-[12px]">
+                    {agency(l.agency)} · {t(`accounts.deductions.bases.${l.base}`)}
+                  </span>
+                </td>
+                <td className={cn(tableCell, 'text-right tabular-nums')}>
+                  {l.employee ? `− ${formatRwf(l.employee)}` : '—'}
+                </td>
+                <td className={cn(tableCell, 'text-ink-3 text-right tabular-nums')}>
+                  {l.employer ? formatRwf(l.employer) : '—'}
+                </td>
+              </tr>
+            ))}
+            <tr className="border-border border-t">
+              <td className={cn(tableFirstCell, 'font-semibold')}>{t('accounts.salaries.net')}</td>
+              <td className={cn(tableCell, 'text-green text-right font-semibold tabular-nums')}>
+                {formatRwf(period.net)}
+              </td>
+              <td className={cn(tableCell, 'text-right font-semibold tabular-nums')}>
+                {formatRwf(period.employerTotal)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p className="text-ink-3 m-0 text-[13px]">
+          {t('accounts.salaries.payslipHint', {
+            cost: formatRwf(period.gross + period.employerTotal),
+            withheld: formatRwf(period.gross - period.net),
+          })}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {user && (
+            <ReportButtons
+              build={() => payslipReport(person, period, info?.profile ?? CLINIC_PROFILE, user, t)}
+            />
+          )}
+          <Button onClick={onClose}>{t('accounts.cancel')}</Button>
+        </div>
+      </div>
+    </PanelForm>
+  )
+}
+
 function SalaryForm({
   profileId,
   name,
@@ -765,8 +873,18 @@ function SalaryForm({
   onMsg: (m: Msg) => void
 }) {
   const { t } = useTranslation()
-  const { setSalary, removeSalary } = useAccountsActions()
+  const { setSalary, removeSalary, setStaffDeduction } = useAccountsActions()
+  const { data: deductions } = useDeductions()
   const confirm = useConfirm()
+  // 0186: the rules that may apply (PAYE is the salary's own mode), ticked as set or by default
+  const rules = (deductions?.rules ?? []).filter((r) => r.active && r.code !== 'paye')
+  const [payeMode, setPayeMode] = useState<PayeMode>(current?.payeMode ?? 'normal')
+  const [ticks, setTicks] = useState<Record<string, { on: boolean; until: string }>>(() =>
+    Object.fromEntries(
+      (current?.deductions ?? []).map((d) => [d.ruleId, { on: d.applies, until: d.until ?? '' }]),
+    ),
+  )
+  const tickOf = (ruleId: string, dflt: boolean) => ticks[ruleId] ?? { on: dflt, until: '' }
   const [amount, setAmount] = useState(current ? String(current.amount) : '')
   const [interval, setInterval] = useState<SalaryInterval>(current?.intervalKind ?? 'monthly')
   // 0180: a custom interval: every N days, weeks or months
@@ -793,8 +911,24 @@ function SalaryForm({
         customUnit: interval === 'custom' ? unit : null,
         anchorOn: anchor,
         payDay: payDay ? Number(payDay) : null,
+        payeMode,
         note,
       })
+      // the ticks that differ from the rule's default, or carry an "until": saved per employee
+      for (const r of rules) {
+        const k = tickOf(r.id, r.defaultOn)
+        const stored = current?.deductions.find((d) => d.ruleId === r.id)
+        const changed = stored
+          ? stored.applies !== k.on || (stored.until ?? '') !== k.until
+          : k.on !== r.defaultOn || k.until !== ''
+        if (changed)
+          await setStaffDeduction.mutateAsync({
+            profileId,
+            ruleId: r.id,
+            applies: k.on,
+            until: k.until || null,
+          })
+      }
       onMsg({ ok: true, text: t('accounts.salaries.saved', { name }) })
       onClose()
     } catch (err) {
@@ -882,6 +1016,80 @@ function SalaryForm({
           onChange={(e) => setNote(e.target.value)}
         />
         <p className="text-ink-3 m-0 text-[13px]">{t('accounts.salaries.setHint')}</p>
+        <div className="border-border rounded-md border p-3">
+          <h4 className="text-ink m-0 mb-2 text-[14px] font-semibold">
+            {t('accounts.salaries.deductionsTitle')}
+          </h4>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Select
+              label={t('accounts.salaries.payeMode')}
+              value={payeMode}
+              onChange={(e) => setPayeMode(e.target.value as PayeMode)}
+            >
+              {PAYE_MODES.map((m) => (
+                <option key={m} value={m}>
+                  {t(`accounts.salaries.payeModes.${m}`)}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="mt-2 flex flex-col gap-1">
+            {rules.map((r) => {
+              const k = tickOf(r.id, r.defaultOn)
+              return (
+                <label key={r.id} className="flex flex-wrap items-center gap-2 text-[14px]">
+                  <input
+                    type="checkbox"
+                    checked={k.on}
+                    onChange={(e) =>
+                      setTicks((x) => ({ ...x, [r.id]: { ...k, on: e.target.checked } }))
+                    }
+                  />
+                  <span>
+                    {deductionName(t, r)}
+                    <span className="text-ink-3 ml-1 text-[12px]">
+                      {r.current
+                        ? [
+                            r.current.employeeAmount != null
+                              ? t('accounts.deductions.fixedWords', {
+                                  amount: r.current.employeeAmount,
+                                })
+                              : r.current.employeeRate != null
+                                ? `${r.current.employeeRate}%`
+                                : null,
+                            r.current.employerAmount != null || r.current.employerRate != null
+                              ? t('accounts.salaries.employerPlus', {
+                                  share:
+                                    r.current.employerAmount != null
+                                      ? t('accounts.deductions.fixedWords', {
+                                          amount: r.current.employerAmount,
+                                        })
+                                      : `${r.current.employerRate}%`,
+                                })
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')
+                        : ''}
+                    </span>
+                  </span>
+                  {k.on && r.current?.employeeAmount != null && (
+                    <input
+                      type="date"
+                      aria-label={t('accounts.salaries.until')}
+                      className="border-border bg-card text-ink ml-auto h-8 rounded-md border px-2 text-[13px]"
+                      value={k.until}
+                      onChange={(e) =>
+                        setTicks((x) => ({ ...x, [r.id]: { ...k, until: e.target.value } }))
+                      }
+                    />
+                  )}
+                </label>
+              )
+            })}
+          </div>
+          <p className="text-ink-3 m-0 mt-2 text-[12px]">{t('accounts.salaries.deductionsHint')}</p>
+        </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="primary" type="submit" loading={setSalary.isPending}>
             {t('accounts.salaries.save')}
@@ -912,7 +1120,8 @@ function PayForm({
   const { t } = useTranslation()
   const { paySalary } = useAccountsActions()
   const [paidOn, setPaidOn] = useState(kigaliToday())
-  const [amount, setAmount] = useState(String(period.amount))
+  // 0186: the net to pay, after the deductions
+  const [amount, setAmount] = useState(String(period.net))
   const [method, setMethod] = useState<string>('cash')
   const [reference, setReference] = useState('')
   const [note, setNote] = useState('')
@@ -960,7 +1169,7 @@ function PayForm({
             onChange={(e) => setPaidOn(e.target.value)}
           />
           <Field
-            label={t('accounts.salaries.paidAmount')}
+            label={t('accounts.salaries.netPaid')}
             inputMode="numeric"
             value={amount}
             onChange={(e) => setAmount(e.target.value.replace(/[^\d]/g, ''))}
@@ -987,6 +1196,13 @@ function PayForm({
           value={note}
           onChange={(e) => setNote(e.target.value)}
         />
+        <p className="text-ink-3 m-0 text-[13px]">
+          {t('accounts.salaries.payNetHint', {
+            gross: formatRwf(period.gross),
+            withheld: formatRwf(period.gross - period.net),
+            employer: formatRwf(period.employerTotal),
+          })}
+        </p>
         <div className="flex flex-wrap gap-2">
           <Button variant="primary" type="submit" loading={paySalary.isPending}>
             <CalendarCheck size={16} aria-hidden="true" />

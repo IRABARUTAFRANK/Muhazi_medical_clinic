@@ -11,6 +11,8 @@ import {
   intervalWords,
   type FinanceSummary,
   type SalaryOverview,
+  type SalaryPeriod,
+  type SalaryPerson,
   type TaxOverview,
 } from '@/lib/api/accounts'
 import { docDate, kigaliParts, makeDocLabels } from '@/lib/doc-style'
@@ -1143,6 +1145,7 @@ export function taxesReport(
             title: t('accounts.report.taxesTable'),
             columns: [
               { label: t('accounts.taxes.cols.tax'), pdfWidth: '24%' },
+              { label: t('accounts.taxes.kindField'), nowrap: true },
               { label: t('accounts.taxes.cols.amount'), kind: 'money' },
               { label: t('accounts.salaries.cols.interval') },
               { label: t('accounts.taxes.anchor'), kind: 'date' },
@@ -1151,13 +1154,14 @@ export function taxesReport(
             ],
             rows: o.taxes.map((x) => [
               x.name,
+              t(`accounts.taxes.kinds.${x.kind}`),
               x.amount,
               intervalWords(t, x.intervalKind, x.customEvery, x.customUnit),
               x.anchorOn,
               x.paidThisYear,
               x.overdue,
             ]),
-            totals: [4, 5],
+            totals: [5, 6],
           },
           {
             title: t('accounts.report.taxPeriodsTable'),
@@ -1176,6 +1180,81 @@ export function taxesReport(
             ],
             rows,
             totals: [4, 7],
+          },
+        ],
+      },
+    ],
+  }
+}
+
+/** 0186: one employee's pay slip for one period: gross, each deduction, net, the employer's share. */
+export function payslipReport(
+  p: SalaryPerson,
+  x: SalaryPeriod,
+  clinic: ClinicProfile,
+  user: StaffUser,
+  t: TFn,
+): Report {
+  const base = common(t, clinic, user)
+  const agency = (a: string) => t(`accounts.deductions.agencies.${a}`)
+  const figures: ReportFigure[] = [
+    { label: t('accounts.salaries.gross'), value: Math.round(x.gross), unit: 'RWF' },
+    {
+      label: t('accounts.salaries.deductionsTotal'),
+      value: Math.round(x.gross - x.net),
+      unit: 'RWF',
+    },
+    { label: t('accounts.salaries.net'), value: Math.round(x.net), unit: 'RWF' },
+    {
+      label: t('accounts.salaries.employerShare'),
+      value: Math.round(x.employerTotal),
+      unit: 'RWF',
+    },
+  ]
+  return {
+    ...base,
+    title: t('accounts.report.payslipTitle', { name: p.name }),
+    period: periodOf(x.periodStart, x.periodEnd, t),
+    code: 'SLP',
+    periodKey: periodKeyOf(x.periodStart, x.periodEnd),
+    fileName: stem(
+      `payslip-${p.name.replace(/\s+/g, '-').toLowerCase()}`,
+      x.periodStart,
+      x.periodEnd,
+    ),
+    figures,
+    summaryText: t('accounts.report.payslipSummary', {
+      name: p.name,
+      role: t(`staff.roles.${p.role}`, { defaultValue: p.role }),
+      staffId: p.staffId ?? '',
+      due: x.dueOn,
+      status: t(`accounts.status.${x.status}`),
+      paid: x.paidOn ? x.paidOn : '',
+    }),
+    sections: [
+      {
+        name: t('accounts.salaries.payslip'),
+        tables: [
+          {
+            title: t('accounts.salaries.payslip'),
+            columns: [
+              { label: t('accounts.deductions.cols.name'), pdfWidth: '40%' },
+              { label: t('accounts.deductions.agency'), nowrap: true },
+              { label: t('accounts.deductions.cols.employee'), kind: 'money' },
+              { label: t('accounts.deductions.cols.employer'), kind: 'money' },
+            ],
+            rows: [
+              [t('accounts.salaries.gross'), '', x.gross, null],
+              ...x.deductions.map((l) => [
+                l.code
+                  ? t(`accounts.deductions.builtinNames.${l.code}`, { defaultValue: l.name })
+                  : l.name,
+                agency(l.agency),
+                l.employee ? -l.employee : null,
+                l.employer || null,
+              ]),
+              [t('accounts.salaries.net'), '', x.net, x.employerTotal],
+            ],
           },
         ],
       },
@@ -1219,7 +1298,10 @@ export function payrollReport(
         x.periodStart,
         x.periodEnd,
         x.dueOn,
-        x.amount,
+        x.gross,
+        x.gross - x.net,
+        x.net,
+        x.employerTotal,
         t(`accounts.status.${x.status}`),
         x.paidOn,
         x.paidAmount,
@@ -1275,7 +1357,10 @@ export function payrollReport(
               { label: t('accounts.report.periodStart'), kind: 'date' },
               { label: t('accounts.report.periodEnd'), kind: 'date' },
               { label: t('accounts.salaries.cols.dueOn'), kind: 'date' },
-              { label: t('accounts.salaries.cols.amount'), kind: 'money' },
+              { label: t('accounts.salaries.gross'), kind: 'money' },
+              { label: t('accounts.salaries.deductionsTotal'), kind: 'money' },
+              { label: t('accounts.salaries.net'), kind: 'money' },
+              { label: t('accounts.salaries.employerShare'), kind: 'money' },
               { label: t('accounts.salaries.cols.status'), nowrap: true },
               { label: t('accounts.salaries.paidOn'), kind: 'date' },
               { label: t('accounts.salaries.paidAmount'), kind: 'money' },
