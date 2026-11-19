@@ -636,3 +636,22 @@
     zoom: 1;
   }
 }
+
+/* 0191: a form or a message that has just appeared glows for a moment so the eye finds it
+   (the box is also scrolled into view by the page); nothing moves under prefers-reduced-motion */
+@keyframes mmc-reveal {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-primary) 60%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 12px transparent;
+  }
+}
+.mmc-reveal {
+  animation: mmc-reveal 900ms ease-out 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mmc-reveal {
+    animation: none;
+  }
+}
