@@ -11597,7 +11597,7 @@
     },
     "taxBase": {
       "title": "Base imposable {{year}}",
-      "lead": "Ce que le système sait pour l’année, et une estimation de l’impôt sur le revenu au taux ci-dessous. Information seulement : le montant déclaré se saisit sur l’impôt lui-même.",
+      "lead": "Ce que le système sait pour la période choisie, et une estimation de l’impôt sur le revenu au taux ci-dessous. Information seulement : le montant déclaré se saisit sur l’impôt lui-même.",
       "moneyIn": "Argent entré",
       "expenses": "Dépenses",
       "rate": "Taux %",
@@ -11618,7 +11618,17 @@
       "allTaxes": "Tous les impôts",
       "incomeTaxPaid": "Impôt sur le revenu payé",
       "kindRule": "Seuls les paiements des impôts de nature « Sur le bénéfice » sont déduits de l’impôt sur le revenu estimé ; chaque autre nature est listée à part avec son total.",
-      "yearFigures": "Chiffres de l’année"
+      "yearFigures": "Chiffres de l’année",
+      "title2": "Base imposable",
+      "periodFigures": "Chiffres de la période",
+      "taxesPaid2": "Impôts payés dans la période (toutes natures)",
+      "prepayment": "Acompte trimestriel (formule de la RRA)",
+      "prepaymentHint": "Acompte de la RRA pour un trimestre = impôt sur le revenu de l’an dernier ÷ chiffre d’affaires de l’an dernier × chiffre d’affaires du trimestre. Choisissez le trimestre ci-dessus et saisissez les chiffres de l’an dernier.",
+      "lastYearTax": "Impôt sur le revenu de l’an dernier",
+      "lastYearTurnover": "Chiffre d’affaires de l’an dernier",
+      "periodTurnover": "Chiffre d’affaires de la période (argent entré)",
+      "prepaymentDue": "Acompte selon la formule",
+      "prepaymentNone": "Saisissez l’impôt et le chiffre d’affaires de l’an dernier pour voir l’acompte."
     }
   }
 }

@@ -1,32 +1,70 @@
 import { Fragment, useState, type ReactNode } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Calculator } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatRwf } from '@mmc/shared'
 import { Panel } from '@/components/dash/kit'
 import { tableCell, tableFirstCell, tableRow } from '@/components/dash/kit-style'
+import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import { Field } from '@/components/ui/field'
-import { TAX_KINDS, type Tax, type TaxKind, type TaxOverview } from '@/lib/api/accounts'
+import { TAX_KINDS, fetchTaxOverview, useFinanceSummary, type TaxKind } from '@/lib/api/accounts'
+import { usePeriod } from '@/lib/period'
 import { cn } from '@/lib/utils'
 
 /**
- * The tax base of the year (0187, grouped 0188): what the system knows — the money in, the
- * expenses, the result before tax — and the taxes in their groups so every figure can be
- * traced: the income tax (estimated at the rate typed, less the credits withheld at source and
- * what was paid on the taxes of kind "on the profit"), the other taxes paid by kind with their
- * totals, then all taxes and the result after taxes paid. Information for the accountant, who
- * types the declared amount on the tax itself; nothing here is booked.
- *
- * Every repeated row carries its own key: two rows with one key made React keep stale copies on
- * each refresh (the "total" line repeated).
+ * The tax base (0187, grouped 0188, its own period 0189): what the system knows for the period
+ * chosen — the money in, the expenses, the result before tax — and the taxes in their groups so
+ * every figure can be traced: the income tax (estimated at the rate typed, less the credits
+ * withheld at source and what was paid on the taxes of kind "on the profit" in the period), the
+ * other taxes paid by kind with their totals, then all taxes and the result after taxes paid.
+ * A quarter chosen with last year's tax and turnover typed also gives RRA's prepayment formula.
+ * Information for the accountant, who types the declared amount on the tax itself; nothing
+ * here is booked.
  */
-export function TaxBasePanel({ i, o }: { i: number; o: TaxOverview }) {
+
+/** A tax's payments within the period: from the overviews of the years the period spans. */
+interface PaidTax {
+  id: string
+  name: string
+  kind: TaxKind
+  paid: number
+}
+async function fetchTaxesPaid(from: string, to: string): Promise<PaidTax[]> {
+  const first = Number(from.slice(0, 4))
+  const last = Number(to.slice(0, 4))
+  const years: number[] = []
+  for (let y = Math.max(first, last - 3); y <= last; y++) years.push(y)
+  const overviews = await Promise.all(years.map((y) => fetchTaxOverview(y)))
+  const byId = new Map<string, PaidTax>()
+  for (const o of overviews)
+    for (const x of o.taxes)
+      for (const p of x.periods) {
+        if (p.status !== 'paid' || !p.paidOn || p.paidOn < from || p.paidOn > to) continue
+        const cur = byId.get(x.id) ?? { id: x.id, name: x.name, kind: x.kind, paid: 0 }
+        cur.paid += p.paidAmount ?? p.amount ?? 0
+        byId.set(x.id, cur)
+      }
+  return [...byId.values()].sort(
+    (a, b) => TAX_KINDS.indexOf(a.kind) - TAX_KINDS.indexOf(b.kind) || a.name.localeCompare(b.name),
+  )
+}
+
+export function TaxBasePanel({ i }: { i: number }) {
   const { t } = useTranslation()
+  const period = usePeriod('year')
+  const { data: s, error } = useFinanceSummary(period.from, period.to)
+  const { data: taxes = [] } = useQuery({
+    queryKey: ['accounts', 'tax-base', period.from, period.to],
+    queryFn: () => fetchTaxesPaid(period.from, period.to),
+  })
   const [rate, setRate] = useState('28')
-  const b = o.base
+  const [lastTax, setLastTax] = useState('')
+  const [lastTurnover, setLastTurnover] = useState('')
   const r = Number(rate) || 0
-  const estimate = Math.max(0, Math.round((b.resultBeforeTax * r) / 100))
-  const byKind = (k: TaxKind): Tax[] => o.taxes.filter((x) => x.kind === k && x.paidThisYear > 0)
-  const paidOf = (list: Tax[]) => list.reduce((s, x) => s + x.paidThisYear, 0)
+  const result = s?.net ?? 0
+  const estimate = Math.max(0, Math.round((result * r) / 100))
+  const byKind = (k: TaxKind) => taxes.filter((x) => x.kind === k && x.paid > 0)
+  const paidOf = (list: PaidTax[]) => list.reduce((a, x) => a + x.paid, 0)
   const withheldTaxes = byKind('withheld')
   const profitTaxes = byKind('profit')
   const withheld = paidOf(withheldTaxes)
@@ -35,99 +73,134 @@ export function TaxBasePanel({ i, o }: { i: number; o: TaxOverview }) {
   // the other kinds, with their taxes; the one-off taxes recorded on the expenses tab are the
   // rest of the taxes paid (every expense of the kind Taxes) once the periods are taken out
   const otherKinds = TAX_KINDS.filter((k) => k !== 'profit' && k !== 'withheld')
-  const periodsPaid = o.taxes
-    .filter((x) => x.kind !== 'withheld')
-    .reduce((s, x) => s + x.paidThisYear, 0)
-  const oneOff = Math.max(0, b.taxesPaid - periodsPaid)
-  const otherTotal = otherKinds.reduce((s, k) => s + paidOf(byKind(k)), 0) + oneOff
+  const periodsPaid = taxes.filter((x) => x.kind !== 'withheld').reduce((a, x) => a + x.paid, 0)
+  const taxesPaid = s?.taxes ?? 0
+  const oneOff = Math.max(0, taxesPaid - periodsPaid)
+  const otherTotal = otherKinds.reduce((a, k) => a + paidOf(byKind(k)), 0) + oneOff
   const kindWord = (k: TaxKind) => t(`accounts.taxes.kinds.${k}`)
   const resultTone = (v: number) => (v >= 0 ? 'text-green' : 'text-red')
+  // RRA's quarterly prepayment: last year's tax ÷ last year's turnover × this period's turnover
+  const lt = Number(lastTax)
+  const lto = Number(lastTurnover)
+  const prepayment = lt > 0 && lto > 0 && s ? Math.round((lt / lto) * s.moneyIn) : null
   return (
-    <Panel
-      i={i}
-      icon={Calculator}
-      tint="violet"
-      title={t('accounts.taxBase.title', { year: o.year })}
-    >
+    <Panel i={i} icon={Calculator} tint="violet" title={t('accounts.taxBase.title2')}>
       <div className="flex flex-col gap-4">
         <p className="text-ink-3 m-0 text-[13px]">{t('accounts.taxBase.lead')}</p>
-        <div className="pc:grid-cols-2 grid grid-cols-1 gap-4">
-          <Group title={t('accounts.taxBase.yearFigures')}>
-            <Row label={t('accounts.money.revenue')} value={b.netRevenue} />
-            <Row label={t('accounts.money.otherIncome')} value={b.otherIncome} />
-            <Row label={t('accounts.taxBase.moneyIn')} value={b.moneyIn} strong />
-            <Row
-              label={t('accounts.money.staffCost')}
-              value={b.salaries + b.statutory + b.remittances}
-            />
-            <Row label={t('accounts.money.other')} value={b.otherExpenses} />
-            <Row label={t('accounts.money.stock')} value={b.stockBought} />
-            <Row label={t('accounts.taxBase.expenses')} value={b.expenses} strong />
-            <Row
-              label={t('accounts.money.net')}
-              value={b.resultBeforeTax}
-              strong
-              tone={resultTone(b.resultBeforeTax)}
-            />
-          </Group>
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-end gap-2">
-              <Field
-                wrapperClassName="w-28"
-                label={t('accounts.taxBase.rate')}
-                inputMode="decimal"
-                value={rate}
-                onChange={(e) => setRate(e.target.value.replace(/[^\d.]/g, '').slice(0, 5))}
-              />
-              <p className="text-ink-3 m-0 pb-2 text-[13px]">{t('accounts.taxBase.rateHint')}</p>
-            </div>
-            <Group title={t('accounts.taxBase.incomeTax')}>
-              <Row label={t('accounts.taxBase.estimate', { rate: r })} value={estimate} strong />
-              <Row label={t('accounts.taxBase.withheld')} value={withheld} />
-              {withheldTaxes.map((x) => (
-                <Row key={`w-${x.id}`} label={x.name} value={x.paidThisYear} sub />
-              ))}
-              <Row label={t('accounts.taxBase.paidOnProfit')} value={paidOnProfit} />
-              {profitTaxes.map((x) => (
-                <Row key={`p-${x.id}`} label={x.name} value={x.paidThisYear} sub />
-              ))}
-              {profitTaxes.length === 0 && <Note>{t('accounts.taxBase.noneOnProfit')}</Note>}
+        <PeriodSeg period={period} className="max-w-full flex-wrap" />
+        <PeriodCustom period={period} />
+        <p className="text-ink-2 m-0 text-[13px] font-semibold">{period.label}</p>
+        {error && <p className="text-red m-0 text-[14px] font-medium">{error.message}</p>}
+        {s && (
+          <div className="pc:grid-cols-2 grid grid-cols-1 gap-4">
+            <Group title={t('accounts.taxBase.periodFigures')}>
+              <Row label={t('accounts.money.revenue')} value={s.netRevenue} />
+              <Row label={t('accounts.money.otherIncome')} value={s.otherIncome} />
+              <Row label={t('accounts.taxBase.moneyIn')} value={s.moneyIn} strong />
               <Row
-                label={t('accounts.taxBase.stillToPay')}
-                value={stillToPay}
+                label={t('accounts.money.staffCost')}
+                value={s.salaries + s.statutory + s.remittances}
+              />
+              <Row label={t('accounts.money.other')} value={s.otherExpenses} />
+              <Row label={t('accounts.money.stock')} value={s.stockBought} />
+              <Row label={t('accounts.taxBase.expenses')} value={s.expenses} strong />
+              <Row label={t('accounts.money.net')} value={s.net} strong tone={resultTone(s.net)} />
+            </Group>
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-end gap-2">
+                <Field
+                  wrapperClassName="w-28"
+                  label={t('accounts.taxBase.rate')}
+                  inputMode="decimal"
+                  value={rate}
+                  onChange={(e) => setRate(e.target.value.replace(/[^\d.]/g, '').slice(0, 5))}
+                />
+                <p className="text-ink-3 m-0 pb-2 text-[13px]">{t('accounts.taxBase.rateHint')}</p>
+              </div>
+              <Group title={t('accounts.taxBase.incomeTax')}>
+                <Row label={t('accounts.taxBase.estimate', { rate: r })} value={estimate} strong />
+                <Row label={t('accounts.taxBase.withheld')} value={withheld} />
+                {withheldTaxes.map((x) => (
+                  <Row key={`w-${x.id}`} label={x.name} value={x.paid} sub />
+                ))}
+                <Row label={t('accounts.taxBase.paidOnProfit')} value={paidOnProfit} />
+                {profitTaxes.map((x) => (
+                  <Row key={`p-${x.id}`} label={x.name} value={x.paid} sub />
+                ))}
+                {profitTaxes.length === 0 && <Note>{t('accounts.taxBase.noneOnProfit')}</Note>}
+                <Row
+                  label={t('accounts.taxBase.stillToPay')}
+                  value={stillToPay}
+                  strong
+                  tone="text-amber"
+                />
+              </Group>
+            </div>
+            <Group title={t('accounts.taxBase.prepayment')}>
+              <tr>
+                <td colSpan={2} className="pb-2">
+                  <p className="text-ink-3 m-0 mb-2 text-[12px]">
+                    {t('accounts.taxBase.prepaymentHint')}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Field
+                      wrapperClassName="w-44"
+                      label={t('accounts.taxBase.lastYearTax')}
+                      inputMode="numeric"
+                      value={lastTax}
+                      onChange={(e) => setLastTax(e.target.value.replace(/[^\d]/g, ''))}
+                    />
+                    <Field
+                      wrapperClassName="w-44"
+                      label={t('accounts.taxBase.lastYearTurnover')}
+                      inputMode="numeric"
+                      value={lastTurnover}
+                      onChange={(e) => setLastTurnover(e.target.value.replace(/[^\d]/g, ''))}
+                    />
+                  </div>
+                </td>
+              </tr>
+              <Row label={t('accounts.taxBase.periodTurnover')} value={s.moneyIn} />
+              {prepayment != null ? (
+                <Row
+                  label={t('accounts.taxBase.prepaymentDue')}
+                  value={prepayment}
+                  strong
+                  tone="text-amber"
+                />
+              ) : (
+                <Note>{t('accounts.taxBase.prepaymentNone')}</Note>
+              )}
+            </Group>
+            <Group title={t('accounts.taxBase.otherTaxes')}>
+              {otherKinds.map((k) => {
+                const list = byKind(k)
+                return list.length === 0 ? null : (
+                  <Fragment key={`k-${k}`}>
+                    <Row label={kindWord(k)} value={paidOf(list)} />
+                    {list.map((x) => (
+                      <Row key={`t-${x.id}`} label={x.name} value={x.paid} sub />
+                    ))}
+                  </Fragment>
+                )
+              })}
+              {oneOff > 0 && <Row label={t('accounts.taxBase.oneOff')} value={oneOff} />}
+              {otherTotal === 0 && <Note>{t('accounts.taxBase.noneOther')}</Note>}
+              <Row label={t('accounts.taxBase.otherTotal')} value={otherTotal} strong />
+            </Group>
+            <Group title={t('accounts.taxBase.allTaxes')}>
+              <Row label={t('accounts.taxBase.incomeTaxPaid')} value={paidOnProfit} sub />
+              <Row label={t('accounts.taxBase.otherTotal')} value={otherTotal} sub />
+              <Row label={t('accounts.taxBase.taxesPaid2')} value={taxesPaid} strong />
+              <Row
+                label={t('accounts.money.afterTax')}
+                value={s.net - taxesPaid}
                 strong
-                tone="text-amber"
+                tone={resultTone(s.net - taxesPaid)}
               />
             </Group>
           </div>
-          <Group title={t('accounts.taxBase.otherTaxes')}>
-            {otherKinds.map((k) => {
-              const list = byKind(k)
-              return list.length === 0 ? null : (
-                <Fragment key={`k-${k}`}>
-                  <Row label={kindWord(k)} value={paidOf(list)} />
-                  {list.map((x) => (
-                    <Row key={`t-${x.id}`} label={x.name} value={x.paidThisYear} sub />
-                  ))}
-                </Fragment>
-              )
-            })}
-            {oneOff > 0 && <Row label={t('accounts.taxBase.oneOff')} value={oneOff} />}
-            {otherTotal === 0 && <Note>{t('accounts.taxBase.noneOther')}</Note>}
-            <Row label={t('accounts.taxBase.otherTotal')} value={otherTotal} strong />
-          </Group>
-          <Group title={t('accounts.taxBase.allTaxes')}>
-            <Row label={t('accounts.taxBase.incomeTaxPaid')} value={paidOnProfit} sub />
-            <Row label={t('accounts.taxBase.otherTotal')} value={otherTotal} sub />
-            <Row label={t('accounts.taxBase.taxesPaid')} value={b.taxesPaid} strong />
-            <Row
-              label={t('accounts.money.afterTax')}
-              value={b.resultBeforeTax - b.taxesPaid}
-              strong
-              tone={resultTone(b.resultBeforeTax - b.taxesPaid)}
-            />
-          </Group>
-        </div>
+        )}
         <p className="text-ink-3 m-0 text-[13px]">{t('accounts.taxBase.hint')}</p>
         <p className="text-ink-3 m-0 text-[13px]">{t('accounts.taxBase.kindRule')}</p>
       </div>
@@ -179,7 +252,7 @@ function Note({ children }: { children: ReactNode }) {
   )
 }
 
-/** A bordered group with its heading: the year's figures, the income tax, the other taxes, all. */
+/** A bordered group with its heading. */
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="border-border bg-card flex flex-col rounded-md border p-3">

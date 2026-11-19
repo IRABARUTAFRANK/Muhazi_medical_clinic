@@ -177,7 +177,7 @@ export function TaxesTab({ user, initialYear }: { user: StaffUser; initialYear?:
         <p className="text-ink-3 m-0 pt-2 text-[13px]">{t('accounts.taxes.oneOffHint')}</p>
       </Panel>
       <RemittancesPanel i={2} year={year} />
-      {data && <TaxBasePanel i={3} o={data} />}
+      <TaxBasePanel i={3} />
       {who && (who === 'new' || current) && (
         <TaxPanel
           key={who}

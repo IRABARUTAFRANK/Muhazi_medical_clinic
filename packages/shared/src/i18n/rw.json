@@ -11606,7 +11606,7 @@
     },
     "taxBase": {
       "title": "Ishingiro ry’umusoro {{year}}",
-      "lead": "Ibyo sisitemu izi ku mwaka, n’igereranyo ry’umusoro ku nyungu ku gipimo kiri hano hasi. Amakuru gusa: umubare watangajwe wandikwa ku musoro ubwawo.",
+      "lead": "Ibyo sisitemu izi ku gihe wahisemo, n’igereranyo ry’umusoro ku nyungu ku gipimo kiri hano hasi. Amakuru gusa: umubare watangajwe wandikwa ku musoro ubwawo.",
       "moneyIn": "Amafaranga yinjiye",
       "expenses": "Amasohoka",
       "rate": "Igipimo %",
@@ -11627,7 +11627,17 @@
       "allTaxes": "Imisoro yose",
       "incomeTaxPaid": "Umusoro ku nyungu wishyuwe",
       "kindRule": "Ubwishyu bw’imisoro y’ubwoko “Ku nyungu” ni bwo bwonyine bukurwa ku musoro ku nyungu ugereranyijwe; ubundi bwoko bwose bugaragazwa ukwabwo n’igiteranyo cyabwo.",
-      "yearFigures": "Imibare y’umwaka"
+      "yearFigures": "Imibare y’umwaka",
+      "title2": "Ishingiro ry’umusoro",
+      "periodFigures": "Imibare y’igihe",
+      "taxesPaid2": "Imisoro yishyuwe muri icyo gihe (ubwoko bwose)",
+      "prepayment": "Ubwishyu bwo mbere bwa buri gihembwe (uburyo bwa RRA)",
+      "prepaymentHint": "Ubwishyu bwo mbere bwa RRA ku gihembwe = umusoro ku nyungu w’umwaka ushize ÷ ibyacurujwe by’umwaka ushize × ibyacurujwe by’iki gihembwe. Hitamo igihembwe hejuru wandike imibare y’umwaka ushize.",
+      "lastYearTax": "Umusoro ku nyungu w’umwaka ushize",
+      "lastYearTurnover": "Ibyacurujwe by’umwaka ushize",
+      "periodTurnover": "Ibyacurujwe by’igihe (amafaranga yinjiye)",
+      "prepaymentDue": "Ubwishyu bwo mbere ku buryo",
+      "prepaymentNone": "Andika umusoro n’ibyacurujwe by’umwaka ushize kugira ngo ubone ubwishyu bwo mbere."
     }
   }
 }

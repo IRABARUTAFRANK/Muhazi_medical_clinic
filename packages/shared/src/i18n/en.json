@@ -11597,7 +11597,7 @@
     },
     "taxBase": {
       "title": "Tax base {{year}}",
-      "lead": "What the system knows for the year, and an estimate of the income tax at the rate below. Information only: the declared amount is typed on the tax itself.",
+      "lead": "What the system knows for the period chosen, and an estimate of the income tax at the rate below. Information only: the declared amount is typed on the tax itself.",
       "moneyIn": "Money in",
       "expenses": "Expenses",
       "rate": "Rate %",
@@ -11618,7 +11618,17 @@
       "allTaxes": "All taxes",
       "incomeTaxPaid": "Income tax paid",
       "kindRule": "Only the payments of taxes of kind “On the profit” are taken off the estimated income tax; every other kind is listed apart with its total.",
-      "yearFigures": "Figures of the year"
+      "yearFigures": "Figures of the year",
+      "title2": "Tax base",
+      "periodFigures": "Figures of the period",
+      "taxesPaid2": "Taxes paid in the period (all kinds)",
+      "prepayment": "Quarterly prepayment (RRA’s formula)",
+      "prepaymentHint": "RRA’s prepayment for a quarter = last year’s income tax ÷ last year’s turnover × this quarter’s turnover. Choose the quarter above and type last year’s figures.",
+      "lastYearTax": "Last year’s income tax",
+      "lastYearTurnover": "Last year’s turnover",
+      "periodTurnover": "Turnover of the period (money in)",
+      "prepaymentDue": "Prepayment by the formula",
+      "prepaymentNone": "Type last year’s income tax and turnover to see the prepayment."
     }
   }
 }
