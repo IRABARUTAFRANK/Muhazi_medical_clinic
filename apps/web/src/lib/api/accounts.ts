@@ -4,8 +4,9 @@
  *
  * Live: salary_overview, set_salary, remove_salary, pay_salary, unpay_salary, skip_salary,
  * tax_overview, set_tax, remove_tax, pay_tax, unpay_tax, skip_tax, add_expense, void_expense,
- * expenses_list, finance_summary, finance_alert_check. Sample mode: figures kept in memory for
- * the session.
+ * expenses_list, finance_summary, finance_alert_check; 0185: money_kinds, set_money_kind,
+ * remove_money_kind, add_income, void_income, incomes_list. Sample mode: figures kept in memory
+ * for the session.
  */
 import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -116,10 +117,50 @@ export interface TaxOverview {
   today: string
 }
 
+/** A kind of money in or out (0185). A code means built in: filled by the system, its name
+ *  translated on the screens (kindName), only its description editable. */
+export interface MoneyKind {
+  id: string
+  side: 'in' | 'out'
+  code: string | null
+  name: string
+  description: string | null
+  active: boolean
+  sortOrder: number
+  /** Entries recorded under it (an expense or money in). */
+  inUse: number
+}
+/** The kinds the system fills: an expense cannot be recorded under them by hand. */
+export const SYSTEM_OUT_KINDS = ['salary', 'statutory', 'remittance', 'stock']
+export const kindName = (
+  t: (k: string, o?: Record<string, unknown>) => string,
+  k: Pick<MoneyKind, 'code' | 'name'>,
+) => (k.code ? t(`accounts.kinds.builtinNames.${k.code}`, { defaultValue: k.name }) : k.name)
+
+/** Money in that is not a patient's bill nor a walk-in sale (0185). */
+export interface Income {
+  id: string
+  kindId: string
+  kind: string
+  amount: number
+  method: string
+  reference: string | null
+  from: string | null
+  note: string | null
+  receivedOn: string
+  recordedBy: string | null
+  voided: boolean
+  voidReason: string | null
+}
+
 export type ExpenseKind = 'salary' | 'tax' | 'other'
 export interface Expense {
   id: string
   kind: ExpenseKind
+  /** 0185: the kind of money out it was recorded under. */
+  kindId?: string | null
+  kindCode?: string | null
+  kindName?: string | null
   label: string
   amount: number
   method: string
@@ -138,18 +179,30 @@ export interface FinanceSummary {
   revenue: number
   refunds: number
   netRevenue: number
+  /** 0185: the walk-in sales among the payments; the other money in; all money in. */
+  walkIn: number
+  otherIncome: number
+  moneyIn: number
   salaries: number
-  /** 0184: the taxes paid, apart from the other expenses. */
+  /** 0186: the clinic's RSSB share; what was withheld and handed over. */
+  statutory: number
+  remittances: number
+  /** 0184: the taxes paid — reported apart, never in the result (0185). */
   taxes: number
   otherExpenses: number
   stockBought: number
   expenses: number
+  /** The result before tax. */
   net: number
   byMethod: { method: string; count: number; amount: number }[]
+  byKindIn: { id: string; code: string | null; name: string; amount: number }[]
+  byKindOut: { id: string; code: string | null; name: string; amount: number }[]
   byMonth: {
     month: string
     revenue: number
     refunds: number
+    otherIncome: number
+    /** salaries + statutory + remittances */
     salaries: number
     taxes: number
     other: number
@@ -318,6 +371,158 @@ const sampleTaxOverview = (year: number): TaxOverview => ({
     },
   ],
 })
+const sampleKinds: MoneyKind[] = [
+  {
+    id: 'k-bills',
+    side: 'in',
+    code: 'bills',
+    name: 'Patient bills',
+    description: 'Payments taken on patients’ bills at the cash desk, less the refunds',
+    active: true,
+    sortOrder: 10,
+    inUse: 0,
+  },
+  {
+    id: 'k-walkin',
+    side: 'in',
+    code: 'walkin',
+    name: 'Walk-in sales',
+    description: 'Sold at the pharmacy to buyers without a visit',
+    active: true,
+    sortOrder: 20,
+    inUse: 0,
+  },
+  {
+    id: 'k-rent-in',
+    side: 'in',
+    code: null,
+    name: 'Rent received',
+    description: 'The shop space rented to the pharmacy next door',
+    active: true,
+    sortOrder: 50,
+    inUse: 2,
+  },
+  {
+    id: 'k-training',
+    side: 'in',
+    code: null,
+    name: 'Training fees',
+    description: 'Fees paid by students on placement',
+    active: true,
+    sortOrder: 50,
+    inUse: 1,
+  },
+  {
+    id: 'k-salary',
+    side: 'out',
+    code: 'salary',
+    name: 'Salaries',
+    description: 'The salaries paid to the employees',
+    active: true,
+    sortOrder: 10,
+    inUse: 9,
+  },
+  {
+    id: 'k-statutory',
+    side: 'out',
+    code: 'statutory',
+    name: 'Statutory contributions',
+    description: 'The clinic’s own share to RSSB',
+    active: true,
+    sortOrder: 20,
+    inUse: 0,
+  },
+  {
+    id: 'k-remit',
+    side: 'out',
+    code: 'remittance',
+    name: 'Payroll remittances',
+    description: 'Withheld from salaries and handed over to RRA and RSSB',
+    active: true,
+    sortOrder: 30,
+    inUse: 0,
+  },
+  {
+    id: 'k-stock',
+    side: 'out',
+    code: 'stock',
+    name: 'Stock bought',
+    description: 'Deliveries received, at cost',
+    active: true,
+    sortOrder: 40,
+    inUse: 0,
+  },
+  {
+    id: 'k-electricity',
+    side: 'out',
+    code: null,
+    name: 'Electricity and water',
+    description: 'Cash Power and WASAC',
+    active: true,
+    sortOrder: 50,
+    inUse: 4,
+  },
+  {
+    id: 'k-cleaning',
+    side: 'out',
+    code: null,
+    name: 'Cleaning',
+    description: 'Cleaning products and the cleaning company',
+    active: true,
+    sortOrder: 50,
+    inUse: 1,
+  },
+  {
+    id: 'k-tax',
+    side: 'out',
+    code: 'tax',
+    name: 'Taxes',
+    description: 'The taxes the clinic itself pays (kept apart from the result)',
+    active: true,
+    sortOrder: 90,
+    inUse: 3,
+  },
+  {
+    id: 'k-other',
+    side: 'out',
+    code: 'other',
+    name: 'Other expenses',
+    description: 'Expenses with no kind',
+    active: true,
+    sortOrder: 100,
+    inUse: 0,
+  },
+]
+const sampleIncomes: Income[] = [
+  {
+    id: 'i-1',
+    kindId: 'k-rent-in',
+    kind: 'Rent received',
+    amount: 150000,
+    method: 'bank',
+    reference: 'TRF-RENT-11',
+    from: 'Pharmacie La Grâce',
+    note: null,
+    receivedOn: kigaliToday(),
+    recordedBy: 'Mugisha Samuel',
+    voided: false,
+    voidReason: null,
+  },
+  {
+    id: 'i-2',
+    kindId: 'k-training',
+    kind: 'Training fees',
+    amount: 40000,
+    method: 'momo',
+    reference: 'MP3390',
+    from: 'Student placement · Uwase',
+    note: 'October placement',
+    receivedOn: kigaliToday(),
+    recordedBy: 'Mugisha Samuel',
+    voided: false,
+    voidReason: null,
+  },
+]
 const sampleExpenses: Expense[] = [
   {
     id: 'e-1',
@@ -368,12 +573,29 @@ const sampleSummary = (from: string, to: string): FinanceSummary => ({
   revenue: 4_860_000,
   refunds: 25_000,
   netRevenue: 4_835_000,
+  walkIn: 610_000,
+  otherIncome: 190_000,
+  moneyIn: 5_025_000,
   salaries: 1_970_000,
+  statutory: 0,
+  remittances: 0,
   taxes: 1_260_000,
   otherExpenses: 412_000,
   stockBought: 1_120_000,
-  expenses: 4_762_000,
-  net: 73_000,
+  expenses: 3_502_000,
+  net: 1_523_000,
+  byKindIn: [
+    { id: 'k-bills', code: 'bills', name: 'Patient bills', amount: 4_225_000 },
+    { id: 'k-walkin', code: 'walkin', name: 'Walk-in sales', amount: 610_000 },
+    { id: 'k-rent-in', code: null, name: 'Rent received', amount: 150_000 },
+    { id: 'k-training', code: null, name: 'Training fees', amount: 40_000 },
+  ],
+  byKindOut: [
+    { id: 'k-salary', code: 'salary', name: 'Salaries', amount: 1_970_000 },
+    { id: 'k-stock', code: 'stock', name: 'Stock bought', amount: 1_120_000 },
+    { id: 'k-electricity', code: null, name: 'Electricity and water', amount: 262_000 },
+    { id: 'k-cleaning', code: null, name: 'Cleaning', amount: 150_000 },
+  ],
   byMethod: [
     { method: 'cash', count: 312, amount: 2_940_000 },
     { method: 'momo', count: 148, amount: 1_430_000 },
@@ -385,6 +607,7 @@ const sampleSummary = (from: string, to: string): FinanceSummary => ({
       month: `${sampleYear}-09`,
       revenue: 1_520_000,
       refunds: 0,
+      otherIncome: 150_000,
       salaries: 650_000,
       taxes: 420_000,
       other: 120_000,
@@ -394,6 +617,7 @@ const sampleSummary = (from: string, to: string): FinanceSummary => ({
       month: `${sampleYear}-10`,
       revenue: 1_640_000,
       refunds: 25_000,
+      otherIncome: 150_000,
       salaries: 660_000,
       taxes: 420_000,
       other: 142_000,
@@ -403,6 +627,7 @@ const sampleSummary = (from: string, to: string): FinanceSummary => ({
       month: `${sampleYear}-11`,
       revenue: 1_700_000,
       refunds: 0,
+      otherIncome: 190_000,
       salaries: 660_000,
       taxes: 420_000,
       other: 150_000,
@@ -524,6 +749,13 @@ export function useTaxOverview(year: number, enabled = true) {
   })
 }
 
+const toKindAmount = (x: Partial<FinanceSummary['byKindIn'][number]>) => ({
+  id: String(x.id ?? ''),
+  code: x.code ?? null,
+  name: String(x.name ?? ''),
+  amount: num(x.amount),
+})
+
 export async function fetchFinanceSummary(
   from: string,
   to: string,
@@ -539,7 +771,12 @@ export async function fetchFinanceSummary(
     revenue: num(d.revenue),
     refunds: num(d.refunds),
     netRevenue: num(d.netRevenue),
+    walkIn: num(d.walkIn),
+    otherIncome: num(d.otherIncome),
+    moneyIn: num(d.moneyIn),
     salaries: num(d.salaries),
+    statutory: num(d.statutory),
+    remittances: num(d.remittances),
     taxes: num(d.taxes),
     otherExpenses: num(d.otherExpenses),
     stockBought: num(d.stockBought),
@@ -550,10 +787,13 @@ export async function fetchFinanceSummary(
       count: num(x.count),
       amount: num(x.amount),
     })),
+    byKindIn: (d.byKindIn ?? []).map(toKindAmount),
+    byKindOut: (d.byKindOut ?? []).map(toKindAmount),
     byMonth: (d.byMonth ?? []).map((x) => ({
       month: String(x.month),
       revenue: num(x.revenue),
       refunds: num(x.refunds),
+      otherIncome: num(x.otherIncome),
       salaries: num(x.salaries),
       taxes: num(x.taxes),
       other: num(x.other),
@@ -583,6 +823,9 @@ export async function fetchExpenses(
   return ((data ?? []) as Partial<Expense>[]).map((e) => ({
     id: String(e.id),
     kind: e.kind === 'salary' ? 'salary' : e.kind === 'tax' ? 'tax' : 'other',
+    kindId: e.kindId ?? null,
+    kindCode: e.kindCode ?? null,
+    kindName: e.kindName ?? null,
     label: String(e.label ?? ''),
     amount: num(e.amount),
     method: String(e.method ?? 'cash'),
@@ -601,6 +844,66 @@ export function useExpenses(from: string, to: string, enabled = true) {
     queryKey: [...KEY, 'expenses', from, to],
     enabled,
     queryFn: () => fetchExpenses(from, to),
+  })
+}
+
+/** The kinds of money (0185), built-in and the accountant's. */
+export async function fetchMoneyKinds(sample = !supabase): Promise<MoneyKind[]> {
+  if (sample || !supabase) return sampleKinds
+  const { data, error } = await supabase.rpc('money_kinds')
+  if (error) throw apiError(error)
+  return ((data ?? []) as Partial<MoneyKind>[]).map((k) => ({
+    id: String(k.id),
+    side: k.side === 'in' ? 'in' : 'out',
+    code: k.code ?? null,
+    name: String(k.name ?? ''),
+    description: k.description ?? null,
+    active: k.active !== false,
+    sortOrder: num(k.sortOrder),
+    inUse: num(k.inUse),
+  }))
+}
+
+export function useMoneyKinds(enabled = true) {
+  return useQuery({
+    queryKey: [...KEY, 'kinds'],
+    enabled,
+    staleTime: 60_000,
+    queryFn: () => fetchMoneyKinds(),
+  })
+}
+
+/** The other money in of a period (0185). */
+export async function fetchIncomes(
+  from: string,
+  to: string,
+  sample = !supabase,
+): Promise<Income[]> {
+  if (sample || !supabase)
+    return sampleIncomes.filter((i) => i.receivedOn >= from && i.receivedOn <= to)
+  const { data, error } = await supabase.rpc('incomes_list', { p_from: from, p_to: to })
+  if (error) throw apiError(error)
+  return ((data ?? []) as Partial<Income>[]).map((i) => ({
+    id: String(i.id),
+    kindId: String(i.kindId ?? ''),
+    kind: String(i.kind ?? ''),
+    amount: num(i.amount),
+    method: String(i.method ?? 'cash'),
+    reference: i.reference ?? null,
+    from: i.from ?? null,
+    note: i.note ?? null,
+    receivedOn: String(i.receivedOn ?? ''),
+    recordedBy: i.recordedBy ?? null,
+    voided: !!i.voided,
+    voidReason: i.voidReason ?? null,
+  }))
+}
+
+export function useIncomes(from: string, to: string, enabled = true) {
+  return useQuery({
+    queryKey: [...KEY, 'incomes', from, to],
+    enabled,
+    queryFn: () => fetchIncomes(from, to),
   })
 }
 
@@ -770,8 +1073,8 @@ export function useAccountsActions() {
       reference: string
       paidOn: string
       note: string
-      /** 0184: 'other', or 'tax' for a one-off tax with no schedule. */
-      kind: 'other' | 'tax'
+      /** 0185: the kind of money out chosen from the list (a one-off tax: the Taxes kind). */
+      kindId: string
     }) =>
       rpc('add_expense', {
         p_label: i.label,
@@ -780,8 +1083,57 @@ export function useAccountsActions() {
         p_reference: i.reference || null,
         p_paid_on: i.paidOn,
         p_note: i.note || null,
-        p_kind: i.kind,
+        p_kind: 'other',
+        p_kind_id: i.kindId,
       }),
+    onSuccess: refresh,
+  })
+  // 0185: the kinds of money and the other money in
+  const setKind = useMutation({
+    mutationFn: (i: {
+      id: string | null
+      side: 'in' | 'out'
+      name: string
+      description: string
+      active: boolean
+    }) =>
+      rpc('set_money_kind', {
+        p_id: i.id,
+        p_side: i.side,
+        p_name: i.name,
+        p_description: i.description || null,
+        p_active: i.active,
+      }),
+    onSuccess: refresh,
+  })
+  const removeKind = useMutation({
+    mutationFn: (id: string) => rpc('remove_money_kind', { p_id: id }),
+    onSuccess: refresh,
+  })
+  const addIncome = useMutation({
+    mutationFn: (i: {
+      kindId: string
+      amount: number
+      method: string
+      receivedOn: string
+      from: string
+      reference: string
+      note: string
+    }) =>
+      rpc('add_income', {
+        p_kind: i.kindId,
+        p_amount: i.amount,
+        p_method: i.method,
+        p_reference: i.reference || null,
+        p_received_on: i.receivedOn,
+        p_from: i.from || null,
+        p_note: i.note || null,
+      }),
+    onSuccess: refresh,
+  })
+  const voidIncome = useMutation({
+    mutationFn: (i: { id: string; reason: string }) =>
+      rpc('void_income', { p_id: i.id, p_reason: i.reason }),
     onSuccess: refresh,
   })
   const voidExpense = useMutation({
@@ -802,6 +1154,10 @@ export function useAccountsActions() {
     skipTax,
     addExpense,
     voidExpense,
+    setKind,
+    removeKind,
+    addIncome,
+    voidIncome,
   }
 }
 

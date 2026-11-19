@@ -8605,7 +8605,18 @@
     "b3f2857b": "This tax was not found.",
     "7f86438c": "Type the amount of tax paid.",
     "c3bd06f4": "A tax paid is undone on its period, on the Taxes tab.",
-    "11e2522c": "An expense is “Other” or “Tax”."
+    "11e2522c": "An expense is “Other” or “Tax”.",
+    "35035ca7": "A kind is money in or money out.",
+    "b66dad18": "Type the name of the kind.",
+    "c8182111": "A kind with this name already exists.",
+    "fb408d83": "This kind was not found.",
+    "916c97b4": "This kind is built in and cannot be removed.",
+    "58a1a0c6": "Entries were recorded under this kind: retire it instead.",
+    "5fbec290": "Patients’ money is taken at the cash desk, not here.",
+    "260cc815": "Type the amount received.",
+    "73a8bd02": "The date cannot be in the future.",
+    "29a5f3dd": "This money in was not found.",
+    "82c896d5": "This kind is filled by the system; choose another."
   },
   "panel": {
     "close": "Close",
@@ -9273,7 +9284,11 @@
       "moneyOut": "Money out",
       "netResult": "Net",
       "tax": "Tax",
-      "taxes": "Taxes"
+      "taxes": "Taxes",
+      "from": "From",
+      "receivedOn": "Received on",
+      "otherIncome": "Other money in",
+      "moneyIn": "Money in"
     },
     "filters": {
       "method": "Payment method",
@@ -9293,7 +9308,8 @@
       "expenseKind": "Kind",
       "includeVoided": "Include cancelled expenses",
       "includeVoidedHint": "A cancelled expense is shown with “Cancelled: yes” and its reason.",
-      "tax": "Tax"
+      "tax": "Tax",
+      "kindName": "Kind"
     },
     "placeholders": {
       "payments": "Patient, file, receipt or bill no.",
@@ -9305,7 +9321,8 @@
       "claims": "Patient, member, bill or batch no.",
       "payroll": "Employee, staff ID, reference or note",
       "expenses": "What for, reference, note or who recorded",
-      "taxes": "Tax, reference, who paid…"
+      "taxes": "Tax, reference, who paid…",
+      "income": "Kind, who paid, reference…"
     },
     "groups": {
       "method": "By payment method",
@@ -9323,7 +9340,8 @@
       "employee": "By employee",
       "month": "By month",
       "expenseKind": "By kind",
-      "tax": "Tax"
+      "tax": "Tax",
+      "kindName": "Kind"
     },
     "kinds": {
       "visit": "Visit bill",
@@ -9413,7 +9431,11 @@
       "netResult": "Net",
       "taxPeriods": "Tax periods",
       "taxesPaid": "Taxes paid",
-      "taxesDue": "Taxes due"
+      "taxesDue": "Taxes due",
+      "incomeCount": "Entries",
+      "incomeTotal": "Money in",
+      "moneyIn": "Money in",
+      "taxesApart": "Taxes paid (apart)"
     },
     "count": {
       "payments": "Payments",
@@ -9425,7 +9447,8 @@
       "periods": "Pay periods",
       "expenses": "Expenses",
       "months": "Months",
-      "taxPeriods": "Tax periods"
+      "taxPeriods": "Tax periods",
+      "incomes": "Entries"
     },
     "payroll": {
       "title": "Payroll: the pay periods",
@@ -9443,13 +9466,19 @@
       "title": "Money in and out",
       "description": "Month by month: the revenue taken, what was given back, the salaries, the other expenses, the stock bought and the net.",
       "note1": "Net revenue: the payments taken in the month minus the refunds given back. Stock bought: the deliveries received in the month, at cost.",
-      "note2": "Net = net revenue − salaries − other expenses − stock bought."
+      "note2": "Result before tax = money in − salaries and contributions − other expenses − stock bought. The taxes paid are a column apart, never in the result."
     },
     "taxes": {
       "title": "Taxes: the periods",
       "description": "Every tax period falling due in the period: paid, due, overdue or skipped, with what was paid and how.",
       "note1": "One row per tax period, dated by its due date.",
       "note2": "Paid: the amount marked paid (its expense is in the expenses report); a tax worked out each time shows no amount until it is paid."
+    },
+    "income": {
+      "title": "Other money in",
+      "description": "What the clinic received apart from patients’ bills and walk-in sales: rent, training fees, donations…, by kind.",
+      "note1": "One row per money in recorded by the accountant, dated when it was received.",
+      "note2": "Cancelled entries are left out unless “Include cancelled” is ticked."
     }
   },
   "staffReports": {
@@ -11129,12 +11158,13 @@
   },
   "accounts": {
     "title": "Finance",
-    "lead": "The clinic’s accounts: the money in against the money out, the employees’ salaries with every pay period of the year, the taxes the clinic pays, the other expenses, and the printed reports.",
+    "lead": "The clinic’s accounts: the money in and out by kind, the employees’ salaries with every pay period of the year, the taxes kept apart, the other expenses, and the printed reports.",
     "tabs": {
       "money": "The money",
       "salaries": "Salaries",
       "expenses": "Other expenses",
-      "taxes": "Taxes"
+      "taxes": "Taxes",
+      "setup": "Kinds of money"
     },
     "cancel": "Cancel",
     "reference": "Reference (receipt, transfer…)",
@@ -11160,15 +11190,22 @@
       "salaries": "Salaries paid",
       "other": "Other expenses",
       "stock": "Stock bought",
-      "net": "Net profit",
+      "net": "Result before tax",
       "salariesDue": "Salaries due in the period",
-      "how": "Money in = every payment taken ({{revenue}}) less the refunds ({{refunds}}). Net profit = money in less salaries, taxes, other expenses and the stock received at cost.",
+      "how": "Money in = every payment taken ({{revenue}}) less the refunds ({{refunds}}), plus the other money in. Result before tax = money in less salaries and contributions, other expenses and the stock received at cost. The taxes are kept apart below.",
       "byMethod": "Money in by method",
       "byMonth": "Month by month",
       "month": "Month",
       "none": "Nothing in this period.",
       "taxes": "Taxes paid",
-      "taxesDue": "Taxes due in the period"
+      "taxesDue": "Taxes due in the period",
+      "otherIncome": "Other money in",
+      "staffCost": "Salaries and contributions",
+      "byKindIn": "Money in by kind",
+      "byKindOut": "Money out by kind",
+      "taxesApart": "Taxes, kept apart",
+      "taxesApartHint": "The taxes the clinic pays are never mixed into the result: they are shown here and on the Taxes tab.",
+      "afterTax": "Result after taxes paid"
     },
     "salaries": {
       "year": "Year",
@@ -11254,10 +11291,13 @@
       "voidedTag": "Cancelled: {{why}}",
       "errors": {
         "label": "Say what the expense is for.",
-        "amount": "Type the amount paid."
+        "amount": "Type the amount paid.",
+        "kind": "Choose the kind of expense."
       },
       "kindField": "Kind",
-      "taxPh": "e.g. Withholding tax, penalty"
+      "taxPh": "e.g. Withholding tax, penalty",
+      "kindPh": "Choose the kind",
+      "kindsHint": "The kinds come from Kinds of money; a kind the system fills (salaries, stock bought…) cannot be chosen here."
     },
     "report": {
       "moneyTitle": "Money in and out",
@@ -11322,6 +11362,75 @@
         "amount": "The amount is zero or more, or empty.",
         "anchor": "Choose the date the periods count from.",
         "paid": "Type the amount of tax paid."
+      }
+    },
+    "kinds": {
+      "kind": "Kind",
+      "lead": "What money in and money out the clinic has. Each kind describes what it really is; the built-in kinds are filled by the system.",
+      "in": "Money in",
+      "out": "Money out",
+      "addIn": "Add a kind of money in",
+      "addOut": "Add a kind of money out",
+      "none": "No kind yet.",
+      "name": "Name",
+      "namePh": {
+        "in": "e.g. Rent received, training fees, donation",
+        "out": "e.g. Rent, electricity and water, cleaning, repairs"
+      },
+      "description": "Description (what it really is)",
+      "descriptionPh": "e.g. The shop space rented to the pharmacy next door",
+      "inUse": "Entries",
+      "builtin": "Built in",
+      "builtinHint": "A built-in kind is filled by the system: its name stays, only the description changes.",
+      "retiredTag": "Retired",
+      "retire": "Retire",
+      "restore": "Restore",
+      "remove": "Remove",
+      "side": "Side",
+      "newTitle": {
+        "in": "New kind of money in",
+        "out": "New kind of money out"
+      },
+      "changeTitle": "Kind: {{name}}",
+      "save": "Save the kind",
+      "saved": "Kind “{{name}}” saved.",
+      "retired": "Kind “{{name}}” retired: no new entry under it; its past entries stay.",
+      "restored": "Kind “{{name}}” back in use.",
+      "removeTitle": "Remove the kind “{{name}}”?",
+      "removeBody": "Nothing was recorded under it.",
+      "removed": "Kind “{{name}}” removed.",
+      "errors": {
+        "name": "Type the name of the kind."
+      },
+      "builtinNames": {
+        "bills": "Patient bills",
+        "walkin": "Walk-in sales",
+        "salary": "Salaries",
+        "statutory": "Statutory contributions",
+        "remittance": "Payroll remittances",
+        "stock": "Stock bought",
+        "tax": "Taxes",
+        "other": "Other expenses"
+      }
+    },
+    "income": {
+      "title": "Other money in",
+      "lead": "What the clinic receives that is not a patient’s bill nor a walk-in sale: rent received, a training fee, a donation… Patients’ money is taken at the cash desk.",
+      "kind": "Kind",
+      "kindPh": "Choose the kind",
+      "noKinds": "No kind of money in yet: add one under Kinds of money (e.g. Rent received).",
+      "receivedOn": "Received on",
+      "from": "From",
+      "fromPh": "Who paid",
+      "save": "Record",
+      "added": "Money in recorded.",
+      "none": "No other money in this period.",
+      "total": "Total {{amount}}",
+      "voidTitle": "Cancel the money in “{{what}}”?",
+      "voided": "Money in cancelled.",
+      "errors": {
+        "kind": "Choose the kind of money in.",
+        "amount": "Type the amount received."
       }
     }
   }

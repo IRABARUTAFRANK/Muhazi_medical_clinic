@@ -990,12 +990,21 @@ export function financeMoneyReport(
   const base = common(t, clinic, user)
   const figures: ReportFigure[] = [
     { label: t('accounts.money.revenue'), value: Math.round(s.netRevenue), unit: 'RWF' },
-    { label: t('accounts.money.salaries'), value: Math.round(s.salaries), unit: 'RWF' },
-    { label: t('accounts.money.taxes'), value: Math.round(s.taxes), unit: 'RWF' },
+    { label: t('accounts.money.otherIncome'), value: Math.round(s.otherIncome), unit: 'RWF' },
+    {
+      label: t('accounts.money.staffCost'),
+      value: Math.round(s.salaries + s.statutory + s.remittances),
+      unit: 'RWF',
+    },
     { label: t('accounts.money.other'), value: Math.round(s.otherExpenses), unit: 'RWF' },
     { label: t('accounts.money.stock'), value: Math.round(s.stockBought), unit: 'RWF' },
     { label: t('accounts.money.net'), value: Math.round(s.net), unit: 'RWF' },
   ]
+  const kindRows = (rows: FinanceSummary['byKindIn']) =>
+    rows.map((x) => [
+      x.code ? t(`accounts.kinds.builtinNames.${x.code}`, { defaultValue: x.name }) : x.name,
+      x.amount,
+    ])
   return {
     ...base,
     title: t('accounts.report.moneyTitle'),
@@ -1005,7 +1014,7 @@ export function financeMoneyReport(
     fileName: stem('finance', s.from, s.to),
     figures,
     summaryText: t('accounts.report.moneySummary', {
-      revenue: formatRwf(Math.round(s.netRevenue)),
+      revenue: formatRwf(Math.round(s.moneyIn)),
       expenses: formatRwf(Math.round(s.expenses)),
       net: formatRwf(Math.round(s.net)),
     }),
@@ -1013,6 +1022,24 @@ export function financeMoneyReport(
       {
         name: t('accounts.tabs.money'),
         tables: [
+          {
+            title: t('accounts.money.byKindIn'),
+            columns: [
+              { label: t('accounts.kinds.kind') },
+              { label: t('report.cols.amount'), kind: 'money' },
+            ],
+            rows: kindRows(s.byKindIn),
+            totals: [1],
+          },
+          {
+            title: t('accounts.money.byKindOut'),
+            columns: [
+              { label: t('accounts.kinds.kind') },
+              { label: t('report.cols.amount'), kind: 'money' },
+            ],
+            rows: kindRows(s.byKindOut),
+            totals: [1],
+          },
           {
             title: t('accounts.money.byMethod'),
             columns: [
@@ -1028,8 +1055,8 @@ export function financeMoneyReport(
             columns: [
               { label: t('accounts.money.month'), nowrap: true },
               { label: t('accounts.money.revenue'), kind: 'money' },
-              { label: t('accounts.money.salaries'), kind: 'money' },
-              { label: t('accounts.money.taxes'), kind: 'money' },
+              { label: t('accounts.money.otherIncome'), kind: 'money' },
+              { label: t('accounts.money.staffCost'), kind: 'money' },
               { label: t('accounts.money.other'), kind: 'money' },
               { label: t('accounts.money.stock'), kind: 'money' },
               { label: t('accounts.money.net'), kind: 'money', boldNegative: true },
@@ -1037,11 +1064,11 @@ export function financeMoneyReport(
             rows: s.byMonth.map((m) => [
               m.month,
               m.revenue - m.refunds,
+              m.otherIncome,
               m.salaries,
-              m.taxes,
               m.other,
               m.stock,
-              m.revenue - m.refunds - m.salaries - m.taxes - m.other - m.stock,
+              m.revenue - m.refunds + m.otherIncome - m.salaries - m.other - m.stock,
             ]),
             totals: [1, 2, 3, 4, 5, 6],
           },

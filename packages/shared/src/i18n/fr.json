@@ -8605,7 +8605,18 @@
     "b3f2857b": "Cet impôt est introuvable.",
     "7f86438c": "Saisissez le montant d’impôt payé.",
     "c3bd06f4": "Un impôt payé s’annule sur sa période, dans l’onglet Impôts.",
-    "11e2522c": "Une dépense est « Autre » ou « Impôt »."
+    "11e2522c": "Une dépense est « Autre » ou « Impôt ».",
+    "35035ca7": "Une nature est argent entré ou argent sorti.",
+    "b66dad18": "Saisissez le nom de la nature.",
+    "c8182111": "Une nature de ce nom existe déjà.",
+    "fb408d83": "Cette nature est introuvable.",
+    "916c97b4": "Cette nature est intégrée et ne peut pas être supprimée.",
+    "58a1a0c6": "Des écritures existent sous cette nature : retirez-la plutôt.",
+    "5fbec290": "L’argent des patients est pris à la caisse, pas ici.",
+    "260cc815": "Saisissez le montant reçu.",
+    "73a8bd02": "La date ne peut pas être dans le futur.",
+    "29a5f3dd": "Cette entrée d’argent est introuvable.",
+    "82c896d5": "Cette nature est remplie par le système ; choisissez-en une autre."
   },
   "panel": {
     "close": "Fermer",
@@ -9196,7 +9207,7 @@
       "buyer": "Client",
       "fileNumber": "N° dossier",
       "phone": "Téléphone",
-      "kind": "Type",
+      "kind": "Nature",
       "method": "Mode",
       "reference": "Référence",
       "amount": "Montant",
@@ -9273,7 +9284,11 @@
       "moneyOut": "Argent sorti",
       "netResult": "Net",
       "tax": "Impôt",
-      "taxes": "Impôts"
+      "taxes": "Impôts",
+      "from": "De",
+      "receivedOn": "Reçu le",
+      "otherIncome": "Autres entrées",
+      "moneyIn": "Argent entré"
     },
     "filters": {
       "method": "Mode de paiement",
@@ -9293,7 +9308,8 @@
       "expenseKind": "Type",
       "includeVoided": "Inclure les dépenses annulées",
       "includeVoidedHint": "Une dépense annulée apparaît avec « Annulée : oui » et son motif.",
-      "tax": "Impôt"
+      "tax": "Impôt",
+      "kindName": "Nature"
     },
     "placeholders": {
       "payments": "Patient, dossier, n° de reçu ou de facture",
@@ -9305,7 +9321,8 @@
       "claims": "Patient, n° d’affilié, de facture ou de lot",
       "payroll": "Employé, ID du personnel, référence ou note",
       "expenses": "Objet, référence, note ou qui a enregistré",
-      "taxes": "Impôt, référence, qui a payé…"
+      "taxes": "Impôt, référence, qui a payé…",
+      "income": "Nature, qui a payé, référence…"
     },
     "groups": {
       "method": "Par mode de paiement",
@@ -9323,7 +9340,8 @@
       "employee": "Par employé",
       "month": "Par mois",
       "expenseKind": "Par type",
-      "tax": "Impôt"
+      "tax": "Impôt",
+      "kindName": "Nature"
     },
     "kinds": {
       "visit": "Facture de visite",
@@ -9413,7 +9431,11 @@
       "netResult": "Net",
       "taxPeriods": "Périodes d’impôt",
       "taxesPaid": "Impôts payés",
-      "taxesDue": "Impôts dus"
+      "taxesDue": "Impôts dus",
+      "incomeCount": "Écritures",
+      "incomeTotal": "Argent entré",
+      "moneyIn": "Argent entré",
+      "taxesApart": "Impôts payés (à part)"
     },
     "count": {
       "payments": "Paiements",
@@ -9425,7 +9447,8 @@
       "periods": "Périodes de paie",
       "expenses": "Dépenses",
       "months": "Mois",
-      "taxPeriods": "Périodes d’impôt"
+      "taxPeriods": "Périodes d’impôt",
+      "incomes": "Écritures"
     },
     "payroll": {
       "title": "Paie : les périodes de paie",
@@ -9443,13 +9466,19 @@
       "title": "Argent entré et sorti",
       "description": "Mois par mois : les recettes prises, les remboursements, les salaires, les autres dépenses, le stock acheté et le net.",
       "note1": "Recettes nettes : les paiements pris dans le mois moins les remboursements. Stock acheté : les livraisons reçues dans le mois, au coût.",
-      "note2": "Net = recettes nettes − salaires − autres dépenses − stock acheté."
+      "note2": "Résultat avant impôts = argent entré − salaires et cotisations − autres dépenses − stock acheté. Les impôts payés sont une colonne à part, jamais dans le résultat."
     },
     "taxes": {
       "title": "Impôts : les périodes",
       "description": "Chaque période d’impôt qui échoit dans la période : payée, due, en retard ou sautée, avec ce qui a été payé et comment.",
       "note1": "Une ligne par période d’impôt, datée par son échéance.",
       "note2": "Payé : le montant marqué payé (sa dépense est dans le rapport des dépenses) ; un impôt calculé à chaque fois n’a pas de montant avant d’être payé."
+    },
+    "income": {
+      "title": "Autres entrées d’argent",
+      "description": "Ce que la clinique a reçu en dehors des factures des patients et des ventes au comptoir : loyer, frais de formation, dons…, par nature.",
+      "note1": "Une ligne par entrée enregistrée par le comptable, datée du jour de réception.",
+      "note2": "Les entrées annulées sont laissées de côté sauf si « Inclure les annulées » est coché."
     }
   },
   "staffReports": {
@@ -11129,12 +11158,13 @@
   },
   "accounts": {
     "title": "Finances",
-    "lead": "Les comptes de la clinique : l’argent entré contre l’argent sorti, les salaires des employés avec chaque période de paie de l’année, les impôts que la clinique paie, les autres dépenses, et les rapports imprimés.",
+    "lead": "Les comptes de la clinique : l’argent entré et sorti par nature, les salaires des employés avec chaque période de paie de l’année, les impôts à part, les autres dépenses, et les rapports imprimés.",
     "tabs": {
       "money": "L’argent",
       "salaries": "Salaires",
       "expenses": "Autres dépenses",
-      "taxes": "Impôts"
+      "taxes": "Impôts",
+      "setup": "Natures d’argent"
     },
     "cancel": "Annuler",
     "reference": "Référence (reçu, virement…)",
@@ -11160,15 +11190,22 @@
       "salaries": "Salaires payés",
       "other": "Autres dépenses",
       "stock": "Stock acheté",
-      "net": "Bénéfice net",
+      "net": "Résultat avant impôts",
       "salariesDue": "Salaires à payer dans la période",
-      "how": "Argent entré = chaque paiement pris ({{revenue}}) moins les remboursements ({{refunds}}). Bénéfice net = argent entré moins les salaires, les impôts, les autres dépenses et le stock reçu au coût.",
+      "how": "Argent entré = chaque paiement pris ({{revenue}}) moins les remboursements ({{refunds}}), plus les autres entrées. Résultat avant impôts = argent entré moins les salaires et cotisations, les autres dépenses et le stock reçu au coût. Les impôts sont tenus à part ci-dessous.",
       "byMethod": "Argent entré par mode",
       "byMonth": "Mois par mois",
       "month": "Mois",
       "none": "Rien sur cette période.",
       "taxes": "Impôts payés",
-      "taxesDue": "Impôts dus dans la période"
+      "taxesDue": "Impôts dus dans la période",
+      "otherIncome": "Autres entrées",
+      "staffCost": "Salaires et cotisations",
+      "byKindIn": "Argent entré par nature",
+      "byKindOut": "Argent sorti par nature",
+      "taxesApart": "Impôts, à part",
+      "taxesApartHint": "Les impôts payés par la clinique ne sont jamais mêlés au résultat : ils sont montrés ici et dans l’onglet Impôts.",
+      "afterTax": "Résultat après impôts payés"
     },
     "salaries": {
       "year": "Année",
@@ -11254,10 +11291,13 @@
       "voidedTag": "Annulée : {{why}}",
       "errors": {
         "label": "Dites pour quoi est la dépense.",
-        "amount": "Tapez le montant payé."
+        "amount": "Tapez le montant payé.",
+        "kind": "Choisissez la nature de la dépense."
       },
       "kindField": "Nature",
-      "taxPh": "ex. Retenue à la source, pénalité"
+      "taxPh": "ex. Retenue à la source, pénalité",
+      "kindPh": "Choisir la nature",
+      "kindsHint": "Les natures viennent de Natures d’argent ; une nature remplie par le système (salaires, stock acheté…) ne se choisit pas ici."
     },
     "report": {
       "moneyTitle": "Argent entré et sorti",
@@ -11322,6 +11362,75 @@
         "amount": "Le montant est zéro ou plus, ou vide.",
         "anchor": "Choisissez la date depuis laquelle les périodes comptent.",
         "paid": "Saisissez le montant d’impôt payé."
+      }
+    },
+    "kinds": {
+      "kind": "Nature",
+      "lead": "Quel argent entre et sort de la clinique. Chaque nature décrit ce qu’elle est vraiment ; les natures intégrées sont remplies par le système.",
+      "in": "Argent entré",
+      "out": "Argent sorti",
+      "addIn": "Ajouter une nature d’argent entré",
+      "addOut": "Ajouter une nature d’argent sorti",
+      "none": "Aucune nature.",
+      "name": "Nom",
+      "namePh": {
+        "in": "ex. Loyer reçu, frais de formation, don",
+        "out": "ex. Loyer, électricité et eau, nettoyage, réparations"
+      },
+      "description": "Description (ce que c’est vraiment)",
+      "descriptionPh": "ex. Le local loué à la pharmacie d’à côté",
+      "inUse": "Écritures",
+      "builtin": "Intégrée",
+      "builtinHint": "Une nature intégrée est remplie par le système : son nom reste, seule la description change.",
+      "retiredTag": "Retirée",
+      "retire": "Retirer",
+      "restore": "Rétablir",
+      "remove": "Supprimer",
+      "side": "Sens",
+      "newTitle": {
+        "in": "Nouvelle nature d’argent entré",
+        "out": "Nouvelle nature d’argent sorti"
+      },
+      "changeTitle": "Nature : {{name}}",
+      "save": "Enregistrer la nature",
+      "saved": "Nature « {{name}} » enregistrée.",
+      "retired": "Nature « {{name}} » retirée : plus de nouvelle écriture ; les anciennes restent.",
+      "restored": "Nature « {{name}} » de nouveau en usage.",
+      "removeTitle": "Supprimer la nature « {{name}} » ?",
+      "removeBody": "Rien n’a été enregistré dessous.",
+      "removed": "Nature « {{name}} » supprimée.",
+      "errors": {
+        "name": "Saisissez le nom de la nature."
+      },
+      "builtinNames": {
+        "bills": "Factures des patients",
+        "walkin": "Ventes au comptoir",
+        "salary": "Salaires",
+        "statutory": "Cotisations patronales",
+        "remittance": "Reversements sur salaires",
+        "stock": "Stock acheté",
+        "tax": "Impôts",
+        "other": "Autres dépenses"
+      }
+    },
+    "income": {
+      "title": "Autres entrées d’argent",
+      "lead": "Ce que la clinique reçoit qui n’est ni une facture de patient ni une vente au comptoir : loyer reçu, frais de formation, don… L’argent des patients est pris à la caisse.",
+      "kind": "Nature",
+      "kindPh": "Choisir la nature",
+      "noKinds": "Aucune nature d’argent entré : ajoutez-en une dans Natures d’argent (ex. Loyer reçu).",
+      "receivedOn": "Reçu le",
+      "from": "De",
+      "fromPh": "Qui a payé",
+      "save": "Enregistrer",
+      "added": "Entrée d’argent enregistrée.",
+      "none": "Aucune autre entrée dans cette période.",
+      "total": "Total {{amount}}",
+      "voidTitle": "Annuler l’entrée « {{what}} » ?",
+      "voided": "Entrée annulée.",
+      "errors": {
+        "kind": "Choisissez la nature de l’entrée.",
+        "amount": "Saisissez le montant reçu."
       }
     }
   }

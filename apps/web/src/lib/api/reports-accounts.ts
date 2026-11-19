@@ -1,10 +1,15 @@
+import i18n from '@/i18n'
 import type { ReportContext, ReportFilterValues, ReportOption } from '@/lib/reports/defs/types'
 import { kigaliToday } from '@/lib/clock'
 import {
   fetchExpenses,
   fetchFinanceSummary,
+  fetchIncomes,
+  fetchMoneyKinds,
   fetchSalaryOverview,
   fetchTaxOverview,
+  kindName,
+  type Income,
   type CustomUnit,
   type Expense,
   type PeriodStatus,
@@ -188,6 +193,7 @@ export async function loadExpenseRows(
 ): Promise<ExpenseRow[]> {
   const rows = await fetchExpenses(f.period.from, f.period.to, ctx.sample)
   const kinds = chosen(f, 'kind')
+  const kindId = selected(f, 'kindId')
   const methods = chosen(f, 'method')
   const voided = switchedOn(f, 'includeVoided')
   const q = searchText(f)
@@ -195,8 +201,45 @@ export async function loadExpenseRows(
     (r) =>
       (voided || !r.voided) &&
       inChosen(kinds, r.kind) &&
+      (!kindId || r.kindId === kindId) &&
       inChosen(methods, r.method) &&
-      matches(q, r.label, r.reference, r.paidBy, r.note),
+      matches(q, r.label, r.kindName, r.reference, r.paidBy, r.note),
+  )
+}
+
+/** The kinds of money out filter (0185): every kind, retired ones included (their past entries). */
+export async function outKindOptions(ctx: ReportContext): Promise<ReportOption[]> {
+  const t = (k: string, o?: Record<string, unknown>) => String(i18n.t(k, o))
+  return (await fetchMoneyKinds(ctx.sample))
+    .filter((k) => k.side === 'out')
+    .map((k) => ({ value: k.id, label: kindName(t, k) }))
+}
+export async function inKindOptions(ctx: ReportContext): Promise<ReportOption[]> {
+  const t = (k: string, o?: Record<string, unknown>) => String(i18n.t(k, o))
+  return (await fetchMoneyKinds(ctx.sample))
+    .filter((k) => k.side === 'in' && !k.code)
+    .map((k) => ({ value: k.id, label: kindName(t, k) }))
+}
+
+// ------------------------------------------------------------------ other money in (0185)
+
+export type IncomeRow = Income
+
+export async function loadIncomeRows(
+  f: ReportFilterValues,
+  ctx: ReportContext,
+): Promise<IncomeRow[]> {
+  const rows = await fetchIncomes(f.period.from, f.period.to, ctx.sample)
+  const kindId = selected(f, 'kindId')
+  const methods = chosen(f, 'method')
+  const voided = switchedOn(f, 'includeVoided')
+  const q = searchText(f)
+  return rows.filter(
+    (r) =>
+      (voided || !r.voided) &&
+      (!kindId || r.kindId === kindId) &&
+      inChosen(methods, r.method) &&
+      matches(q, r.kind, r.from, r.reference, r.recordedBy, r.note),
   )
 }
 
@@ -208,30 +251,38 @@ export interface MoneyRow {
   revenue: number
   refunds: number
   netRevenue: number
+  /** 0185: the other money in. */
+  otherIncome: number
+  moneyIn: number
+  /** salaries + statutory contributions + remittances */
   salaries: number
+  /** The taxes paid: reported apart, not in moneyOut nor in net (0185). */
   taxes: number
   other: number
   stock: number
-  /** salaries + taxes + other expenses + stock bought */
+  /** salaries + other expenses + stock bought */
   moneyOut: number
+  /** The result before tax. */
   net: number
 }
 
 export async function loadMoney(f: ReportFilterValues, ctx: ReportContext): Promise<MoneyRow[]> {
   const s = await fetchFinanceSummary(f.period.from, f.period.to, ctx.sample)
   return s.byMonth.map((m) => {
-    const moneyOut = m.salaries + m.taxes + m.other + m.stock
+    const moneyOut = m.salaries + m.other + m.stock
     return {
       month: m.month,
       revenue: m.revenue,
       refunds: m.refunds,
       netRevenue: m.revenue - m.refunds,
+      otherIncome: m.otherIncome,
+      moneyIn: m.revenue - m.refunds + m.otherIncome,
       salaries: m.salaries,
       taxes: m.taxes,
       other: m.other,
       stock: m.stock,
       moneyOut,
-      net: m.revenue - m.refunds - moneyOut,
+      net: m.revenue - m.refunds + m.otherIncome - moneyOut,
     }
   })
 }

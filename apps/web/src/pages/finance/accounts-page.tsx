@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import {
   AlertTriangle,
+  ArrowDownToLine,
+  ArrowUpFromLine,
   Banknote,
   CalendarCheck,
   Coins,
@@ -30,14 +32,18 @@ import { SidePanel } from '@/components/ui/side-panel'
 import {
   CUSTOM_UNITS,
   SALARY_INTERVALS,
+  SYSTEM_OUT_KINDS,
   intervalWords,
+  kindName,
   useAccountsActions,
   useDailySalaryAlertCheck,
   useExpenses,
   useFinanceSummary,
+  useMoneyKinds,
   useSalaryOverview,
   type CustomUnit,
   type ExpenseKind,
+  type FinanceSummary,
   type SalaryInterval,
   type SalaryPeriod,
   type SalaryPerson,
@@ -61,6 +67,8 @@ import {
   type AccountsTab,
   type Msg,
 } from './accounts-tabs'
+import { IncomePanel } from './income-panel'
+import { KindsTab } from './kinds-tab'
 import { TaxesTab } from './taxes-tab'
 
 /**
@@ -102,6 +110,7 @@ export function AccountsPage({
         {tab === 'salaries' && <SalariesTab user={user} initialYear={initialYear} />}
         {tab === 'taxes' && <TaxesTab user={user} initialYear={initialYear} />}
         {tab === 'expenses' && <ExpensesTab />}
+        {tab === 'setup' && <KindsTab />}
       </main>
     </StaffShell>
   )
@@ -142,18 +151,18 @@ function MoneyTab({ user }: { user: StaffUser }) {
             />
             <Kpi
               i={1}
-              icon={Wallet}
-              tint="amber"
-              label={t('accounts.money.salaries')}
-              value={Math.round(s.salaries)}
+              icon={ArrowDownToLine}
+              tint="mint"
+              label={t('accounts.money.otherIncome')}
+              value={Math.round(s.otherIncome)}
               unit="RWF"
             />
             <Kpi
               i={2}
-              icon={Percent}
-              tint="violet"
-              label={t('accounts.money.taxes')}
-              value={Math.round(s.taxes)}
+              icon={Wallet}
+              tint="amber"
+              label={t('accounts.money.staffCost')}
+              value={Math.round(s.salaries + s.statutory + s.remittances)}
               unit="RWF"
             />
             <Kpi
@@ -188,14 +197,6 @@ function MoneyTab({ user }: { user: StaffUser }) {
               value={Math.round(s.salariesDue)}
               unit="RWF"
             />
-            <Kpi
-              i={7}
-              icon={AlertTriangle}
-              tint="violet"
-              label={t('accounts.money.taxesDue')}
-              value={Math.round(s.taxesDue)}
-              unit="RWF"
-            />
           </div>
           <p className="text-ink-3 m-0 text-[13px]">
             {t('accounts.money.how', {
@@ -204,7 +205,13 @@ function MoneyTab({ user }: { user: StaffUser }) {
             })}
           </p>
           <div className="pc:grid-cols-2 grid grid-cols-1 gap-4">
-            <Panel i={1} icon={Coins} tint="teal" title={t('accounts.money.byMethod')}>
+            <Panel i={1} icon={ArrowDownToLine} tint="teal" title={t('accounts.money.byKindIn')}>
+              <KindTable rows={s.byKindIn} />
+            </Panel>
+            <Panel i={2} icon={ArrowUpFromLine} tint="coral" title={t('accounts.money.byKindOut')}>
+              <KindTable rows={s.byKindOut} />
+            </Panel>
+            <Panel i={3} icon={Coins} tint="teal" title={t('accounts.money.byMethod')}>
               {s.byMethod.length === 0 ? (
                 <Empty icon={Coins}>{t('accounts.money.none')}</Empty>
               ) : (
@@ -230,69 +237,128 @@ function MoneyTab({ user }: { user: StaffUser }) {
                 </table>
               )}
             </Panel>
-            <Panel i={2} icon={CalendarCheck} tint="navy" title={t('accounts.money.byMonth')}>
-              {s.byMonth.length === 0 ? (
-                <Empty icon={CalendarCheck}>{t('accounts.money.none')}</Empty>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse text-[14px]">
-                    <thead className="bg-surface">
-                      <tr className="border-border border-b">
-                        <th className={tableHead}>{t('accounts.money.month')}</th>
-                        <th className={cn(tableHead, 'text-right')}>
-                          {t('accounts.money.revenue')}
-                        </th>
-                        <th className={cn(tableHead, 'text-right')}>
-                          {t('accounts.money.salaries')}
-                        </th>
-                        <th className={cn(tableHead, 'text-right')}>{t('accounts.money.taxes')}</th>
-                        <th className={cn(tableHead, 'text-right')}>{t('accounts.money.other')}</th>
-                        <th className={cn(tableHead, 'text-right')}>{t('accounts.money.stock')}</th>
-                        <th className={cn(tableHead, 'text-right')}>{t('accounts.money.net')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {s.byMonth.map((m) => {
-                        const net = m.revenue - m.refunds - m.salaries - m.taxes - m.other - m.stock
-                        return (
-                          <tr key={m.month} className={tableRow}>
-                            <td className={cn(tableFirstCell, 'whitespace-nowrap')}>{m.month}</td>
-                            <td className={cn(tableCell, 'text-right tabular-nums')}>
-                              {formatRwf(m.revenue - m.refunds)}
-                            </td>
-                            <td className={cn(tableCell, 'text-right tabular-nums')}>
-                              {formatRwf(m.salaries)}
-                            </td>
-                            <td className={cn(tableCell, 'text-right tabular-nums')}>
-                              {formatRwf(m.taxes)}
-                            </td>
-                            <td className={cn(tableCell, 'text-right tabular-nums')}>
-                              {formatRwf(m.other)}
-                            </td>
-                            <td className={cn(tableCell, 'text-right tabular-nums')}>
-                              {formatRwf(m.stock)}
-                            </td>
-                            <td
-                              className={cn(
-                                tableCell,
-                                'text-right font-semibold tabular-nums',
-                                net >= 0 ? 'text-green' : 'text-red',
-                              )}
-                            >
-                              {formatRwf(net)}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+            <Panel i={4} icon={Percent} tint="violet" title={t('accounts.money.taxesApart')}>
+              <div className="flex flex-col gap-2 text-[14px]">
+                <p className="text-ink-3 m-0 text-[13px]">{t('accounts.money.taxesApartHint')}</p>
+                <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-2">
+                  <div>
+                    <dt className="text-ink-3 text-[12px]">{t('accounts.money.taxes')}</dt>
+                    <dd className="m-0 font-semibold tabular-nums">{formatRwf(s.taxes)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-ink-3 text-[12px]">{t('accounts.money.taxesDue')}</dt>
+                    <dd className="m-0 font-semibold tabular-nums">{formatRwf(s.taxesDue)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-ink-3 text-[12px]">{t('accounts.money.afterTax')}</dt>
+                    <dd
+                      className={cn(
+                        'm-0 font-semibold tabular-nums',
+                        s.net - s.taxes >= 0 ? 'text-green' : 'text-red',
+                      )}
+                    >
+                      {formatRwf(s.net - s.taxes)}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
             </Panel>
           </div>
+          <Panel i={5} icon={CalendarCheck} tint="navy" title={t('accounts.money.byMonth')}>
+            {s.byMonth.length === 0 ? (
+              <Empty icon={CalendarCheck}>{t('accounts.money.none')}</Empty>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-[14px]">
+                  <thead className="bg-surface">
+                    <tr className="border-border border-b">
+                      <th className={tableHead}>{t('accounts.money.month')}</th>
+                      <th className={cn(tableHead, 'text-right')}>{t('accounts.money.revenue')}</th>
+                      <th className={cn(tableHead, 'text-right')}>
+                        {t('accounts.money.otherIncome')}
+                      </th>
+                      <th className={cn(tableHead, 'text-right')}>
+                        {t('accounts.money.staffCost')}
+                      </th>
+                      <th className={cn(tableHead, 'text-right')}>{t('accounts.money.other')}</th>
+                      <th className={cn(tableHead, 'text-right')}>{t('accounts.money.stock')}</th>
+                      <th className={cn(tableHead, 'text-right')}>{t('accounts.money.net')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {s.byMonth.map((m) => {
+                      const net =
+                        m.revenue - m.refunds + m.otherIncome - m.salaries - m.other - m.stock
+                      return (
+                        <tr key={m.month} className={tableRow}>
+                          <td className={cn(tableFirstCell, 'whitespace-nowrap')}>{m.month}</td>
+                          <td className={cn(tableCell, 'text-right tabular-nums')}>
+                            {formatRwf(m.revenue - m.refunds)}
+                          </td>
+                          <td className={cn(tableCell, 'text-right tabular-nums')}>
+                            {formatRwf(m.otherIncome)}
+                          </td>
+                          <td className={cn(tableCell, 'text-right tabular-nums')}>
+                            {formatRwf(m.salaries)}
+                          </td>
+                          <td className={cn(tableCell, 'text-right tabular-nums')}>
+                            {formatRwf(m.other)}
+                          </td>
+                          <td className={cn(tableCell, 'text-right tabular-nums')}>
+                            {formatRwf(m.stock)}
+                          </td>
+                          <td
+                            className={cn(
+                              tableCell,
+                              'text-right font-semibold tabular-nums',
+                              net >= 0 ? 'text-green' : 'text-red',
+                            )}
+                          >
+                            {formatRwf(net)}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Panel>
+          <IncomePanel i={6} from={period.from} to={period.to} />
         </>
       )}
     </div>
+  )
+}
+
+/** Money in or out by kind (0185): the built-in kinds translated, the accountant's as named. */
+function KindTable({ rows }: { rows: FinanceSummary['byKindIn'] }) {
+  const { t } = useTranslation()
+  if (rows.length === 0) return <Empty icon={Coins}>{t('accounts.money.none')}</Empty>
+  const total = rows.reduce((s, x) => s + x.amount, 0)
+  return (
+    <table className="w-full border-collapse text-[14px]">
+      <thead className="bg-surface">
+        <tr className="border-border border-b">
+          <th className={tableHead}>{t('accounts.kinds.kind')}</th>
+          <th className={cn(tableHead, 'text-right')}>{t('report.cols.amount')}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((x) => (
+          <tr key={x.id} className={tableRow}>
+            <td className={tableFirstCell}>{kindName(t, x)}</td>
+            <td className={cn(tableCell, 'text-right tabular-nums')}>{formatRwf(x.amount)}</td>
+          </tr>
+        ))}
+        <tr className="border-border border-t">
+          <td className={cn(tableFirstCell, 'font-semibold')}>{t('report.total')}</td>
+          <td className={cn(tableCell, 'text-right font-semibold tabular-nums')}>
+            {formatRwf(total)}
+          </td>
+        </tr>
+      </tbody>
+    </table>
   )
 }
 
@@ -938,9 +1004,15 @@ function ExpensesTab() {
   const { t } = useTranslation()
   const period = usePeriod('month')
   const { data: rows = [], error } = useExpenses(period.from, period.to)
+  const { data: kinds = [] } = useMoneyKinds()
   const { addExpense, voidExpense } = useAccountsActions()
   const confirm = useConfirm()
-  const [kind, setKind] = useState<'other' | 'tax'>('other')
+  // 0185: the kinds of money out the accountant records by hand (not those the system fills)
+  const choices = kinds.filter(
+    (k) => k.side === 'out' && k.active && !SYSTEM_OUT_KINDS.includes(k.code ?? ''),
+  )
+  const [kindId, setKindId] = useState('')
+  const chosen = choices.find((k) => k.id === kindId)
   const [label, setLabel] = useState('')
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState<string>('cash')
@@ -952,6 +1024,7 @@ function ExpensesTab() {
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     const a = Number(amount)
+    if (!kindId) return setMsg({ ok: false, text: t('accounts.expenses.errors.kind') })
     if (label.trim().length < 2)
       return setMsg({ ok: false, text: t('accounts.expenses.errors.label') })
     if (!Number.isFinite(a) || a <= 0)
@@ -964,7 +1037,7 @@ function ExpensesTab() {
         reference,
         paidOn,
         note,
-        kind,
+        kindId,
       })
       setMsg({ ok: true, text: t('accounts.expenses.added') })
       setLabel('')
@@ -1010,12 +1083,13 @@ function ExpensesTab() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
             <Select
               label={t('accounts.expenses.kindField')}
-              value={kind}
-              onChange={(e) => setKind(e.target.value as 'other' | 'tax')}
+              value={kindId}
+              onChange={(e) => setKindId(e.target.value)}
             >
-              {(['other', 'tax'] as const).map((k) => (
-                <option key={k} value={k}>
-                  {t(`accounts.expenses.kinds.${k}`)}
+              <option value="">{t('accounts.expenses.kindPh')}</option>
+              {choices.map((k) => (
+                <option key={k.id} value={k.id}>
+                  {kindName(t, k)}
                 </option>
               ))}
             </Select>
@@ -1023,7 +1097,9 @@ function ExpensesTab() {
               wrapperClassName="lg:col-span-2"
               label={t('accounts.expenses.label')}
               placeholder={
-                kind === 'tax' ? t('accounts.expenses.taxPh') : t('accounts.expenses.labelPh')
+                chosen?.code === 'tax'
+                  ? t('accounts.expenses.taxPh')
+                  : t('accounts.expenses.labelPh')
               }
               value={label}
               onChange={(e) => setLabel(e.target.value)}
@@ -1053,6 +1129,9 @@ function ExpensesTab() {
               onChange={(e) => setPaidOn(e.target.value)}
             />
           </div>
+          {chosen?.description && (
+            <p className="text-ink-3 m-0 text-[13px]">{chosen.description}</p>
+          )}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field
               label={t('accounts.reference')}
@@ -1065,6 +1144,7 @@ function ExpensesTab() {
               onChange={(e) => setNote(e.target.value)}
             />
           </div>
+          <p className="text-ink-3 m-0 text-[13px]">{t('accounts.expenses.kindsHint')}</p>
           <Button
             variant="primary"
             type="submit"
@@ -1107,7 +1187,9 @@ function ExpensesTab() {
                     )}
                   </td>
                   <td className={tableCell}>
-                    {t(`accounts.expenses.kinds.${r.kind as ExpenseKind}`)}
+                    {r.kindName
+                      ? kindName(t, { code: r.kindCode ?? null, name: r.kindName })
+                      : t(`accounts.expenses.kinds.${r.kind as ExpenseKind}`)}
                   </td>
                   <td
                     className={cn(

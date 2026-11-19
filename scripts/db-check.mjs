@@ -25328,6 +25328,10 @@ await step(
     )
     // 0184 again: 0179 brings back the six-value add_expense and the two-kind expense check
     await db.exec(await readFile(path.join(migrationsDir, '20270208090000_taxes.sql'), 'utf8'))
+    // 0185 again: 0184 brings back the seven-value add_expense (ambiguous with 0185's eight)
+    await db.exec(
+      await readFile(path.join(migrationsDir, '20270209090000_money_kinds.sql'), 'utf8'),
+    )
     const refused = await codeAs(d1, `select salary_overview(2026)`)
     await as(staff.cashier)
     await db.query(`select set_salary($1, 500000, 'monthly', '2026-02-02', null, 'contract')`, [d1])
@@ -25576,6 +25580,164 @@ await step(
       throw new Error(JSON.stringify({ alerts, alerts2, notices }))
     if (overview2.taxes.length !== 2) throw new Error('remove: ' + overview2.taxes.length)
     return `PAYE 12 periods, Jan due 15 Feb; VAT 4 periods without amount, paid 1,250,000 when typed; licence due 31 Jan 2027; Jan paid (expense 420,000), twice 23505; Feb skipped; expense tab refuses the period's tax (22023); one-off tax 45,000 → taxes 465,000, then cancelled; undo → paid again; changed to 450,000; alerts ${alerts.taxes.created} (overdue ${alerts.taxes.overdue}), second run 0; licence removed; doctor 42501`
+  },
+)
+
+// 0185: the kinds of money, the other money in, the expenses by kind, the result before tax
+await step(
+  '0185: the kinds of money (built in + the accountant’s, with a description), other money in (rent received), an expense under a kind, the money by kind with the result before tax and the taxes apart; a doctor refused',
+  async () => {
+    const refused = await codeAs(d1, `select money_kinds()`)
+    await as(staff.cashier)
+    const kinds0 = (await one(`select money_kinds() as j`)).j
+    const rent = (
+      await one(
+        `select set_money_kind(null, 'in', 'Rent received', 'The shop space rented out') as id`,
+      )
+    ).id
+    const power = (
+      await one(`select set_money_kind(null, 'out', 'Electricity', 'Cash Power') as id`)
+    ).id
+    const dup = await codeAs(
+      staff.cashier,
+      `select set_money_kind(null, 'out', 'electricity', null)`,
+    )
+    const noName = await codeAs(staff.cashier, `select set_money_kind(null, 'in', ' ', null)`)
+    const bills = kinds0.find((k) => k.code === 'bills')
+    const taxKind = kinds0.find((k) => k.code === 'tax')
+    const salaryKind = kinds0.find((k) => k.code === 'salary')
+    // a built-in kind: only the description changes
+    await db.query(
+      `select set_money_kind($1, 'in', 'Renamed', 'What patients pay at the desk', true)`,
+      [bills.id],
+    )
+    const kinds1 = (await one(`select money_kinds() as j`)).j
+    const income = (
+      await one(
+        `select add_income($1, 150000, 'bank', 'TRF-RENT', '2026-03-05', 'Pharmacie La Grâce', null) as id`,
+        [rent],
+      )
+    ).id
+    const intoBills = await codeAs(staff.cashier, `select add_income($1, 1000)`, [bills.id])
+    const future = await codeAs(
+      staff.cashier,
+      `select add_income($1, 1000, 'cash', null, '2099-01-01')`,
+      [rent],
+    )
+    const exp = (
+      await one(
+        `select add_expense('Cash Power March', 85000, 'momo', 'MP1', '2026-03-06', null, 'other', $1) as id`,
+        [power],
+      )
+    ).id
+    const sys = await codeAs(
+      staff.cashier,
+      `select add_expense('x', 10, 'cash', null, null, null, 'other', $1)`,
+      [salaryKind.id],
+    )
+    const oneOffTax = (
+      await one(
+        `select add_expense('Penalty', 20000, 'cash', null, '2026-03-07', null, 'other', $1) as id`,
+        [taxKind.id],
+      )
+    ).id
+    const list = (await one(`select expenses_list('2026-03-01', '2026-03-31') as j`)).j
+    const incomes = (await one(`select incomes_list('2026-03-01', '2026-03-31') as j`)).j
+    const money = (await one(`select finance_summary('2026-03-01', '2026-03-31') as j`)).j
+    const inUse = await codeAs(staff.cashier, `select remove_money_kind($1)`, [power])
+    const builtin = await codeAs(staff.cashier, `select remove_money_kind($1)`, [bills.id])
+    await db.query(`select set_money_kind($1, 'out', 'Electricity', 'Cash Power', false)`, [power])
+    const spare = (await one(`select set_money_kind(null, 'out', 'Spare', null) as id`)).id
+    await db.query(`select remove_money_kind($1)`, [spare])
+    await db.query(`select void_income($1, 'typed twice')`, [income])
+    const money2 = (await one(`select finance_summary('2026-03-01', '2026-03-31') as j`)).j
+    const kinds2 = (await one(`select money_kinds() as j`)).j
+    await asAdmin()
+    const expRow = list.find((e) => e.id === exp)
+    const taxRow = list.find((e) => e.id === oneOffTax)
+    const powerKind = kinds2.find((k) => k.id === power)
+    if (refused !== '42501') throw new Error('doctor not refused: ' + refused)
+    if (
+      kinds0.filter((k) => k.code).length < 8 ||
+      !rent ||
+      !power ||
+      dup !== '23505' ||
+      noName !== '22023'
+    )
+      throw new Error(JSON.stringify({ n: kinds0.length, rent, power, dup, noName }))
+    const b1 = kinds1.find((k) => k.id === bills.id)
+    if (b1.name !== bills.name || b1.description !== 'What patients pay at the desk')
+      throw new Error('builtin: ' + JSON.stringify(b1))
+    if (
+      !income ||
+      intoBills !== '22023' ||
+      future !== '22023' ||
+      incomes.length !== 1 ||
+      incomes[0].kind !== 'Rent received' ||
+      incomes[0].from !== 'Pharmacie La Grâce'
+    )
+      throw new Error(JSON.stringify({ income, intoBills, future, incomes }))
+    if (
+      !exp ||
+      sys !== '22023' ||
+      !expRow ||
+      expRow.kindName !== 'Electricity' ||
+      expRow.kind !== 'other' ||
+      !taxRow ||
+      taxRow.kind !== 'tax' ||
+      taxRow.kindCode !== 'tax'
+    )
+      throw new Error(JSON.stringify({ exp, sys, expRow, taxRow }))
+    const inRent = (money.byKindIn ?? []).find((k) => k.id === rent)
+    const outPower = (money.byKindOut ?? []).find((k) => k.id === power)
+    if (
+      Number(money.otherIncome) !== 150000 ||
+      Number(money.otherExpenses) !== 85000 ||
+      Number(money.taxes) !== 20000 ||
+      !inRent ||
+      Number(inRent.amount) !== 150000 ||
+      !outPower ||
+      Number(outPower.amount) !== 85000 ||
+      (money.byKindOut ?? []).some((k) => k.code === 'tax') ||
+      Number(money.net) !== Number(money.moneyIn) - Number(money.expenses) ||
+      Number(money.expenses) !==
+        Number(money.salaries) +
+          Number(money.statutory) +
+          Number(money.remittances) +
+          Number(money.otherExpenses) +
+          Number(money.stockBought)
+    )
+      throw new Error(
+        'money: ' +
+          JSON.stringify({
+            o: money.otherIncome,
+            e: money.otherExpenses,
+            t: money.taxes,
+            net: money.net,
+            in: money.moneyIn,
+            ex: money.expenses,
+            inRent,
+            outPower,
+          }),
+      )
+    if (
+      inUse !== '22023' ||
+      builtin !== '22023' ||
+      !powerKind ||
+      powerKind.active !== false ||
+      kinds2.some((k) => k.id === spare)
+    )
+      throw new Error(
+        JSON.stringify({
+          inUse,
+          builtin,
+          powerKind,
+          spareGone: !kinds2.some((k) => k.id === spare),
+        }),
+      )
+    if (Number(money2.otherIncome) !== 0)
+      throw new Error('voided income still counted: ' + money2.otherIncome)
+    return `8 built-in kinds; Rent received + Electricity added, duplicate 23505, blank 22023; built-in keeps its name, description changed; rent 150,000 recorded (into a built-in kind / a future date refused), expense 85,000 under Electricity (a system kind refused), a one-off tax 20,000 under Taxes; money: other in 150,000, other out 85,000, taxes 20,000 apart, result = money in − expenses; in-use kind retired not removed, built-in not removed, unused one removed; voided income not counted; doctor 42501`
   },
 )
 // @@t141-end
