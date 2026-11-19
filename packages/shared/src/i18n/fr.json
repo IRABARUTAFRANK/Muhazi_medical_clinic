@@ -11617,7 +11617,8 @@
       "otherTotal": "Autres impôts payés, total",
       "allTaxes": "Tous les impôts",
       "incomeTaxPaid": "Impôt sur le revenu payé",
-      "kindRule": "Seuls les paiements des impôts de nature « Sur le bénéfice » sont déduits de l’impôt sur le revenu estimé ; chaque autre nature est listée à part avec son total."
+      "kindRule": "Seuls les paiements des impôts de nature « Sur le bénéfice » sont déduits de l’impôt sur le revenu estimé ; chaque autre nature est listée à part avec son total.",
+      "yearFigures": "Chiffres de l’année"
     }
   }
 }

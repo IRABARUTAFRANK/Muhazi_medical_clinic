@@ -11617,7 +11617,8 @@
       "otherTotal": "Other taxes paid, total",
       "allTaxes": "All taxes",
       "incomeTaxPaid": "Income tax paid",
-      "kindRule": "Only the payments of taxes of kind “On the profit” are taken off the estimated income tax; every other kind is listed apart with its total."
+      "kindRule": "Only the payments of taxes of kind “On the profit” are taken off the estimated income tax; every other kind is listed apart with its total.",
+      "yearFigures": "Figures of the year"
     }
   }
 }

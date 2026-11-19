@@ -11626,7 +11626,8 @@
       "otherTotal": "Indi misoro yishyuwe, igiteranyo",
       "allTaxes": "Imisoro yose",
       "incomeTaxPaid": "Umusoro ku nyungu wishyuwe",
-      "kindRule": "Ubwishyu bw’imisoro y’ubwoko “Ku nyungu” ni bwo bwonyine bukurwa ku musoro ku nyungu ugereranyijwe; ubundi bwoko bwose bugaragazwa ukwabwo n’igiteranyo cyabwo."
+      "kindRule": "Ubwishyu bw’imisoro y’ubwoko “Ku nyungu” ni bwo bwonyine bukurwa ku musoro ku nyungu ugereranyijwe; ubundi bwoko bwose bugaragazwa ukwabwo n’igiteranyo cyabwo.",
+      "yearFigures": "Imibare y’umwaka"
     }
   }
 }
