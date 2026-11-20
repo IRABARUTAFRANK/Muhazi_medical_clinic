@@ -1,5 +1,7 @@
+import { formatDate, formatTime } from '@mmc/shared'
 import { outcomeOf } from './diagnosis-outcome'
 import type { ReportVisit } from './medical-report'
+import { orderAction, partLines, stateWord } from './order-words'
 
 /** What the medical report needs of a visit's record (visit_clinical, 0127): a loose shape so a
  *  record from before 0127 (no sections, no stage) still fits. */
@@ -32,6 +34,17 @@ export interface SixStepsSource {
         given: number
         notGiven: number
         status: 'open' | 'done' | 'not_done' | 'cancelled'
+        /** 0193: how many (an act: on the bill; a medicine: given here) and the take-home part. */
+        quantity?: number
+        unit?: string | null
+        service?: string | null
+        serviceId?: string | null
+        homeQuantity?: number | null
+        homeDose?: string | null
+        homeFrequency?: string | null
+        homeDays?: number | null
+        homeInstructions?: string | null
+        doses?: { given: boolean; by: string | null; at: string }[]
       }[]
     | null
 }
@@ -82,20 +95,52 @@ export function sixStepsOfVisit(
     })),
     nurseOrders: (c.nurseOrders ?? [])
       .filter((o) => o.status !== 'cancelled')
-      .map((o) => ({
-        text: o.text,
-        how: [
-          o.dose,
-          o.route ? route(o.route) : null,
-          o.frequency ? frequency(o.frequency) : null,
-          t('nurseOrders.times', { count: o.dosesPlanned }),
-        ]
-          .filter(Boolean)
-          .join(' · '),
-        status: t(o.kind === 'drug' ? 'nurseOrders.progressDrug' : 'nurseOrders.progressAct', {
-          given: o.given,
-          count: o.dosesPlanned,
-        }),
-      })),
+      .map((o) =>
+        // 0193: an order carried out once prints its parts (given here; to take home and how)
+        // and who carried it out; an older order keeps its times
+        o.dosesPlanned <= 1
+          ? {
+              text: o.text,
+              how: partLines(t, { ...o, quantity: Number(o.quantity ?? 1) }).join('; '),
+              status: onceState(t, o),
+            }
+          : {
+              text: o.text,
+              how: [
+                o.dose,
+                o.route ? route(o.route) : null,
+                o.frequency ? frequency(o.frequency) : null,
+                t('nurseOrders.times', { count: o.dosesPlanned }),
+              ]
+                .filter(Boolean)
+                .join(' · '),
+              status: t(
+                o.kind === 'drug' ? 'nurseOrders.progressDrug' : 'nurseOrders.progressAct',
+                {
+                  given: o.given,
+                  count: o.dosesPlanned,
+                },
+              ),
+            },
+      ),
   }
+}
+
+type SourceOrder = NonNullable<SixStepsSource['nurseOrders']>[number]
+/** A one-time order's state for the record: "Given by Nurse A, 20/11/2026 10:52", or "To do". */
+function onceState(t: TFn, o: SourceOrder): string {
+  const d = [...(o.doses ?? [])].reverse().find((x) => x.given)
+  if (o.status !== 'done' || !d) return stateWord(t, { ...o, quantity: Number(o.quantity ?? 1) })
+  const action = orderAction({ ...o, quantity: Number(o.quantity ?? 1) })
+  return t(
+    action === 'done'
+      ? 'nurseOrders.doneBy'
+      : action === 'hand'
+        ? 'nurseOrders.handedBy'
+        : 'nurseOrders.givenBy',
+    {
+      name: d.by ?? '',
+      when: `${formatDate(new Date(d.at))} ${formatTime(new Date(d.at))}`,
+    },
+  )
 }

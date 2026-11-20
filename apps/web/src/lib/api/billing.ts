@@ -71,6 +71,16 @@ export interface Charge {
   createdAt: string
   /** Changed for this patient (0139): how, why, by whom and when; null: the insurer's rule. */
   cover?: ChargeCover | null
+  /**
+   * Where the line comes from (0193 visit_charge_sources; absent on an older database): an order
+   * of step 6 ('nurse_order'), a test ('service_request'), a hand-over, a bed stay, a medicine
+   * given here; null: added on the bill. sourceId: that order, test…; doseId: the time of the
+   * order it was made by; performedBy: who did it.
+   */
+  sourceType?: string | null
+  sourceId?: string | null
+  doseId?: string | null
+  performedBy?: string | null
 }
 
 /** How one line of an insured visit is charged for this patient (0139). */
@@ -365,22 +375,39 @@ export function useVisitBill(encounterId: string) {
     refetchOnWindowFocus: true,
     queryFn: async (): Promise<VisitBill> => {
       if (!supabase) return { ...sampleBill(encounterId) }
-      const [{ data: bill, error: be }, { data: lines, error: le }, covers] = await Promise.all([
-        supabase.from('visit_bill').select('*').eq('encounter_id', encounterId).maybeSingle(),
-        supabase
-          .from('visit_charges')
-          .select('*')
-          .eq('encounter_id', encounterId)
-          .order('created_at'),
-        // what was changed for this patient (0139; nothing on an older database)
-        supabase
-          .from('visit_charge_covers')
-          .select('id, cover_mode, cover_reason, cover_by_name, cover_at')
-          .eq('encounter_id', encounterId)
-          .not('cover_mode', 'is', null),
-      ])
+      const [{ data: bill, error: be }, { data: lines, error: le }, covers, sources] =
+        await Promise.all([
+          supabase.from('visit_bill').select('*').eq('encounter_id', encounterId).maybeSingle(),
+          supabase
+            .from('visit_charges')
+            .select('*')
+            .eq('encounter_id', encounterId)
+            .order('created_at'),
+          // what was changed for this patient (0139; nothing on an older database)
+          supabase
+            .from('visit_charge_covers')
+            .select('id, cover_mode, cover_reason, cover_by_name, cover_at')
+            .eq('encounter_id', encounterId)
+            .not('cover_mode', 'is', null),
+          // where each line comes from (0193; nothing on an older database)
+          supabase
+            .from('visit_charge_sources')
+            .select('id, source_type, source_id, nurse_order_dose_id, performed_by')
+            .eq('encounter_id', encounterId),
+        ])
       if (be) throw new Error(be.message)
       if (le) throw new Error(le.message)
+      const sourceOf = new Map(
+        ((sources.error ? [] : sources.data) ?? []).map((s) => [
+          String(s.id),
+          {
+            sourceType: (s.source_type as string | null) ?? null,
+            sourceId: (s.source_id as string | null) ?? null,
+            doseId: (s.nurse_order_dose_id as string | null) ?? null,
+            performedBy: (s.performed_by as string | null) ?? null,
+          },
+        ]),
+      )
       const coverOf = new Map(
         ((covers.error ? [] : covers.data) ?? []).map((c) => [
           String(c.id),
@@ -438,6 +465,7 @@ export function useVisitBill(encounterId: string) {
           enteredBy: c.entered_by_name,
           createdAt: c.created_at,
           cover: coverOf.get(c.id) ?? null,
+          ...sourceOf.get(c.id),
         })),
       }
     },

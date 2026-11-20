@@ -67,6 +67,8 @@ import { MyWorkPanel, WaitingForMePanel } from './my-panels'
 import { useState } from 'react'
 import { useMyNurseOrders } from '@/lib/api/nurse-orders'
 import { NurseOrderRow } from '@/components/clinical/nurse-order-row'
+import { useHanded } from '@/pages/stock/pharmacy/handed'
+import { HandedStrip } from '@/pages/stock/pharmacy/parts'
 import { Flash } from '@/components/ui/flash'
 import { WORK_OF, type LinkFn } from './my-work'
 
@@ -221,7 +223,14 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
             {nurse && <HandoverPanel />}
 
             {/* 0127: the doctors' orders to carry out (acts, drugs to give), mine first */}
-            {nurse && <NurseOrdersSection nursing={nursing} canAct={can('clinical.write')} />}
+            {nurse && (
+              <NurseOrdersSection
+                nursing={nursing}
+                canAct={can('clinical.write')}
+                myId={user.id}
+                isManager={user.role === 'manager'}
+              />
+            )}
 
             {/* WAITING FOR ME: sent to me by name first, then my desks' queue */}
             <section className="flex flex-col gap-3">
@@ -586,17 +595,31 @@ function NursingOrdersPanel() {
 }
 
 /**
- * 0127: the orders of the doctors to carry out (step 6 of the visit): a medical act or a drug to
- * give, sent to this nurse by name or to all the nurses of the nursing desk. Each time is recorded
- * here (given, or not given with the reason); the visit opens beside it. Shown at the nursing
- * desk, or whenever an order is sent to the nurse by name.
+ * 0127: the orders of the doctors to carry out (step 6 of the visit): a medical act or a medicine,
+ * sent to this nurse by name or to all the nurses of the nursing desk. Since 0193 each is carried
+ * out with one press (Given / Handed over / Done) or Will not be done with the reason; the visit
+ * opens beside it. A medicine handed over to take home keeps its label on the strip above the list
+ * for the day (print, reprint), after the order has left the list. Shown at the nursing desk, or
+ * whenever an order is sent to the nurse by name.
  */
-function NurseOrdersSection({ nursing, canAct }: { nursing: boolean; canAct: boolean }) {
+function NurseOrdersSection({
+  nursing,
+  canAct,
+  myId,
+  isManager,
+}: {
+  nursing: boolean
+  canAct: boolean
+  myId: string
+  isManager: boolean
+}) {
   const { t } = useTranslation()
   const { data: orders = [] } = useMyNurseOrders()
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  if (!nursing && orders.length === 0) return null
+  const addHanded = useHanded((s) => s.add)
+  const handedToday = useHanded((s) => s.groups.some((g) => g.kind === 'visit'))
+  if (!nursing && orders.length === 0 && !handedToday) return null
   return (
     <section className="flex flex-col gap-3">
       <SectionTitle icon={Syringe}>{t('nurseOrders.homeTitle')}</SectionTitle>
@@ -610,6 +633,8 @@ function NurseOrdersSection({ nursing, canAct }: { nursing: boolean; canAct: boo
       >
         {error && <ErrorBox>{error}</ErrorBox>}
         {message && !error && <Flash onClose={() => setMessage(null)}>{message}</Flash>}
+        {/* 0193: the labels of the medicines handed over to take home today (print, reprint) */}
+        <HandedStrip kind="visit" onBlocked={() => setError(t('report.popupBlocked'))} />
         {orders.length === 0 ? (
           <Empty>{t('nurseOrders.homeEmpty')}</Empty>
         ) : (
@@ -622,11 +647,23 @@ function NurseOrdersSection({ nursing, canAct }: { nursing: boolean; canAct: boo
                       order={o}
                       carryOut={canAct}
                       showPatient
+                      myId={myId}
+                      isManager={isManager}
                       onDone={(m) => {
                         setError(null)
                         setMessage(m)
                       }}
                       onError={setError}
+                      onHanded={(_, label) =>
+                        addHanded(
+                          {
+                            key: o.encounterId,
+                            kind: 'visit',
+                            patient: { name: o.patient ?? '', fileNumber: o.fileNumber ?? '' },
+                          },
+                          label,
+                        )
+                      }
                     />
                     <StaffLink
                       to="/app/visit"

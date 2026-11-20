@@ -176,6 +176,23 @@ function PastVisitRow({ visit: v, open: first }: { visit: PastVisit; open: boole
               <span key={i} className={cn(o.status === 'cancelled' && 'line-through')}>
                 <Syringe size={12} aria-hidden="true" className="mr-1 inline align-[-1px]" />
                 {[o.text, o.dose, t(`nurseOrders.status.${o.status}`)].filter(Boolean).join(' · ')}
+                {/* 0193: what was taken home from the clinic, and how to take it */}
+                {Number(o.homeQuantity ?? 0) > 0 && (
+                  <span className="text-ink-2 block pl-4 text-xs">
+                    {[
+                      t('pastHistory.takeHome', { count: Number(o.homeQuantity) }),
+                      o.homeDose,
+                      o.homeFrequency
+                        ? t(`clinical.frequencies.${o.homeFrequency}`, {
+                            defaultValue: o.homeFrequency,
+                          })
+                        : null,
+                      o.homeDays ? t('pharmacy.labelDays', { count: o.homeDays }) : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
+                )}
               </span>
             ))}
             {!v.plan && v.medicines.length === 0 && v.nurseOrders.length === 0 && '—'}

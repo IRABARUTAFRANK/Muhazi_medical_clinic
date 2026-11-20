@@ -114,6 +114,7 @@ import { STEP_KEYS, stepNumber, type StepKey } from '@/components/clinical/six-s
 import { SectionEditor } from '@/components/clinical/six-steps/section-editor'
 import { PastHistoryPanel } from '@/components/clinical/six-steps/past-history'
 import { NurseOrdersStep } from '@/components/clinical/six-steps/nurse-orders-step'
+import { isOnce, orderParts } from '@/lib/api/nurse-orders'
 import { DefinitivePick } from '@/components/clinical/six-steps/definitive-pick'
 
 const errorBox =
@@ -1381,7 +1382,12 @@ export function ClinicalCard({
     ? t('sixSteps.openOrders', {
         count: openOrders.length,
         list: openOrders
-          .map((o) => `${o.text} (${o.given + o.notGiven}/${o.dosesPlanned})`)
+          .map((o) =>
+            // 0193: an order carried out once says what waits; an older one keeps its count
+            isOnce(o)
+              ? `${o.text} (${t(orderParts(o).home > 0 ? 'nurseOrders.openHomeShort' : 'nurseOrders.openShort')})`
+              : `${o.text} (${o.given + o.notGiven}/${o.dosesPlanned})`,
+          )
           .join(', '),
       })
     : ''
@@ -2975,6 +2981,8 @@ export function ClinicalCard({
               myId={user.id}
               isManager={isManager}
               patientName={name}
+              patientFile={patient?.fileNumber ?? null}
+              visitOver={finished}
               onDone={onDone}
               onError={(m) => {
                 setMsgStep('plan')
@@ -3325,6 +3333,10 @@ export function ClinicalCard({
               key={o.id}
               order={o}
               patientName={name}
+              patientFile={patient?.fileNumber ?? null}
+              myId={user.id}
+              isManager={isManager}
+              visitOver={finished}
               carryOut={o.mine && can('clinical.write') && !finished}
               onDone={onDone}
               onError={setLocalError}

@@ -17,12 +17,18 @@ export function NurseRecipient({
   value,
   onChange,
   selfId,
+  hint,
+  meHint,
   className,
 }: {
   value: string
   onChange: (id: string) => void
   /** The doctor filling the form: offers "Me — I do it myself". */
   selfId?: string
+  /** A grey line under the question: what the choice does (0193, the orders of step 6). */
+  hint?: string
+  /** The words under “Me — I do it myself” (default: a task's). */
+  meHint?: string
   className?: string
 }) {
   const { t } = useTranslation()
@@ -62,6 +68,7 @@ export function NurseRecipient({
       <legend className="text-ink-2 mb-1 p-0 text-[13px] font-semibold">
         {t('nurseOrders.forWhom')}
       </legend>
+      {hint && <span className="text-ink-3 -mt-1 text-xs">{hint}</span>}
       <div role="radiogroup" aria-label={t('nurseOrders.forWhom')} className="flex flex-wrap gap-2">
         {choice(
           'all',
@@ -80,7 +87,7 @@ export function NurseRecipient({
             'me',
             <Hand size={16} aria-hidden="true" />,
             t('nurseOrders.me'),
-            t('nurseOrders.meHint'),
+            meHint ?? t('nurseOrders.meHint'),
           )}
       </div>
       {mode === 'one' && (

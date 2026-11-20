@@ -42,6 +42,12 @@ export interface PastVisit {
     frequency: string | null
     planned: number
     given: number
+    /** 0193: given here, and what was taken home with how to take it (older database: absent). */
+    quantity?: number | null
+    homeQuantity?: number | null
+    homeDose?: string | null
+    homeFrequency?: string | null
+    homeDays?: number | null
   }[]
   tests: {
     test: string
@@ -141,6 +147,21 @@ const SAMPLE_PAST: PastVisit[] = [
         frequency: 'STAT',
         planned: 1,
         given: 1,
+      },
+      // 0193: a medicine taken home from the clinic
+      {
+        kind: 'drug',
+        text: 'Amoxicillin 500 mg',
+        status: 'done',
+        dose: null,
+        frequency: null,
+        planned: 1,
+        given: 1,
+        quantity: 0,
+        homeQuantity: 15,
+        homeDose: '1 capsule',
+        homeFrequency: 'TDS',
+        homeDays: 5,
       },
     ],
     tests: [],

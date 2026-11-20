@@ -26458,6 +26458,762 @@ await step('0192 H: the decisions are clinical in the change log', async () => {
   return 'the Clinical group of the history; hidden from a reader who is not a doctor'
 })
 // @@t192-end
+// @@t193-begin
+// ---------------------------------------------------------------- 0193 step 6 orders: an act done once, a medicine given at once, to take home, Undo
+const t193 = {}
+const json193 = (x) => JSON.stringify(x)
+/** An order written by someone (create_order_here with named arguments); its JSON. */
+const order193 = async (who, args) => {
+  await as(who)
+  const keys = Object.keys(args)
+  try {
+    return (
+      await one(
+        `select create_order_here(${keys.map((k, i) => `${k} => $${i + 1}`).join(', ')}) as j`,
+        keys.map((k) => args[k]),
+      )
+    ).j
+  } finally {
+    await asAdmin()
+  }
+}
+/** The JSON of a function run as someone. */
+const as193 = async (who, sql, params = []) => {
+  await as(who)
+  try {
+    return (await one(sql, params)).j
+  } finally {
+    await asAdmin()
+  }
+}
+/** code|message of a statement run as someone ('ok' when it succeeds). */
+const msg193 = async (who, sql, params = []) => {
+  await as(who)
+  try {
+    await db.query(sql, params)
+    return 'ok'
+  } catch (e) {
+    return `${e.code}|${e.message}`
+  } finally {
+    await asAdmin()
+  }
+}
+const stock193 = async (item) =>
+  Number((await one(`select usable_stock($1, $2) as n`, [item, t193.main])).n)
+const lines193 = async (orderId) =>
+  (
+    await db.query(
+      `select id, office::text as office, description, quantity::text as q, unit_price::text as p,
+              nurse_order_dose_id, performed_by, deleted_at, manual_reason
+         from invoice_line where source_type = 'nurse_order' and source_id = $1 order by created_at, id`,
+      [orderId],
+    )
+  ).rows.map((l) => ({ ...l, q: Number(l.q), p: Number(l.p) }))
+const undoSql193 = `select undo_nurse_order($1, $2) as j`
+// the 0127, 0133, 0141 and 0173 steps re-ran older migrations (six_steps, doctor_does_it,
+// outside_prescriptions, reports_stock_clinical): put 0193 back (twice)
+await step(
+  '0193: the migration runs again on a database that already has it; the times given before it are linked to their stock and bill lines',
+  async () => {
+    await asAdmin()
+    const sql = await readFile(
+      path.join(migrationsDir, '20270213090000_orders_once_take_home.sql'),
+      'utf8',
+    )
+    await db.exec(sql)
+    await db.exec(sql)
+    const sig =
+      'create_order_here(uuid, text, uuid, uuid, text, numeric, text, text, numeric, text, text, integer, text, uuid, text)'
+    const r = await one(
+      `select to_regprocedure($1) is not null as fn,
+              has_function_privilege('anon', $1, 'execute') as anon_x,
+              has_function_privilege('authenticated', $1, 'execute') as auth_x,
+              has_function_privilege('authenticated', 'undo_nurse_order(uuid, text)', 'execute') as undo_x,
+              has_function_privilege('anon', 'undo_nurse_order(uuid, text)', 'execute') as undo_anon,
+              has_function_privilege('authenticated', 'order_office()', 'execute') as office_x,
+              has_table_privilege('authenticated', 'visit_charge_sources', 'select') as src_sel,
+              (select count(*)::int from invoice_line l where l.source_type = 'nurse_order'
+                 and l.deleted_at is null and l.nurse_order_dose_id is null) as lines_unlinked,
+              (select count(*)::int from invoice_line l where l.source_type = 'nurse_order'
+                 and l.nurse_order_dose_id is not null) as lines_linked,
+              (select count(*)::int from stock_movement m where m.nurse_order_id is not null
+                 and m.type = 'consumption' and m.nurse_order_dose_id is null) as moves_unlinked,
+              (select count(*)::int from stock_movement m where m.nurse_order_dose_id is not null) as moves_linked,
+              (select count(*)::int from nurse_order_dose d join nurse_order o on o.id = d.order_id
+                 where o.kind = 'drug' and d.given and d.deleted_at is null and d.quantity is null) as no_qty,
+              (select count(*)::int from nurse_order_dose d where d.given and d.office is null
+                 and exists (select 1 from invoice_line l where l.nurse_order_dose_id = d.id)) as no_office`,
+      [sig],
+    )
+    if (
+      !r.fn ||
+      r.anon_x ||
+      !r.auth_x ||
+      !r.undo_x ||
+      r.undo_anon ||
+      r.office_x ||
+      !r.src_sel ||
+      r.lines_unlinked !== 0 ||
+      r.moves_unlinked !== 0 ||
+      r.no_qty !== 0 ||
+      r.no_office !== 0 ||
+      r.lines_linked < 1 ||
+      r.moves_linked < 1
+    )
+      throw new Error(json193(r))
+    return `no error; create_order_here and undo_nurse_order for a signed-in person (not anon), order_office internal; earlier orders: ${r.lines_linked} bill line(s) and ${r.moves_linked} stock movement(s) linked to their time, none left unlinked`
+  },
+)
+await step(
+  '0193 seed: three fresh medicines in the clinic’s stock (by the piece; a box of 10 or pieces; whole boxes only), a priced injection, two open visits of Dr 127',
+  async () => {
+    await as(staff.manager)
+    t193.para = (
+      await one(`select upsert_item(null, 'Paracetamol 193', 50, '500 mg', 'tablet', 'tab') as id`)
+    ).id
+    t193.amox = (
+      await one(
+        `select upsert_item(null, 'Amoxicillin 193', 200, '500 mg', 'capsule', 'cap') as id`,
+      )
+    ).id
+    t193.cotrim = (
+      await one(`select upsert_item(null, 'Cotrim 193', 100, '480 mg', 'tablet', 'tab') as id`)
+    ).id
+    await db.query(`select set_item_packaging($1, 10, 'both', 200, 1500, 'cap', 'box')`, [
+      t193.amox,
+    ])
+    await db.query(`select set_item_packaging($1, 10, 'pack', null, 1000, 'tab', 'box')`, [
+      t193.cotrim,
+    ])
+    t193.inj = (
+      await one(`select upsert_service(null, 'Injection 193', 'consultation', 1000) as id`)
+    ).id
+    await asAdmin()
+    t193.main = (await one(`select main_pharmacy() as id`)).id
+    t193.today = (await one(`select (now() at time zone 'Africa/Kigali')::date::text as d`)).d
+    await db.query(`select receive_batch($1, $2, 200, 20, 'PA-193', $3::date)`, [
+      t193.para,
+      t193.main,
+      t97.day.d,
+    ])
+    await db.query(`select receive_batch($1, $2, 100, 120, 'AM-193', $3::date)`, [
+      t193.amox,
+      t193.main,
+      t97.day.d,
+    ])
+    await db.query(`select receive_batch($1, $2, 50, 60, 'CO-193', $3::date)`, [
+      t193.cotrim,
+      t193.main,
+      t97.day.d,
+    ])
+    t193.v = await t127.ov(t127.doc)
+    t193.v2 = await t127.ov(t127.doc)
+    const s = {
+      para: await stock193(t193.para),
+      amox: await stock193(t193.amox),
+      cotrim: await stock193(t193.cotrim),
+    }
+    if (s.para !== 200 || s.amox !== 100 || s.cotrim !== 50) throw new Error(json193(s))
+    return 'Paracetamol 193 (200, 50 a tablet), Amoxicillin 193 (100, 200 a capsule or 1,500 a box of 10), Cotrim 193 (50, only whole boxes of 10 at 1,000); Injection 193 at 1,000; two open visits'
+  },
+)
+await step(
+  '0193 A: a medical act is done once — no times, no route; one Done bills it once at the giver’s desk and ends it; a written act is not billed; a screen opened before 0193 also writes one order',
+  async () => {
+    const act = await order193(t127.doc, {
+      p_encounter_id: t193.v,
+      p_kind: 'act',
+      p_service_id: t193.inj,
+      p_route: 'IM',
+      p_assigned_to: t127.nurseA,
+    })
+    const notice = (
+      await one(
+        `select params from notification where kind = 'nurse_order' and recipient_user = $1 and params->>'orderId' = $2`,
+        [t127.nurseA, act.id],
+      )
+    )?.params
+    const done = await as193(t127.nurseA, `select give_nurse_order($1) as j`, [act.id])
+    const lines = await lines193(act.id)
+    const again = await hintAs(t127.nurseA, `select give_nurse_order($1)`, [act.id])
+    // a written act, for himself: done once, not billed
+    const typed = await order193(t127.doc, {
+      p_encounter_id: t193.v,
+      p_kind: 'act',
+      p_text: 'Wound check 193',
+      p_assigned_to: t127.doc,
+    })
+    const typedDone = await as193(t127.doc, `select give_nurse_order($1) as j`, [typed.id])
+    const typedLines = await lines193(typed.id)
+    // the order form of before 0193 (several times): one order, the total given at once
+    const old = await as193(
+      t127.doc,
+      `select create_nurse_order(p_encounter_id => $1, p_kind => 'drug', p_item_id => $2, p_quantity => 2,
+              p_dose => '1 g', p_route => 'oral', p_frequency => 'TDS', p_doses => 3, p_assigned_to => $3) as j`,
+      [t193.v, t193.para, t127.nurseA],
+    )
+    const oldAct = await as193(
+      t127.doc,
+      `select create_nurse_order(p_encounter_id => $1, p_kind => 'act', p_service_id => $2, p_route => 'IM',
+              p_frequency => 'BD', p_doses => 2, p_assigned_to => $3) as j`,
+      [t193.v, t193.inj, t127.nurseA],
+    )
+    const r = {
+      planned: act.dosesPlanned,
+      route: act.route,
+      frequency: act.frequency,
+      qty: Number(act.quantity),
+      notice,
+      status: done.status,
+      charged: done.charged,
+      notBilled: done.notBilled,
+      billed: Number(done.billed),
+      lines: lines.map((l) => [l.office, l.q, l.p, l.nurse_order_dose_id === done.doseId]),
+      doseOffice: done.doses?.[0]?.office,
+      again,
+      typed: [typedDone.status, typedDone.charged, typedDone.notBilled, typedLines.length],
+      old: [old.dosesPlanned, Number(old.quantity), old.frequency, old.dose, old.route],
+      oldAct: [oldAct.dosesPlanned, Number(oldAct.quantity), oldAct.route],
+    }
+    if (
+      r.planned !== 1 ||
+      r.route != null ||
+      r.frequency != null ||
+      r.qty !== 1 ||
+      !notice ||
+      'times' in notice ||
+      notice.here !== true ||
+      notice.home !== false ||
+      r.status !== 'done' ||
+      r.charged !== true ||
+      r.notBilled != null ||
+      r.billed !== 1000 ||
+      json193(r.lines) !== json193([['nursing', 1, 1000, true]]) ||
+      r.doseOffice !== 'nursing' ||
+      r.again !== '22023/order_over' ||
+      json193(r.typed) !== json193(['done', false, 'not_in_price_list', 0]) ||
+      json193(r.old) !== json193([1, 6, null, '1 g', 'oral']) ||
+      json193(r.oldAct) !== json193([1, 1, null])
+    )
+      throw new Error(json193(r))
+    return 'Injection 193 for Nurse A: 1 time, no route, no “times” in her notice; one Done → done, 1 line of 1,000 at Nursing linked to the time; a second Done 22023/order_over; “Wound check 193” written → done, not billed (not_in_price_list); create_nurse_order 2 × 3 times → one order of 6, given at once; an act of 2 times → one'
+  },
+)
+await step(
+  '0193 B: “Me — I do it myself”: the doctor’s medicine leaves the clinic’s stock in one press and is billed at his desk, nobody told; the order form refuses at once (half a tablet, nothing asked, more than the stock, no medicine, a nurse)',
+  async () => {
+    const before = await stock193(t193.para)
+    const o = await order193(t127.doc, {
+      p_encounter_id: t193.v,
+      p_kind: 'drug',
+      p_item_id: t193.para,
+      p_quantity: 2,
+      p_dose: '1 g',
+      p_route: 'oral',
+      p_assigned_to: t127.doc,
+    })
+    t193.me = o.id
+    const g = await as193(t127.doc, `select give_nurse_order($1) as j`, [o.id])
+    t193.meDose = g.doseId
+    const after = await stock193(t193.para)
+    await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [t127.doc])
+    const office = (await one(`select order_office()::text as o`)).o
+    await asAdmin()
+    const moved = Number(
+      (
+        await one(
+          `select coalesce(sum(quantity), 0)::int as n from stock_movement where nurse_order_dose_id = $1 and type = 'consumption'`,
+          [g.doseId],
+        )
+      ).n,
+    )
+    const lines = await lines193(o.id)
+    const notices = (
+      await one(`select count(*)::int as n from notification where params->>'orderId' = $1`, [o.id])
+    ).n
+    const call = (extra) =>
+      `select create_order_here(p_encounter_id => $1, p_kind => 'drug', p_item_id => $2, p_assigned_to => $3${extra})`
+    const r = {
+      took: before - after,
+      moved,
+      lines: lines.map((l) => [l.q, l.p, l.office, l.performed_by === t127.doc]),
+      office,
+      status: g.status,
+      notices,
+      half: await msg193(t127.doc, call(', p_quantity => 1.5'), [t193.v, t193.para, t127.doc]),
+      nothing: await msg193(t127.doc, call(', p_quantity => 0'), [t193.v, t193.para, t127.doc]),
+      tooMany: await hintAs(t127.doc, call(', p_quantity => 100000'), [
+        t193.v,
+        t193.para,
+        t127.doc,
+      ]),
+      noItem: await hintAs(
+        t127.doc,
+        `select create_order_here(p_encounter_id => $1, p_kind => 'drug', p_quantity => 1)`,
+        [t193.v],
+      ),
+      nurse: await hintAs(t127.nurseA, call(', p_quantity => 1'), [t193.v, t193.para, t127.nurseA]),
+    }
+    if (
+      r.took !== 2 ||
+      r.moved !== 2 ||
+      json193(r.lines) !== json193([[2, 50, office, true]]) ||
+      !office ||
+      office === 'nursing' ||
+      r.status !== 'done' ||
+      r.notices !== 0 ||
+      !/^22023\|.*whole pieces/.test(r.half) ||
+      !/^22023\|say how many/.test(r.nothing) ||
+      r.tooMany !== 'MS003/room_short' ||
+      r.noItem !== '22023/item_needed' ||
+      r.nurse !== '42501/not_doctor'
+    )
+      throw new Error(json193(r))
+    return `Me + Paracetamol 193 × 2: one press took 2 (linked to the time), one line 2 × 50 at ${office} by the doctor, done, no notice; refused: 1.5 (whole pieces), 0 (say how many), 100,000 (MS003/room_short), no medicine (item_needed), a nurse (not_doctor)`
+  },
+)
+await step(
+  '0193 C: some here and the rest of the box to take home: one box at the box price in one stock take, with the batch; a box-only medicine needs whole boxes; the days are checked',
+  async () => {
+    const before = await stock193(t193.amox)
+    const o = await order193(t127.doc, {
+      p_encounter_id: t193.v,
+      p_kind: 'drug',
+      p_item_id: t193.amox,
+      p_quantity: 2,
+      p_dose: '1 g',
+      p_route: 'oral',
+      p_home_quantity: 8,
+      p_home_dose: '1 capsule',
+      p_home_frequency: 'TDS',
+      p_home_days: 3,
+      p_home_instructions: 'after meals',
+      p_assigned_to: t127.nurseA,
+    })
+    t193.amoxOrder = o.id
+    const g = await as193(t127.nurseA, `select give_nurse_order($1) as j`, [o.id])
+    const after = await stock193(t193.amox)
+    const lines = (await lines193(o.id)).filter((l) => !l.deleted_at)
+    const dose = g.doses?.[0] ?? {}
+    const call = (here, home, days = 3) =>
+      `select create_order_here(p_encounter_id => $1, p_kind => 'drug', p_item_id => $2, p_quantity => ${here},
+              p_home_quantity => ${home}, p_home_days => ${days}, p_assigned_to => $3)`
+    const notWhole = await hintAs(t127.doc, call(2, 5), [t193.v, t193.cotrim, t127.doc])
+    const tooLong = await msg193(t127.doc, call(1, 5, 400), [t193.v, t193.para, t127.doc])
+    const box = await order193(t127.doc, {
+      p_encounter_id: t193.v,
+      p_kind: 'drug',
+      p_item_id: t193.cotrim,
+      p_quantity: 2,
+      p_home_quantity: 8,
+      p_home_dose: '1 tablet',
+      p_home_frequency: 'BD',
+      p_home_days: 4,
+      p_assigned_to: t127.doc,
+    })
+    const cotBefore = await stock193(t193.cotrim)
+    await as193(t127.doc, `select give_nurse_order($1) as j`, [box.id])
+    const cotAfter = await stock193(t193.cotrim)
+    const boxLines = (await lines193(box.id)).filter((l) => !l.deleted_at)
+    const r = {
+      order: [
+        Number(o.quantity),
+        Number(o.homeQuantity),
+        o.homeDays,
+        o.homeDose,
+        o.homeFrequency,
+        o.homeInstructions,
+        o.unit,
+        o.packSize,
+      ],
+      took: before - after,
+      lines: lines.map((l) => [l.description.endsWith(' · B/10'), l.q, l.p]),
+      dose: [Number(dose.quantity), Number(dose.homeQuantity), dose.batches?.[0]?.batchNo],
+      billed: Number(g.billed),
+      notWhole,
+      tooLong,
+      cotrim: [
+        cotBefore - cotAfter,
+        boxLines.map((l) => [l.description.endsWith(' · B/10'), l.q, l.p]),
+      ],
+    }
+    if (
+      json193(r.order) !== json193([2, 8, 3, '1 capsule', 'TDS', 'after meals', 'cap', 10]) ||
+      r.took !== 10 ||
+      json193(r.lines) !== json193([[true, 1, 1500]]) ||
+      json193(r.dose) !== json193([2, 8, 'AM-193']) ||
+      r.billed !== 1500 ||
+      r.notWhole !== '22023/whole_packs' ||
+      !/^22023\|.*between 1 and 365/.test(r.tooLong) ||
+      json193(r.cotrim) !== json193([10, [[true, 1, 1000]]])
+    )
+      throw new Error(json193(r))
+    return 'Amoxicillin 193: 2 here + 8 home (1 capsule, TDS, 3 days, after meals) → one press took 10 (batch AM-193), ONE line “· B/10” 1 × 1,500; Cotrim 193 (whole boxes only): 2 + 5 → 22023/whole_packs, 2 + 8 → one box at 1,000; 400 days refused'
+  },
+)
+await step(
+  '0193 D: a different medicine only to take home: every nurse is told “to hand over”, it is handed over, on the bill, in the safety summary and in the record',
+  async () => {
+    const before = await stock193(t193.para)
+    const o = await order193(t127.doc, {
+      p_encounter_id: t193.v,
+      p_kind: 'drug',
+      p_item_id: t193.para,
+      p_quantity: 0,
+      p_home_quantity: 15,
+      p_home_dose: '2 tablets',
+      p_home_frequency: 'TDS',
+      p_home_days: 3,
+    })
+    t193.home = o.id
+    const told = (
+      await db.query(
+        `select recipient_user, params from notification where kind = 'nurse_order' and params->>'orderId' = $1`,
+        [o.id],
+      )
+    ).rows
+    const toA = told.find((n) => n.recipient_user === t127.nurseA)?.params
+    const toB = told.find((n) => n.recipient_user === t127.nurseB)?.params
+    const g = await as193(t127.nurseB, `select give_nurse_order($1) as j`, [o.id])
+    const after = await stock193(t193.para)
+    const lines = (await lines193(o.id)).filter((l) => !l.deleted_at)
+    const safety = (await one(`select patient_safety_summary($1) as j`, [t127.pid])).j
+    const vc = await as193(t127.doc, `select visit_clinical($1) as j`, [t193.v])
+    const inRecord = (vc.nurseOrders ?? []).find((x) => x.id === o.id)
+    const redacted = (
+      await one(
+        `select audit_redact('nurse_order', '{"home_dose":"2 tablets","home_frequency":"TDS","home_instructions":"x","undo_reason":"y","home_quantity":15}'::jsonb) as j`,
+      )
+    ).j
+    const r = {
+      toA: toA && [toA.home, toA.here],
+      toB: toB && [toB.home, toB.here],
+      status: g.status,
+      took: before - after,
+      lines: lines.map((l) => [l.q, l.p]),
+      dose: [Number(g.doses?.[0]?.quantity), Number(g.doses?.[0]?.homeQuantity)],
+      safety: (safety.medications ?? []).filter((m) => m.takeHome && /Paracetamol 193/.test(m.item))
+        .length,
+      record: inRecord && [Number(inRecord.homeQuantity), inRecord.homeDays, inRecord.status],
+      redacted: Object.keys(redacted).sort(),
+    }
+    if (
+      json193(r.toA) !== json193([true, false]) ||
+      json193(r.toB) !== json193([true, false]) ||
+      r.status !== 'done' ||
+      r.took !== 15 ||
+      json193(r.lines) !== json193([[15, 50]]) ||
+      json193(r.dose) !== json193([0, 15]) ||
+      r.safety < 1 ||
+      json193(r.record) !== json193([15, 3, 'done']) ||
+      json193(r.redacted) !== json193(['home_quantity'])
+    )
+      throw new Error(json193(r))
+    return 'Paracetamol 193 × 15 to take home, for all the nurses: Nurse A and Nurse B told (home, not here); Nurse B handed it over → 15 off the stock, 15 × 50 on the bill, done; in the safety summary (take home) and the record; the change log hides the take-home words'
+  },
+)
+await step(
+  '0193 E: Undo — the doctor undoes his own medicine the same day: back in the stock, off the bill, the order cancelled with the reason; another doctor, an empty reason and the cashier are refused; his act too',
+  async () => {
+    const refused = {
+      other: await hintAs(t127.doc2, undoSql193, [t193.me, 'not mine 193']),
+      empty: await hintAs(t127.doc, undoSql193, [t193.me, '']),
+      cashier: await hintAs(staff.cashier, undoSql193, [t193.me, 'cashier 193']),
+    }
+    const before = await stock193(t193.para)
+    const u = await as193(t127.doc, undoSql193, [t193.me, 'wrong patient 193'])
+    const after = await stock193(t193.para)
+    const back = (
+      await db.query(
+        `select quantity, to_location_id, nurse_order_dose_id, reason from stock_movement
+          where nurse_order_id = $1 and type = 'return'`,
+        [t193.me],
+      )
+    ).rows
+    const line = (await lines193(t193.me))[0]
+    const dose = await one(
+      `select deleted_at is not null as gone, undone_by, undo_reason from nurse_order_dose where id = $1`,
+      [t193.meDose],
+    )
+    const toldHimself = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'nurse_order_done' and params->>'orderId' = $1`,
+        [t193.me],
+      )
+    ).n
+    const twice = await msg193(t127.doc, undoSql193, [t193.me, 'again 193'])
+    // his own act ("Me"): done, then undone — off the bill, nothing to the stock
+    const act = await order193(t127.doc, {
+      p_encounter_id: t193.v,
+      p_kind: 'act',
+      p_service_id: t193.inj,
+      p_assigned_to: t127.doc,
+    })
+    await as193(t127.doc, `select give_nurse_order($1) as j`, [act.id])
+    const actU = await as193(t127.doc, undoSql193, [act.id, 'not done in the end 193'])
+    const actLines = (await lines193(act.id)).filter((l) => !l.deleted_at).length
+    const r = {
+      refused,
+      back: [
+        after - before,
+        back.map((b) => [
+          b.quantity,
+          b.to_location_id === t193.main,
+          b.nurse_order_dose_id === t193.meDose,
+        ]),
+      ],
+      line: line && [!!line.deleted_at, /undone: wrong patient 193/.test(line.manual_reason ?? '')],
+      dose: [dose.gone, dose.undone_by === t127.doc, dose.undo_reason],
+      u: [
+        u.status,
+        (u.endReason ?? '').startsWith('undone:'),
+        u.undone?.length,
+        u.units,
+        u.mode,
+        u.given,
+      ],
+      toldHimself,
+      twice,
+      act: [actU.status, actU.units, actU.mode, actLines],
+    }
+    if (
+      json193(r.refused) !== json193({ other: '42501/', empty: '22023/', cashier: '42501/' }) ||
+      json193(r.back) !== json193([2, [[2, true, true]]]) ||
+      json193(r.line) !== json193([true, true]) ||
+      json193(r.dose) !== json193([true, true, 'wrong patient 193']) ||
+      json193(r.u) !== json193(['cancelled', true, 1, 2, 'bill', 0]) ||
+      r.toldHimself !== 0 ||
+      !/^22023\|nothing was given or done/.test(r.twice) ||
+      json193(r.act) !== json193(['cancelled', 0, 'bill', 0])
+    )
+      throw new Error(json193(r))
+    return 'another doctor 42501, no reason 22023, the cashier 42501; the doctor’s Undo: 2 back in the main pharmacy (linked to the time), the line off the bill (“undone: wrong patient 193”), the time kept as undone by him, the order cancelled, nobody told; again → nothing to undo; his act: cancelled, off the bill, nothing to the stock'
+  },
+)
+await step(
+  '0193 F: a nurse undoes her own mistaken press: the order is to do again and the doctor is told; given again, only the new time is billed; another day is for the manager, with a credit note when the bill is closed',
+  async () => {
+    const start = await stock193(t193.para)
+    const o = await order193(t127.doc, {
+      p_encounter_id: t193.v2,
+      p_kind: 'drug',
+      p_item_id: t193.para,
+      p_quantity: 1,
+      p_dose: '500 mg',
+      p_route: 'oral',
+      p_assigned_to: t127.nurseA,
+    })
+    const g1 = await as193(t127.nurseA, `select give_nurse_order($1) as j`, [o.id])
+    const u1 = await as193(t127.nurseA, undoSql193, [o.id, 'pressed by mistake 193'])
+    const told = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'nurse_order_done' and recipient_user = $1
+           and params->>'orderId' = $2 and params->>'what' = 'undone'`,
+        [t127.doc, o.id],
+      )
+    ).n
+    const g2 = await as193(t127.nurseA, `select give_nurse_order($1) as j`, [o.id])
+    const live = (await lines193(o.id)).filter((l) => !l.deleted_at)
+    const moves = (
+      await db.query(
+        `select nurse_order_dose_id as dose, type::text as type, sum(quantity)::int as n from stock_movement
+          where nurse_order_id = $1 group by 1, 2 order by 2, 1`,
+        [o.id],
+      )
+    ).rows
+    const net = start - (await stock193(t193.para))
+    // two days later, the bill closed
+    await asAdmin()
+    await db.query(
+      `update nurse_order_dose set created_at = now() - interval '2 days' where id = $1`,
+      [g2.doseId],
+    )
+    await db.query(`update invoice set status = 'posted' where encounter_id = $1`, [t193.v2])
+    const late = await msg193(t127.nurseA, undoSql193, [o.id, 'too late 193'])
+    const beforeMgr = await stock193(t193.para)
+    const m = await as193(staff.manager, undoSql193, [o.id, 'wrong medicine 193'])
+    const afterMgr = await stock193(t193.para)
+    const cn = await one(
+      `select source_type, source_id, total::int as total from credit_note where id = $1`,
+      [m.creditNoteId],
+    )
+    const stillLive = (await lines193(o.id)).filter((l) => !l.deleted_at).length
+    const r = {
+      reopened: [u1.status, u1.given, u1.units, g1.status],
+      told,
+      again: [g2.status, live.length, live[0]?.nurse_order_dose_id === g2.doseId],
+      moves: moves.map((x) => [
+        x.dose === g1.doseId ? 1 : x.dose === g2.doseId ? 2 : 0,
+        x.type,
+        x.n,
+      ]),
+      net,
+      late: late.split('|')[0] + (/another day/.test(late) ? '' : ' ' + late),
+      mgr: [m.mode, !!m.creditNoteId, m.status, afterMgr - beforeMgr],
+      cn: cn && [cn.source_type, cn.source_id === o.id, cn.total],
+      stillLive,
+    }
+    if (
+      json193(r.reopened) !== json193(['open', 0, 1, 'done']) ||
+      r.told !== 1 ||
+      json193(r.again) !== json193(['done', 1, true]) ||
+      json193(r.moves.sort()) !==
+        json193(
+          [
+            [1, 'consumption', 1],
+            [1, 'return', 1],
+            [2, 'consumption', 1],
+          ].sort(),
+        ) ||
+      r.net !== 1 ||
+      r.late !== '42501' ||
+      json193(r.mgr) !== json193(['credit', true, 'cancelled', 1]) ||
+      json193(r.cn) !== json193(['nurse_order', true, 50]) ||
+      r.stillLive !== 1
+    )
+      throw new Error(json193(r))
+    return 'Nurse A undid her press: to do again, the doctor told once; given again: one live line, the new time’s stock only (net −1); two days later on a closed bill: Nurse A 42501 (another day), the manager’s Undo → credit note CN of 50 (source nurse_order), the line kept, 1 back in the stock, cancelled'
+  },
+)
+await step(
+  '0193 G: the bill line of an order: the doctor’s bin is refused in plain words; the manager removes the charge only (the medicine stays given); the bill knows where the line comes from',
+  async () => {
+    const o = await order193(t127.doc, {
+      p_encounter_id: t193.v,
+      p_kind: 'drug',
+      p_item_id: t193.para,
+      p_quantity: 1,
+      p_assigned_to: t127.doc,
+    })
+    t193.billOnly = o.id
+    const g = await as193(t127.doc, `select give_nurse_order($1) as j`, [o.id])
+    await as(t127.doc)
+    const src = (
+      await db.query(
+        `select id, encounter_id, source_type, source_id, nurse_order_dose_id, performed_by from visit_charge_sources
+          where encounter_id = $1`,
+        [t193.v],
+      )
+    ).rows
+    await asAdmin()
+    const mine = src.filter((s) => s.source_id === o.id)
+    const line = mine[0]?.id
+    const bin = await msg193(t127.doc, `select void_charge($1, 'mistake')`, [line])
+    await as(staff.manager)
+    await db.query(`select void_charge($1, 'given free 193')`, [line])
+    await asAdmin()
+    const after = await one(
+      `select (select deleted_at is not null from invoice_line where id = $1) as gone,
+              (select count(*)::int from stock_movement where nurse_order_id = $2 and type = 'return') as returns,
+              (select deleted_at is null from nurse_order_dose where id = $3) as dose_live,
+              (select status from nurse_order where id = $2) as status`,
+      [line, o.id, g.doseId],
+    )
+    const r = {
+      src: mine.map((s) => [
+        s.source_type,
+        s.nurse_order_dose_id === g.doseId,
+        s.performed_by === t127.doc,
+      ]),
+      otherVisit: src.filter((s) => s.encounter_id !== t193.v).length,
+      bin: bin.split('|')[0],
+      plain: /comes from an order given here/.test(bin) && !/nurse_order/.test(bin),
+      after,
+    }
+    if (
+      json193(r.src) !== json193([['nurse_order', true, true]]) ||
+      r.otherVisit !== 0 ||
+      r.bin !== '42501' ||
+      !r.plain ||
+      !after.gone ||
+      after.returns !== 0 ||
+      !after.dose_live ||
+      after.status !== 'done'
+    )
+      throw new Error(json193({ ...r, bin }))
+    return 'visit_charge_sources: the line from the order, its time and the doctor; the doctor’s bin → 42501 “This line comes from an order given here …” (no raw word); the manager removes the charge only: nothing back to the stock, the time and the order stay given'
+  },
+)
+await step(
+  '0193 H: the stock reports: medicines given through orders (here and to take home) count as given here, never written off; undone times are left out',
+  async () => {
+    await as(staff.manager)
+    const sold = (await one(`select report_stock_sold($1::date, $1::date) as j`, [t193.today])).j
+    const moves = (
+      await one(`select report_stock_movements($1::date, $1::date) as j`, [t193.today])
+    ).j
+    const offs = (
+      await one(`select report_stock_write_offs($1::date, $1::date) as j`, [t193.today])
+    ).j
+    await asAdmin()
+    const ours = [t193.para, t193.amox, t193.cotrim]
+    const row = (id) => (sold ?? []).find((x) => x.itemId === id) ?? {}
+    const mine = (moves ?? []).filter((m) => ours.includes(m.itemId))
+    const r = {
+      para: [Number(row(t193.para).here), Number(row(t193.para).revenue)],
+      amox: [Number(row(t193.amox).here), Number(row(t193.amox).revenue)],
+      cotrim: [Number(row(t193.cotrim).here), Number(row(t193.cotrim).revenue)],
+      consumption: [...new Set(mine.filter((m) => m.type === 'consumption').map((m) => m.kind))],
+      returns: [...new Set(mine.filter((m) => m.type === 'return').map((m) => m.kind))],
+      writtenOff: (offs ?? []).filter((x) => ours.includes(x.itemId)).length,
+    }
+    // Paracetamol 193: 15 taken home (750) + 1 given free (the manager removed its charge); the
+    // doctor's 2 and the nurse's 1 + 1 were undone
+    if (
+      json193(r.para) !== json193([16, 750]) ||
+      json193(r.amox) !== json193([10, 1500]) ||
+      json193(r.cotrim) !== json193([10, 1000]) ||
+      json193(r.consumption) !== json193(['given_here']) ||
+      json193(r.returns) !== json193(['returned']) ||
+      r.writtenOff !== 0
+    )
+      throw new Error(json193(r))
+    return 'Sold & given, “given here”: Paracetamol 193 16 (750: the undone times left out), Amoxicillin 193 10 (1,500), Cotrim 193 10 (1,000); Movements: given here and returned; Write-offs: none of them'
+  },
+)
+await step(
+  '0193 I: an order written before 0193 keeps its meaning: several times counted, each linked to its stock and bill line; Undo puts back every time given',
+  async () => {
+    await asAdmin()
+    const id = (
+      await one(
+        `insert into nurse_order (encounter_id, patient_id, kind, text, item_id, quantity, doses_planned, assigned_to, created_by)
+         values ($1, $2, 'drug', 'Old 193', $3, 1, 3, $4, $4) returning id`,
+        [t193.v, t127.pid, t193.para, t127.doc],
+      )
+    ).id
+    const before = await stock193(t193.para)
+    const g1 = await as193(t127.doc, `select give_nurse_order($1) as j`, [id])
+    const g2 = await as193(t127.doc, `select give_nurse_order($1) as j`, [id])
+    const mid = await stock193(t193.para)
+    const lines = (await lines193(id)).filter((l) => !l.deleted_at)
+    const u = await as193(t127.doc, undoSql193, [id, 'old order 193'])
+    const after = await stock193(t193.para)
+    const r = {
+      g1: [g1.status, g1.given, g1.dosesPlanned],
+      g2: [g2.status, g2.given],
+      took: before - mid,
+      lines: [
+        lines.length,
+        new Set(lines.map((l) => l.nurse_order_dose_id)).size,
+        lines.every((l) => l.nurse_order_dose_id),
+      ],
+      u: [u.units, u.status, u.undone?.length],
+      back: after - mid,
+    }
+    if (
+      json193(r.g1) !== json193(['open', 1, 3]) ||
+      json193(r.g2) !== json193(['open', 2]) ||
+      r.took !== 2 ||
+      json193(r.lines) !== json193([2, 2, true]) ||
+      json193(r.u) !== json193([2, 'cancelled', 2]) ||
+      r.back !== 2
+    )
+      throw new Error(json193(r))
+    return 'an order of 3 times (before 0193): Given 1/3, 2/3 (2 off the stock, two lines, each linked to its time); Undo by the doctor → 2 back, cancelled, both times kept as undone'
+  },
+)
+// @@t193-end
 finish()
 
 function finish() {

@@ -435,6 +435,8 @@ export function SafetySummaryCard({
                     <b>{m.item}</b>
                     <span className="text-ink-2 block text-xs">
                       {[
+                        // 0193: taken home from the clinic (an order of step 6)
+                        m.takeHome ? t('safetySummary.takeHome') : null,
                         m.dose,
                         m.frequency
                           ? t(`clinical.frequencies.${m.frequency}`, { defaultValue: m.frequency })

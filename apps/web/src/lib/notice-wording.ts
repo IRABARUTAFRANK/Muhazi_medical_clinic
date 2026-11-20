@@ -232,17 +232,30 @@ export function useWording() {
       // 0127: an order of the doctor to the nurses (step 6), and what became of it
       case 'nurse_order':
         return {
-          title: t(p.kind === 'drug' ? 'notify.nurseOrderDrug' : 'notify.nurseOrderAct', {
-            title: p.title ?? '',
-          }),
+          // 0193: a medicine only to take home is handed over; one with some to take home says so
+          title:
+            p.kind === 'drug' && String(p.home) === 'true' && String(p.here) === 'false'
+              ? t('notify.nurseOrderHome', { title: p.title ?? '' })
+              : [
+                  t(p.kind === 'drug' ? 'notify.nurseOrderDrug' : 'notify.nurseOrderAct', {
+                    title: p.title ?? '',
+                  }),
+                  p.kind === 'drug' && String(p.home) === 'true' ? t('notify.withHome') : null,
+                ]
+                  .filter(Boolean)
+                  .join(' '),
           body: joinParts([
             p.name,
+            // the orders written before 0193 were carried out several times
             num(p.times) > 1 ? t('nurseOrders.times', { count: num(p.times) }) : null,
             byText(p.by),
           ]),
         }
       case 'nurse_order_done': {
-        const what = ['done', 'not_done', 'not_given', 'cancelled'].includes(String(p.what))
+        // 0193: 'undone' — what was given or done was undone (back to the stock, off the bill)
+        const what = ['done', 'not_done', 'not_given', 'cancelled', 'undone'].includes(
+          String(p.what),
+        )
           ? String(p.what)
           : 'done'
         return {

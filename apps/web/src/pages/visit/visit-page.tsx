@@ -85,6 +85,8 @@ import { VisitFilesCard } from '@/components/clinical/supporting-files'
 import { FollowUpForm } from '@/components/clinical/follow-up-form'
 import { usePatientBookings } from '@/lib/api/follow-up'
 import { Reveal } from '@/components/ui/reveal'
+import { canUndoOrder } from '@/lib/api/nurse-orders'
+import { useOrderUndo } from '@/lib/use-order-undo'
 
 const errorBox =
   'bg-red-bg text-red m-0 border border-red/30 rounded-md px-3 py-2 text-[13px] font-semibold'
@@ -327,10 +329,13 @@ export function VisitPage({
     }
   }
 
-  const removeCharge = async (id: string, item: string) => {
+  /** billOnly: a line made by an order, a test, a bed stay… (the manager): the charge only goes. */
+  const removeCharge = async (id: string, item: string, billOnly = false) => {
     const r = await confirm({
-      title: t('confirm.visit.removeCharge', { item, name: patientName }),
-      body: t('confirm.visit.removeChargeBody'),
+      title: billOnly
+        ? t('nurseOrders.billOnlyQ', { item })
+        : t('confirm.visit.removeCharge', { item, name: patientName }),
+      body: billOnly ? t('nurseOrders.billOnlyBody') : t('confirm.visit.removeChargeBody'),
       input: { label: t('visit.removeReason'), required: true, multiline: true },
       confirmLabel: t('confirm.visit.removeChargeYes'),
       tone: 'danger',
@@ -339,6 +344,32 @@ export function VisitPage({
     setActionError(null)
     try {
       await actions.voidCharge.mutateAsync({ id, reason: r.value })
+    } catch (e) {
+      setActionError(describe(e))
+    }
+  }
+
+  // 0193: a line made by an order of step 6 is undone there, or here with the same Undo (back to
+  // the stock, off the bill): the person who gave it the same day, or the manager
+  const isManagerUser = user.role === 'manager'
+  const orderUndo = useOrderUndo()
+  const orderOf = (c: { sourceType?: string | null; sourceId?: string | null }) =>
+    c.sourceType === 'nurse_order'
+      ? (clinical?.nurseOrders ?? []).find((o) => o.id === c.sourceId)
+      : undefined
+  const undoOrderLine = async (orderId: string) => {
+    const order = (clinical?.nurseOrders ?? []).find((o) => o.id === orderId)
+    if (!order) return
+    setActionError(null)
+    try {
+      const m = await orderUndo.undo(order, {
+        myId: user.id,
+        isManager: isManagerUser,
+        patientName,
+        visitOver: closed,
+        billClosed: !!bill?.status && bill.status !== 'draft',
+      })
+      if (m) setDone(m)
     } catch (e) {
       setActionError(describe(e))
     }
@@ -802,84 +833,113 @@ export function VisitPage({
                         <EmptyNote>{t('visit.charges.empty')}</EmptyNote>
                       </CardBody>
                     ) : (
-                      bill!.charges.map((c) => (
-                        <Row key={c.id} className="flex-wrap gap-x-4 gap-y-1 py-2">
-                          <span className="min-w-[180px] flex-1">
-                            <span className="block font-semibold">{c.description}</span>
-                            <span className="text-ink-3 text-xs">
-                              {t(`register.stations.${c.office}`)}
-                              {c.enteredBy ? ` · ${c.enteredBy}` : ''}
-                              {c.discountPct > 0
-                                ? ` · ${t('visit.charges.discounted', { pct: c.discountPct, reason: c.discountReason ?? '' })}`
-                                : ''}
+                      bill!.charges.map((c) => {
+                        // 0193: a line made by an order of step 6 (its order, who may undo it)
+                        const fromOrder = c.sourceType === 'nurse_order'
+                        const order = orderOf(c)
+                        const mayUndo = !!order && canUndoOrder(order, user.id, isManagerUser)
+                        return (
+                          <Row key={c.id} className="flex-wrap gap-x-4 gap-y-1 py-2">
+                            <span className="min-w-[180px] flex-1">
+                              <span className="block font-semibold">{c.description}</span>
+                              <span className="text-ink-3 text-xs">
+                                {t(`register.stations.${c.office}`)}
+                                {c.enteredBy ? ` · ${c.enteredBy}` : ''}
+                                {fromOrder ? ` · ${t('nurseOrders.fromOrderLine')}` : ''}
+                                {c.discountPct > 0
+                                  ? ` · ${t('visit.charges.discounted', { pct: c.discountPct, reason: c.discountReason ?? '' })}`
+                                  : ''}
+                              </span>
+                              {fromOrder && !mayUndo && !isManagerUser && (
+                                <span className="text-ink-3 block text-xs">
+                                  {t('nurseOrders.onlyGiverUndoes')}
+                                </span>
+                              )}
                             </span>
-                          </span>
-                          <span className="text-ink-2 text-[13px] tabular-nums">
-                            {c.quantity} × {formatRwf(c.unitPrice)}
-                            {c.discountPct > 0 && (
-                              <s className="text-ink-3 ml-1">{formatRwf(c.listPrice)}</s>
+                            <span className="text-ink-2 text-[13px] tabular-nums">
+                              {c.quantity} × {formatRwf(c.unitPrice)}
+                              {c.discountPct > 0 && (
+                                <s className="text-ink-3 ml-1">{formatRwf(c.listPrice)}</s>
+                              )}
+                            </span>
+                            {/* priced at the insurer's price: the cash price beside it (0115) */}
+                            {c.cashPrice != null && c.cashPrice !== c.listPrice && (
+                              <span className="text-ink-3 text-xs tabular-nums">
+                                {t('visit.charges.cashPrice', { price: formatRwf(c.cashPrice) })}
+                              </span>
                             )}
-                          </span>
-                          {/* priced at the insurer's price: the cash price beside it (0115) */}
-                          {c.cashPrice != null && c.cashPrice !== c.listPrice && (
-                            <span className="text-ink-3 text-xs tabular-nums">
-                              {t('visit.charges.cashPrice', { price: formatRwf(c.cashPrice) })}
+                            <span className="font-semibold tabular-nums">
+                              {formatRwf(Math.round(c.unitPrice * c.quantity))}
                             </span>
-                          )}
-                          <span className="font-semibold tabular-nums">
-                            {formatRwf(Math.round(c.unitPrice * c.quantity))}
-                          </span>
-                          {c.coveragePct > 0 && (
-                            <Chip>
-                              {t('visit.charges.split', {
-                                patient: formatRwf(c.patientShare),
-                                insurer: formatRwf(c.insurerShare),
-                              })}
-                            </Chip>
-                          )}
-                          {/* an insured visit: this line charged otherwise for this patient (0139) */}
-                          {bill?.status === 'draft' && bill.payerId && can('charge.override') && (
-                            <Button
-                              size="sm"
-                              variant={coverOf === c.id ? 'tint-amber' : 'ghost'}
-                              aria-label={t('visit.cover.open')}
-                              title={t('visit.cover.open')}
-                              aria-expanded={coverOf === c.id}
-                              onClick={() => setCoverOf(coverOf === c.id ? null : c.id)}
-                            >
-                              <SlidersHorizontal size={16} aria-hidden="true" />
-                            </Button>
-                          )}
-                          {/* not on a visit held by someone else or already over (the
-                              database refuses it; lines from orders: the manager) */}
-                          {bill?.status === 'draft' &&
-                            can('charge.write') &&
-                            !locked &&
-                            !closed && (
+                            {c.coveragePct > 0 && (
+                              <Chip>
+                                {t('visit.charges.split', {
+                                  patient: formatRwf(c.patientShare),
+                                  insurer: formatRwf(c.insurerShare),
+                                })}
+                              </Chip>
+                            )}
+                            {/* an insured visit: this line charged otherwise for this patient (0139) */}
+                            {bill?.status === 'draft' && bill.payerId && can('charge.override') && (
+                              <Button
+                                size="sm"
+                                variant={coverOf === c.id ? 'tint-amber' : 'ghost'}
+                                aria-label={t('visit.cover.open')}
+                                title={t('visit.cover.open')}
+                                aria-expanded={coverOf === c.id}
+                                onClick={() => setCoverOf(coverOf === c.id ? null : c.id)}
+                              >
+                                <SlidersHorizontal size={16} aria-hidden="true" />
+                              </Button>
+                            )}
+                            {/* 0193: Undo the order the line was made by (back to the stock, off the
+                              bill): the person who gave it the same day, or the manager */}
+                            {mayUndo && order && (
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                aria-label={t('visit.charges.remove')}
-                                onClick={() => void removeCharge(c.id, c.description)}
+                                title={t('nurseOrders.undoOnBill')}
+                                disabled={orderUndo.pending}
+                                onClick={() => void undoOrderLine(order.id)}
                               >
-                                <Trash2 size={16} aria-hidden="true" />
+                                <Undo2 size={16} aria-hidden="true" />
+                                {t('nurseOrders.undo')}
                               </Button>
                             )}
-                          {c.cover && <ChargeCoverBadge cover={c.cover} />}
-                          {coverOf === c.id && bill && (
-                            <ChargeCoverEditor
-                              encounterId={encounterId}
-                              charge={c}
-                              payerName={bill.payerName ?? ''}
-                              onClose={() => setCoverOf(null)}
-                              onDone={(text) => {
-                                setCoverOf(null)
-                                setDone(text)
-                              }}
-                            />
-                          )}
-                        </Row>
-                      ))
+                            {/* not on a visit held by someone else or already over (the
+                              database refuses it). A line made by an order, a test, a bed stay
+                              or a medicine given here goes with it: only the manager has the
+                              bin there (it removes the charge only) */}
+                            {bill?.status === 'draft' &&
+                              can('charge.write') &&
+                              !locked &&
+                              !closed &&
+                              (!c.sourceType || isManagerUser) && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  aria-label={t('visit.charges.remove')}
+                                  onClick={() => void removeCharge(c.id, c.description, fromOrder)}
+                                >
+                                  <Trash2 size={16} aria-hidden="true" />
+                                </Button>
+                              )}
+                            {c.cover && <ChargeCoverBadge cover={c.cover} />}
+                            {coverOf === c.id && bill && (
+                              <ChargeCoverEditor
+                                encounterId={encounterId}
+                                charge={c}
+                                payerName={bill.payerName ?? ''}
+                                onClose={() => setCoverOf(null)}
+                                onDone={(text) => {
+                                  setCoverOf(null)
+                                  setDone(text)
+                                }}
+                              />
+                            )}
+                          </Row>
+                        )
+                      })
                     )}
                     <CardBody className="border-border flex-row flex-wrap items-center gap-x-6 gap-y-1 border-t">
                       <span className="text-ink-2 text-[13px]">

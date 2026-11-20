@@ -85,6 +85,8 @@ export interface SafetySummary {
     at: string
     until: string | null
     by: string | null
+    /** 0193: taken home from the clinic through an order of step 6. */
+    takeHome?: boolean
   }[]
   /** The last value of each vital sign. */
   lastVitals: {
