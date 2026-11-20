@@ -208,8 +208,10 @@ export function VisitJourney({
                   key={i}
                   main={`${d.text}${d.icd10 ? ` (${d.icd10})` : ''}`}
                   meta={[
-                    t(`clinical.type.${d.type}`, { defaultValue: d.type }),
-                    d.provisional ? t('history.line.provisional') : null,
+                    // 0192: a possible diagnosis (step 3) is said as such, never "secondary"
+                    d.provisional
+                      ? t('history.line.provisional')
+                      : t(`clinical.type.${d.type}`, { defaultValue: d.type }),
                     at(d.at),
                     d.by,
                   ]

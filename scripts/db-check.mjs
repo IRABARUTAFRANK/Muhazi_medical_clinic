@@ -25975,6 +25975,489 @@ await step(
   },
 )
 // @@t141-end
+// @@t192-begin
+// ---------------------------------------------------------------- 0192 step 5: the doctor ticks the confirmed possible diagnoses, saves once
+const t192 = {}
+const json192 = (x) => JSON.stringify(x)
+/** A diagnosis of a visit as the doctor writes it (step 3 by default; the database decides the type). */
+const dx192 = async (enc, text, stage = 'differential') =>
+  (await one(`select add_visit_diagnosis($1, $2, null, null, $3) as id`, [enc, text, stage])).id
+const save192 = `select save_definitive_diagnoses($1, $2::uuid[], $3::uuid[], $4::text[])`
+// the 0127, 0130 and 0141 steps re-ran older migrations (confirm_differential, visit_clinical,
+// patient_file, report_diagnoses_staged and the change-log lists of before): put 0192 back (twice)
+await step('0192: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  const sql = await readFile(path.join(migrationsDir, '20270212090000_diagnosis_ticks.sql'), 'utf8')
+  await db.exec(sql)
+  await db.exec(sql)
+  const sig = 'save_definitive_diagnoses(uuid, uuid[], uuid[], text[])'
+  const r = await one(
+    `select to_regclass('public.diagnosis_not_confirmed') is not null as tbl,
+            to_regprocedure($1) is not null as fn,
+            has_function_privilege('anon', $1, 'execute') as anon_x,
+            has_function_privilege('authenticated', $1, 'execute') as auth_x,
+            has_table_privilege('authenticated', 'diagnosis_not_confirmed', 'select') as auth_sel,
+            has_table_privilege('authenticated', 'diagnosis_not_confirmed', 'insert') as auth_ins`,
+    [sig],
+  )
+  if (!r.tbl || !r.fn || r.anon_x || !r.auth_x || r.auth_sel || r.auth_ins)
+    throw new Error(json192(r))
+  return 'no error; the table and save_definitive_diagnoses are there; a signed-in person may run it, anon not; nobody reads or writes the table directly'
+})
+await step(
+  '0192 A: one save in step 5 — two of three possible diagnoses ticked, one unticked, one other written: the ticked are linked (the first sent is primary), the other is unlinked, the unticked one is not confirmed under the doctor’s name; the possible diagnoses themselves are untouched',
+  async () => {
+    t192.v = await t127.ov(t127.doc)
+    await as(t127.doc)
+    t192.mal = await dx192(t192.v, 'Malaria 192')
+    t192.typh = await dx192(t192.v, 'Typhoid 192')
+    t192.viral = await dx192(t192.v, 'Viral fever 192')
+    const res = (
+      await one(`select save_definitive_diagnoses($1, $2::uuid[], $3::uuid[], $4::text[]) as j`, [
+        t192.v,
+        [t192.mal, t192.typh],
+        [t192.viral],
+        ['Urinary infection 192'],
+      ])
+    ).j
+    const vc = (await one(`select visit_clinical($1) as j`, [t192.v])).j
+    await asAdmin()
+    const rows = (
+      await db.query(
+        `select id, text, type::text as type, stage, differential_id, version from condition
+          where encounter_id = $1 and deleted_at is null order by created_at, id`,
+        [t192.v],
+      )
+    ).rows
+    const marks = (
+      await db.query(
+        `select condition_id, created_by from diagnosis_not_confirmed
+          where encounter_id = $1 and deleted_at is null`,
+        [t192.v],
+      )
+    ).rows
+    const def = (text) => rows.find((x) => x.stage === 'definitive' && x.text === text)
+    const by = (id) => vc.diagnoses.find((d) => d.id === id)
+    t192.defMal = def('Malaria 192')?.id
+    const r = {
+      answer: res,
+      mal: def('Malaria 192'),
+      typh: def('Typhoid 192'),
+      uti: def('Urinary infection 192'),
+      marks,
+      viral: by(t192.viral),
+      malAt: by(t192.mal)?.notConfirmedAt,
+      typhAt: by(t192.typh)?.notConfirmedAt,
+      versions: [t192.mal, t192.typh, t192.viral].map(
+        (id) => rows.find((x) => x.id === id)?.version,
+      ),
+    }
+    if (
+      res.definitive?.length !== 3 ||
+      json192(res.notConfirmed) !== json192([t192.viral]) ||
+      r.mal?.type !== 'primary' ||
+      r.mal?.differential_id !== t192.mal ||
+      r.typh?.type !== 'secondary' ||
+      r.typh?.differential_id !== t192.typh ||
+      r.uti?.type !== 'secondary' ||
+      r.uti?.differential_id != null ||
+      marks.length !== 1 ||
+      marks[0].condition_id !== t192.viral ||
+      marks[0].created_by !== t127.doc ||
+      r.viral?.notConfirmedBy !== 'Dr. Steps 127' ||
+      r.viral?.notConfirmedById !== t127.doc ||
+      !r.viral?.notConfirmedAt ||
+      r.malAt != null ||
+      r.typhAt != null ||
+      r.versions.some((x) => x !== 1)
+    )
+      throw new Error(json192(r))
+    return `3 definitive (Malaria 192 primary and linked, Typhoid 192 secondary and linked, Urinary infection 192 secondary, no link); Viral fever 192 not confirmed by ${r.viral.notConfirmedBy}; the possible ones still at version 1`
+  },
+)
+await step(
+  '0192 B: nothing ticked — the unticked ones are saved not confirmed, one written later stays not decided, no definitive diagnosis; finishing then needs the reason none was found; the same save again changes nothing',
+  async () => {
+    t192.v2 = await t127.ov(t127.doc)
+    await as(t127.doc)
+    t192.p = await dx192(t192.v2, 'Anaemia 192')
+    t192.q = await dx192(t192.v2, 'Hookworm 192')
+    const first = (
+      await one(`select save_definitive_diagnoses($1, '{}', $2::uuid[], '{}') as j`, [
+        t192.v2,
+        [t192.p, t192.q],
+      ])
+    ).j
+    // written after the save: nobody decided it
+    t192.r = await dx192(t192.v2, 'Brucellosis 192')
+    const again = (
+      await one(`select save_definitive_diagnoses($1, '{}', $2::uuid[], '{}') as j`, [
+        t192.v2,
+        [t192.p, t192.q],
+      ])
+    ).j
+    await db.query(`select save_visit_section($1, 'complaint', 'Tired and pale 192')`, [t192.v2])
+    await asAdmin()
+    const r = { first, again }
+    r.marked = (
+      await db.query(
+        `select condition_id from diagnosis_not_confirmed where encounter_id = $1 and deleted_at is null`,
+        [t192.v2],
+      )
+    ).rows
+      .map((x) => x.condition_id)
+      .sort()
+    r.allMarks = (
+      await one(`select count(*)::int as n from diagnosis_not_confirmed where encounter_id = $1`, [
+        t192.v2,
+      ])
+    ).n
+    r.definitive = (
+      await one(
+        `select count(*)::int as n from condition where encounter_id = $1 and deleted_at is null and stage = 'definitive'`,
+        [t192.v2],
+      )
+    ).n
+    r.rLinked = (
+      await one(`select count(*)::int as n from condition where differential_id = $1`, [t192.r])
+    ).n
+    r.finish = await tryAs(t127.doc, `select finish_visit($1)`, [t192.v2])
+    await as(t127.doc)
+    await db.query(`select finish_visit($1, 'no_disease')`, [t192.v2])
+    await asAdmin()
+    r.after = await one(
+      `select status::text as status, no_diagnosis_kind as kind from encounter where id = $1`,
+      [t192.v2],
+    )
+    if (
+      json192([...(first.notConfirmed ?? [])].sort()) !== json192([t192.p, t192.q].sort()) ||
+      first.definitive?.length !== 0 ||
+      again.notConfirmed?.length !== 0 ||
+      again.definitive?.length !== 0 ||
+      json192(r.marked) !== json192([t192.p, t192.q].sort()) ||
+      r.allMarks !== 2 ||
+      r.definitive !== 0 ||
+      r.rLinked !== 0 ||
+      !/primary diagnosis is required/.test(r.finish) ||
+      r.after.status !== 'closed' ||
+      r.after.kind !== 'no_disease'
+    )
+      throw new Error(json192(r))
+    return `2 not confirmed, the one written later not decided, no definitive diagnosis; the same save again: nothing new (${r.allMarks} marks); finish refused, then finished with “no disease found”`
+  },
+)
+await step(
+  '0192 C: a not-confirmed diagnosis ticked later is confirmed and its mark taken back (the change log keeps both); the old one-click confirm_differential does the same',
+  async () => {
+    await as(t127.doc)
+    const res = (
+      await one(`select save_definitive_diagnoses($1, $2::uuid[], '{}', '{}') as j`, [
+        t192.v,
+        [t192.viral],
+      ])
+    ).j
+    await asAdmin()
+    const copy = await one(
+      `select id, type::text as type from condition where differential_id = $1 and deleted_at is null`,
+      [t192.viral],
+    )
+    const mark = await one(
+      `select id, deleted_at, updated_by from diagnosis_not_confirmed where condition_id = $1`,
+      [t192.viral],
+    )
+    const logOf = async (action) =>
+      (
+        await one(
+          `select count(*)::int as n from audit_event
+            where entity = 'diagnosis_not_confirmed' and entity_id = $1 and action = $2`,
+          [mark?.id, action],
+        )
+      ).n
+    const r = { res, copy, mark, created: await logOf('create'), undone: await logOf('update') }
+    // a fresh visit: saved unticked, then the one-click confirm_differential of an older screen
+    t192.v5 = await t127.ov(t127.doc)
+    await as(t127.doc)
+    t192.measles = await dx192(t192.v5, 'Measles 192')
+    await db.query(`select save_definitive_diagnoses($1, '{}', $2::uuid[], '{}')`, [
+      t192.v5,
+      [t192.measles],
+    ])
+    await db.query(`select confirm_differential($1)`, [t192.measles])
+    await asAdmin()
+    r.old = await one(
+      `select deleted_at, updated_by from diagnosis_not_confirmed where condition_id = $1`,
+      [t192.measles],
+    )
+    r.oldLinked = (
+      await one(
+        `select count(*)::int as n from condition where differential_id = $1 and deleted_at is null`,
+        [t192.measles],
+      )
+    ).n
+    if (
+      res.definitive?.length !== 1 ||
+      res.definitive[0] !== copy?.id ||
+      res.notConfirmed?.length !== 0 ||
+      copy?.type !== 'secondary' ||
+      !mark?.deleted_at ||
+      mark.updated_by !== t127.doc ||
+      r.created !== 1 ||
+      r.undone < 1 ||
+      !r.old?.deleted_at ||
+      r.old.updated_by !== t127.doc ||
+      r.oldLinked !== 1
+    )
+      throw new Error(json192(r))
+    return `Viral fever 192 confirmed (secondary, linked); its “not confirmed” taken back by Dr. Steps 127 (log: ${r.created} written, ${r.undone} taken back); confirm_differential takes the mark back too`
+  },
+)
+await step('0192 D: refusals, and one refusal saves nothing', async () => {
+  t192.v6 = await t127.ov(t127.doc)
+  await as(t127.doc)
+  t192.otitis = await dx192(t192.v6, 'Otitis 192')
+  await asAdmin()
+  const r = {}
+  // a possible diagnosis of another visit; the same one in both lists; typed again; confirmed ones
+  r.otherVisit = await tryAs(t127.doc, save192, [t192.v6, [t192.p], [], []])
+  r.both = await tryAs(t127.doc, save192, [t192.v6, [t192.otitis], [t192.otitis], []])
+  r.typed = await tryAs(t127.doc, save192, [t192.v, [], [], [' malaria  192']])
+  r.untickConfirmed = await hintAs(t127.doc, save192, [t192.v, [], [t192.mal], []])
+  r.confirmTwice = await hintAs(t127.doc, save192, [t192.v, [t192.mal], [], []])
+  // a good tick beside a bad one: refused before writing, or while writing — nothing is kept
+  r.badId = await tryAs(t127.doc, save192, [t192.v6, [t192.otitis], [t192.mal], []])
+  r.badText = await tryAs(t127.doc, save192, [t192.v6, [t192.otitis], [], ['x']])
+  r.links = (
+    await one(`select count(*)::int as n from condition where differential_id = $1`, [t192.otitis])
+  ).n
+  r.marks = (
+    await one(`select count(*)::int as n from diagnosis_not_confirmed where condition_id = $1`, [
+      t192.otitis,
+    ])
+  ).n
+  r.definitive = (
+    await one(
+      `select count(*)::int as n from condition where encounter_id = $1 and stage = 'definitive'`,
+      [t192.v6],
+    )
+  ).n
+  // who may not: a nurse, a doctor the patient is not with, anyone on a finished visit
+  r.nurse = await hintAs(t127.nurseA, save192, [t192.v6, [], [t192.otitis], []])
+  r.colleague = await codeAs(t127.doc2, save192, [t192.v6, [], [t192.otitis], []])
+  r.closed = await tryAs(t127.doc, save192, [t192.v2, [], [t192.r], []])
+  // an HIV possible diagnosis, decided by a doctor without the right (written directly, as 0092)
+  t192.v7 = await t127.ov(t127.doc)
+  const hiv = (
+    await one(
+      `insert into condition (encounter_id, icd10_code, text, type, stage, created_by)
+       values ($1, 'B20', 'HIV disease 192', 'secondary', 'differential', $2) returning id`,
+      [t192.v7, t127.doc],
+    )
+  ).id
+  const had = await one(
+    `select allowed from staff_permission where profile_id = $1 and permission = 'sensitive.read'`,
+    [t127.doc],
+  )
+  await db.query(
+    `insert into staff_permission (profile_id, permission, allowed) values ($1, 'sensitive.read', false)
+     on conflict (profile_id, permission) do update set allowed = false`,
+    [t127.doc],
+  )
+  r.hiv = await hintAs(t127.doc, save192, [t192.v7, [], [hiv], []])
+  if (had)
+    await db.query(
+      `update staff_permission set allowed = $2 where profile_id = $1 and permission = 'sensitive.read'`,
+      [t127.doc, had.allowed],
+    )
+  else
+    await db.query(
+      `delete from staff_permission where permission = 'sensitive.read' and profile_id = $1`,
+      [t127.doc],
+    )
+  await db.query(`delete from condition where id = $1`, [hiv])
+  if (
+    !/diagnosis not found/.test(r.otherVisit) ||
+    !/confirmed or not confirmed, not both/.test(r.both) ||
+    !/tick it instead/.test(r.typed) ||
+    r.untickConfirmed !== '22023/already_confirmed' ||
+    r.confirmTwice !== '22023/already_confirmed' ||
+    !/diagnosis not found/.test(r.badId) ||
+    !/needs a description/.test(r.badText) ||
+    r.links !== 0 ||
+    r.marks !== 0 ||
+    r.definitive !== 0 ||
+    !String(r.nurse).startsWith('42501/') ||
+    r.colleague !== '42501' ||
+    !/already closed/.test(r.closed) ||
+    r.hiv !== '42501/not_permitted'
+  )
+    throw new Error(json192(r))
+  return `another visit's, both lists (22023), typed again (22023), a confirmed one unticked or ticked again (${r.untickConfirmed}); a good tick beside a bad one saves nothing; nurse ${r.nurse}, a colleague ${r.colleague}, a finished visit refused, HIV without the right ${r.hiv}`
+})
+await step(
+  '0192 E: a finished visit, inside the edit window — the save is taken and written in the change log with the grant',
+  async () => {
+    t192.v3 = await t127.ov(t127.doc)
+    await as(t127.doc)
+    t192.x = await dx192(t192.v3, 'Tonsillitis 192')
+    t192.y = await dx192(t192.v3, 'Pharyngitis 192')
+    await dx192(t192.v3, 'Sinusitis 192', 'definitive')
+    await db.query(`select save_visit_section($1, 'complaint', 'Sore throat 192')`, [t192.v3])
+    await db.query(`select finish_visit($1)`, [t192.v3])
+    await asAdmin()
+    const r = {}
+    r.status = (await one(`select status::text as s from encounter where id = $1`, [t192.v3])).s
+    r.locked = await tryAs(t127.doc, save192, [t192.v3, [t192.x], [t192.y], []])
+    // Dr 127 opens the 30-minute edit window (the e-mailed code, 0104), as 0130 E
+    await db.query(
+      `insert into visit_edit_grant (encounter_id, user_id, reason, code_hash, verified_at, expires_at)
+       values ($1, $2, 'the culture came back 192', 'x', now(), now() + interval '30 minutes')`,
+      [t192.v3, t127.doc],
+    )
+    r.saved = await tryAs(t127.doc, save192, [t192.v3, [t192.x], [t192.y], []])
+    const copy = await one(
+      `select id, type::text as type from condition where differential_id = $1 and deleted_at is null`,
+      [t192.x],
+    )
+    const mark = await one(
+      `select id from diagnosis_not_confirmed where condition_id = $1 and deleted_at is null`,
+      [t192.y],
+    )
+    const logged = async (entity, id) =>
+      (
+        await one(
+          `select count(*)::int as n from audit_event
+            where entity = $1 and entity_id = $2 and after ->> 'afterClose' = 'true'
+              and after ? 'visit_edit_grant'`,
+          [entity, id],
+        )
+      ).n
+    r.copy = copy
+    r.logDx = copy ? await logged('condition', copy.id) : 0
+    r.logMark = mark ? await logged('diagnosis_not_confirmed', mark.id) : 0
+    if (
+      r.status !== 'closed' ||
+      !/already closed/.test(r.locked) ||
+      r.saved !== 'ok' ||
+      copy?.type !== 'secondary' ||
+      !mark ||
+      r.logDx < 1 ||
+      r.logMark < 1
+    )
+      throw new Error(json192(r))
+    return `locked without a code; inside the window: Tonsillitis 192 confirmed (secondary), Pharyngitis 192 not confirmed, both in the change log with the grant`
+  },
+)
+await step('0192 F: what the screens read is what the doctor saved — never the words', async () => {
+  t192.v4 = await t127.ov(t127.doc)
+  await as(t127.doc)
+  t192.gas = await dx192(t192.v4, 'Gastritis 192')
+  // the same words written in step 5 without ticking: not a confirmation
+  await dx192(t192.v4, 'Gastritis 192', 'definitive')
+  const vc = (await one(`select visit_clinical($1) as j`, [t192.v4])).j
+  await as(staff.manager)
+  const file = (await one(`select patient_file($1) as j`, [t127.pid])).j
+  await asAdmin()
+  const gas = vc.diagnoses.find((d) => d.id === t192.gas)
+  const cond = (id) => file.conditions.find((c) => c.id === id)
+  const r = {
+    gas,
+    gasLinked: vc.diagnoses.filter((d) => d.differentialId === t192.gas).length,
+    defMal: cond(t192.defMal),
+    typh: cond(t192.typh),
+    p: cond(t192.p),
+  }
+  if (
+    !gas ||
+    gas.notConfirmedAt != null ||
+    r.gasLinked !== 0 ||
+    r.defMal?.differentialId !== t192.mal ||
+    r.typh?.notConfirmed !== false ||
+    r.p?.notConfirmed !== true
+  )
+    throw new Error(json192(r))
+  return 'Gastritis 192 written twice (step 3 and step 5) stays not decided; the file says which possible diagnosis a definitive one confirms, and which are not confirmed'
+})
+await step(
+  '0192 G: the Diagnoses report — confirmed / not confirmed / not decided come from the ticks only; definitive rows are all confirmed; a no-diagnosis row has none; the three add up to the cases',
+  async () => {
+    await as(staff.manager)
+    const rep = async (stage) =>
+      (
+        await one(
+          `select report_diagnoses_staged(current_date - 1, current_date + 1, null, $1, $2) as j`,
+          [t127.doc, stage],
+        )
+      ).j
+    const dd = await rep('differential')
+    const def = await rep('definitive')
+    const all = await rep('all')
+    const four = (
+      await one(`select report_diagnoses(current_date - 1, current_date + 1, null, $1) as j`, [
+        t127.doc,
+      ])
+    ).j
+    await asAdmin()
+    const trio = (list, name) => {
+      const x = list.find((y) => y.diagnosis === name)
+      return x ? `${x.confirmed}/${x.notConfirmed}/${x.notDecided}` : 'none'
+    }
+    const noDx = (x) => String(x.diagnosis).startsWith('[no-dx:')
+    const r = {
+      mal: trio(dd, 'Malaria 192'),
+      typh: trio(dd, 'Typhoid 192'),
+      viral: trio(dd, 'Viral fever 192'),
+      p: trio(dd, 'Anaemia 192'),
+      r: trio(dd, 'Brucellosis 192'),
+      gas: trio(dd, 'Gastritis 192'),
+      otitis: trio(dd, 'Otitis 192'),
+      tons: trio(dd, 'Tonsillitis 192'),
+      phar: trio(dd, 'Pharyngitis 192'),
+      measles: trio(dd, 'Measles 192'),
+      gasAll: trio(all, 'Gastritis 192'),
+      defWrong: def
+        .filter((x) => !noDx(x))
+        .filter((x) => x.confirmed !== x.cases || x.notConfirmed !== 0 || x.notDecided !== 0),
+      noDxRows: def.filter(noDx).length,
+      noDxWrong: [...def, ...all]
+        .filter(noDx)
+        .filter((x) => x.confirmed != null || x.notConfirmed != null || x.notDecided != null),
+      allWrong: all.filter(
+        (x) => !noDx(x) && x.confirmed + x.notConfirmed + x.notDecided !== x.cases,
+      ),
+      four: four.length > 0 && four.every((x) => 'confirmed' in x && 'notDecided' in x),
+    }
+    if (
+      r.mal !== '1/0/0' ||
+      r.typh !== '1/0/0' ||
+      r.viral !== '1/0/0' ||
+      r.p !== '0/1/0' ||
+      r.r !== '0/0/1' ||
+      r.gas !== '0/0/1' ||
+      r.otitis !== '0/0/1' ||
+      r.tons !== '1/0/0' ||
+      r.phar !== '0/1/0' ||
+      r.measles !== '1/0/0' ||
+      r.gasAll !== '1/0/0' ||
+      r.defWrong.length ||
+      r.noDxRows < 1 ||
+      r.noDxWrong.length ||
+      r.allWrong.length ||
+      !r.four
+    )
+      throw new Error(json192(r))
+    return `differential: Malaria 192 ${r.mal}, Anaemia 192 ${r.p}, Brucellosis 192 ${r.r}, Gastritis 192 ${r.gas} (same words, not ticked); definitive: every case confirmed, ${r.noDxRows} “no diagnosis” rows without the three; both: Gastritis 192 ${r.gasAll}, every row adds up`
+  },
+)
+await step('0192 H: the decisions are clinical in the change log', async () => {
+  await asAdmin()
+  const r = await one(
+    `select activity_group('diagnosis_not_confirmed', 'create') as g,
+            audit_redacted_entity('diagnosis_not_confirmed') as hidden`,
+  )
+  if (r.g !== 'clinical' || r.hidden !== true) throw new Error(json192(r))
+  return 'the Clinical group of the history; hidden from a reader who is not a doctor'
+})
+// @@t192-end
 finish()
 
 function finish() {

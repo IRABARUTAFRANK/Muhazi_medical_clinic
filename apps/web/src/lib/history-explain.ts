@@ -300,6 +300,11 @@ export function explain(h: HistoryItem, t: TFn): Explained {
       })
       if (row.provisional === true) lines.push(t('history.line.provisional'))
       break
+    // 0192: a possible diagnosis the doctor saved unticked in step 5, or that mark taken back
+    // when he ticked it later (the words stay on the diagnosis, not here)
+    case 'diagnosis_not_confirmed':
+      sentence = say(deleted ? 'dxNotConfirmedUndone' : 'dxNotConfirmed')
+      break
     case 'medication_request': {
       const item = names.item ?? t('history.aMedicine')
       if (set('given_at')) sentence = say('medGiven', { item })

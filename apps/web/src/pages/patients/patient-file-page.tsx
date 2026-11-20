@@ -46,6 +46,7 @@ import {
   type NoIdReason,
   usePatientResults,
   allergiesForDoc,
+  stageOf,
 } from '@/lib/api/patients'
 import { registrationText, useMyCredentials } from '@/lib/api/staff'
 import { type VisitResult } from '@/lib/api/visits'
@@ -61,6 +62,8 @@ import { cn } from '@/lib/utils'
 import { SendPatientCard } from '@/components/clinical/send-patient-card'
 import { useCan } from '@/lib/api/permissions'
 import { openMedicalReport } from '@/lib/medical-report'
+import { sixStepsOfVisit } from '@/lib/six-steps-report'
+import { OUTCOME_TONE, outcomeOf } from '@/lib/diagnosis-outcome'
 import { useLetterhead, useMedicalReportLabels } from '@/lib/report-parts'
 import { roleLabel } from '@/lib/roles'
 import { useConfirm } from '@/lib/confirm'
@@ -229,6 +232,25 @@ export function PatientFilePage({
           }))
           // who measured, and when: the most recent measurement of the visit
           const measured = latest[0]
+          // 0127: the definitive diagnoses (step 5) and the possible ones (step 3); 0192: each
+          // possible one with what the doctor decided (confirmed, not confirmed, not decided)
+          const steps = sixStepsOfVisit(
+            {
+              diagnoses: data.conditions
+                .filter((c) => c.encounterId === v.id)
+                .map((c) => ({
+                  id: c.id,
+                  text: c.text,
+                  icd10: c.icd10,
+                  type: c.type,
+                  provisional: c.provisional,
+                  stage: c.stage ?? null,
+                  differentialId: c.differentialId ?? null,
+                  notConfirmed: c.notConfirmed ?? false,
+                })),
+            },
+            t,
+          )
           return {
             date: formatDate(new Date(v.arrivedAt)),
             at: v.arrivedAt,
@@ -242,17 +264,8 @@ export function PatientFilePage({
             // 0127: step 1's complaint; the definitive diagnoses (step 5) and the differential
             // ones (step 3, the provisional of before)
             complaint: v.complaint ?? null,
-            diagnoses: data.conditions
-              .filter((c) => c.encounterId === v.id && !c.provisional)
-              .map((c) => ({
-                text: c.text,
-                icd10: c.icd10,
-                primary: c.type === 'primary',
-                provisional: false,
-              })),
-            differentials: data.conditions
-              .filter((c) => c.encounterId === v.id && c.provisional)
-              .map((c) => ({ text: c.text, icd10: c.icd10 })),
+            diagnoses: steps.diagnoses,
+            differentials: steps.differentials,
             tests: allResults
               .filter((r) => r.encounterId === v.id)
               .map((r) => ({
@@ -1372,23 +1385,38 @@ function Clinical({
             <EmptyNote>{t(partial ? 'recordPrivacy.noneVisible' : 'file.noDiagnosis')}</EmptyNote>
           </CardBody>
         )}
-        {file.conditions.map((c) => (
-          <Row key={c.id} className="flex-wrap gap-x-3 gap-y-1 py-2">
-            <span className="min-w-[160px] flex-1">
-              <span className="block font-semibold">
-                {c.text}
-                {c.icd10 ? <span className="text-ink-3 ml-2 text-xs">{c.icd10}</span> : null}
+        {file.conditions.map((c) => {
+          // 0192: a possible diagnosis (step 3) says what the doctor decided about it
+          const possible = stageOf(c) === 'differential'
+          const outcome = possible ? outcomeOf(c, file.conditions) : null
+          return (
+            <Row key={c.id} className="flex-wrap gap-x-3 gap-y-1 py-2">
+              <span className="min-w-[160px] flex-1">
+                <span className="block font-semibold">
+                  {c.text}
+                  {c.icd10 ? <span className="text-ink-3 ml-2 text-xs">{c.icd10}</span> : null}
+                </span>
+                <span className="text-ink-3 block text-xs">
+                  {[when(c.at), c.by].filter(Boolean).join(' · ')}
+                </span>
               </span>
-              <span className="text-ink-3 block text-xs">
-                {[when(c.at), c.by].filter(Boolean).join(' · ')}
-              </span>
-            </span>
-            <Badge tone={c.type === 'primary' ? 'blue' : 'grey'} dot={false}>
-              {t(`clinical.type.${c.type}`)}
-              {c.provisional ? ` · ${t('clinical.provisional')}` : ''}
-            </Badge>
-          </Row>
-        ))}
+              {outcome ? (
+                <span className="flex flex-wrap items-center gap-1.5">
+                  <Badge tone="grey" dot={false}>
+                    {t('file.possibleDx')}
+                  </Badge>
+                  <Badge tone={OUTCOME_TONE[outcome]} dot={false}>
+                    {t(`dxOutcome.${outcome}`)}
+                  </Badge>
+                </span>
+              ) : (
+                <Badge tone={c.type === 'primary' ? 'blue' : 'grey'} dot={false}>
+                  {t(`clinical.type.${c.type}`)}
+                </Badge>
+              )}
+            </Row>
+          )
+        })}
       </Card>
     </div>
   )

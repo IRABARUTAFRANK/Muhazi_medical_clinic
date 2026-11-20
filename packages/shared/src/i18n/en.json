@@ -2916,7 +2916,8 @@
     "allergiesNotRecorded": "Allergies not recorded yet",
     "privateField": "Private (medical)",
     "privateFill": "Private (medical) fields: you do not see what is recorded in them. Fill one in only when it is empty; a value already there is kept.",
-    "complaintLine": "Complaint: {{text}}"
+    "complaintLine": "Complaint: {{text}}",
+    "possibleDx": "Possible diagnosis"
   },
   "clinical": {
     "title": "Clinical record",
@@ -4038,7 +4039,9 @@
       "handoverLapsed": "The handover of {{patient}} ended: the patient moved on.",
       "handoverEdit": "Changed the handover of {{patient}}.",
       "doctorOn": "Marked {{target}} a doctor (sees patient records).",
-      "doctorOff": "Took the doctor mark away from {{target}} (no longer sees patient records)."
+      "doctorOff": "Took the doctor mark away from {{target}} (no longer sees patient records).",
+      "dxNotConfirmed": "Saved the possible diagnosis of {{patient}} as not confirmed.",
+      "dxNotConfirmedUndone": "Took back “not confirmed” for a possible diagnosis of {{patient}}."
     },
     "line": {
       "reason": "Reason: {{value}}",
@@ -4052,7 +4055,7 @@
       "reference": "Mobile money reference: {{value}}",
       "phone": "Phone: {{value}}",
       "bill": "Bill: {{value}}",
-      "provisional": "Provisional diagnosis (to be confirmed)",
+      "provisional": "Possible diagnosis (differential)",
       "dose": "How to take it: {{value}}",
       "instructions": "Instructions: {{value}}",
       "allergy": "Given despite an allergy because: {{value}}",
@@ -5315,7 +5318,8 @@
       "how": "How",
       "confirmed": "Confirmed",
       "notConfirmed": "Not confirmed",
-      "notRecorded": "Not recorded"
+      "notRecorded": "Not recorded",
+      "notDecided": "Not decided"
     }
   },
   "access": {
@@ -6178,7 +6182,8 @@
         "title": "Add to {{name}}’s bill?",
         "body": "{{list}}",
         "yes": "Yes, add"
-      }
+      },
+      "removeDxBack": "The possible diagnosis “{{dx}}” goes back to “Not decided”."
     },
     "staff": {
       "deactivate": {
@@ -8628,7 +8633,9 @@
     "af1298eb": "The month’s remittance was already handed over: undo it first on the Taxes tab.",
     "b12df903": "Say the agency and the month.",
     "abffa9c2": "Nothing was withheld for this agency in that month.",
-    "b3230e3a": "A tax is on the profit, on the turnover, a fixed amount, withheld at source or other."
+    "b3230e3a": "A tax is on the profit, on the turnover, a fixed amount, withheld at source or other.",
+    "59d9dec2": "A possible diagnosis is either confirmed or not confirmed, not both.",
+    "1cf657b1": "This diagnosis is in the list of possible diagnoses: tick it instead."
   },
   "panel": {
     "close": "Close",
@@ -9850,7 +9857,8 @@
         "note1": "A case is a visit with that diagnosis (its ICD-10 code, else its words), in the visits that arrived in the period.",
         "note2": "New: the patient had not had it in an earlier visit; follow-up: they had.",
         "note3": "Age on the day of the visit. You see your departments’ visits (heads) or the diagnoses you wrote.",
-        "note4": "By default the definitive diagnoses (step 5) are counted; choose Differential for the possible diagnoses of step 3."
+        "note4": "By default the definitive diagnoses (step 5) are counted; choose Differential for the possible diagnoses of step 3.",
+        "note5": "Confirmed: a definitive diagnosis, or a possible one the doctor ticked in step 5. Not confirmed: the doctor left it unticked and saved. Not decided: nobody saved step 5 for it yet. The system never decides it from the words."
       },
       "rx": {
         "title": "Prescriptions",
@@ -9901,7 +9909,7 @@
         "search": "Search",
         "searchHint": "Patient, file no., medicine, test…",
         "dxStage": "Diagnoses",
-        "dxStageHint": "Definitive: confirmed (step 5). Differential: the possible ones of step 3."
+        "dxStageHint": "Definitive: the confirmed diagnoses of step 5. Differential: the possible ones of step 3, with whether the doctor confirmed them."
       },
       "sex": {
         "female": "Female",
@@ -10044,7 +10052,10 @@
         "arrivedAt": "Arrived at",
         "bookedOn": "Booked on",
         "cancelReason": "Why cancelled",
-        "complaint": "Chief complaint"
+        "complaint": "Chief complaint",
+        "confirmed": "Confirmed",
+        "notConfirmed": "Not confirmed",
+        "notDecided": "Not decided"
       },
       "g": {
         "clinician": "By clinician",
@@ -11001,7 +11012,7 @@
     },
     "differential": {
       "title": "3 · Differential diagnosis",
-      "hint": "The possible diagnoses after the examination, not yet confirmed. Confirm one when it is found.",
+      "hint": "The possible diagnoses after the examination. When the diagnosis is found, tick the confirmed ones in step 5.",
       "short": "Differential"
     },
     "tests": {
@@ -11011,9 +11022,8 @@
     },
     "definitive": {
       "title": "5 · Definitive diagnosis",
-      "hint": "The confirmed diagnoses: one primary, the others secondary. One the laboratory found may be added here. Or say why none was found.",
       "short": "Definitive diagnosis",
-      "hintAuto": "The confirmed diagnoses. The first one written is the primary diagnosis, the next ones are secondary; if the primary one is removed, the next one takes its place. Or say why none was found."
+      "hintAuto": "Tick the possible diagnoses that are confirmed (one or more), or write another one, then save. The first one is the main diagnosis. Or say why none was found."
     },
     "plan": {
       "title": "6 · Treatment plan",
@@ -11042,23 +11052,13 @@
     "otherNotes": "Other notes",
     "addDifferential": "Add a possible diagnosis",
     "saveDifferential": "Add to the list",
-    "differentialHint": "A possible diagnosis is not counted in the reports until it is confirmed (step 5).",
+    "differentialHint": "A possible diagnosis counts as confirmed only when you tick it in step 5.",
     "noDifferential": "No possible diagnosis written yet.",
-    "possibleBadge": "Possible",
     "confirmedBadge": "Confirmed",
-    "confirm": "Confirm",
-    "confirmQ": "Confirm {{dx}} for {{name}}?",
-    "confirmPrimary": "It is written in step 5 as the primary diagnosis; it stays in the differential list, marked confirmed.",
-    "confirmSecondary": "It is written in step 5 as a secondary diagnosis (there is a primary one already); it stays in the differential list, marked confirmed.",
-    "confirmYes": "Yes, confirm",
-    "confirmed": "{{dx}} confirmed: it is in step 5.",
     "confirmedBy": "confirmed by {{name}} on {{when}}",
     "fromDifferential": "from the differential list",
     "ddQ": "Add {{dx}} to the possible diagnoses of {{name}}?",
     "ddSaved": "Possible diagnosis added.",
-    "addDefinitive": "Add a definitive diagnosis",
-    "alsoDifferential": "Also in the differential list",
-    "alsoDifferentialHint": "Not in the differential list (found by the laboratory, for example)? Tick “Also in the differential list” to keep the record complete.",
     "noDefinitive": "No definitive diagnosis yet.",
     "noTests": "No test ordered.",
     "prescriptions": "Medicines",
@@ -11080,7 +11080,30 @@
     "next": "Next: {{title}}",
     "toFinishShort": "To finish:",
     "goFinish": "Finish the visit (step 6)",
-    "nurseOrders": "Orders: given here"
+    "nurseOrders": "Orders: given here",
+    "pick": {
+      "title": "Which possible diagnoses are confirmed? Tick one or more.",
+      "none": "No possible diagnosis was written in step 3.",
+      "other": "Another diagnosis, not in the list",
+      "otherAlone": "The definitive diagnosis",
+      "addLine": "Add another",
+      "removeLine": "Remove this line",
+      "inList": "{{dx}} is in the list above: tick it instead.",
+      "save": "Save the diagnosis",
+      "q": "Save the diagnosis of {{name}}?",
+      "sumConfirmed": "Confirmed: {{list}}",
+      "sumNotConfirmed": "Not confirmed: {{list}}",
+      "sumOther": "Other diagnosis: {{list}}",
+      "sumMain": "Main diagnosis: {{dx}}",
+      "sumMainStays": "The main diagnosis stays {{dx}}.",
+      "sumNoMain": "No definitive diagnosis: to finish the visit, write one or say why none was found.",
+      "sumReplacesNoDx": "It replaces “{{reason}}”.",
+      "saved": "Diagnosis saved.",
+      "needsUpdate": "Saved: the confirmed and the other diagnoses. “Not confirmed” is saved once the database is updated.",
+      "nothing": "Tick a possible diagnosis or write one to save."
+    },
+    "goConfirm": "Tick the confirmed ones (step 5)",
+    "notConfirmedBy": "not confirmed by {{name}} on {{when}}"
   },
   "pastHistory": {
     "title_one": "Past history: {{count}} earlier visit",
@@ -11623,5 +11646,10 @@
       "periodFigures": "Figures of the period",
       "taxesPaid2": "Taxes paid in the period (all kinds)"
     }
+  },
+  "dxOutcome": {
+    "confirmed": "Confirmed",
+    "not_confirmed": "Not confirmed",
+    "not_decided": "Not decided"
   }
 }

@@ -1824,7 +1824,8 @@
     "allergiesNotRecorded": "Ibyo umubiri wanga ntibiranditswe",
     "privateField": "Ibanga ry’ubuvuzi",
     "privateFill": "Ibanga ry’ubuvuzi: ntubona ibyanditswe muri ibi bice. Uzuza igice gusa iyo kirimo ubusa; icyari gihari kiragumaho.",
-    "complaintLine": "Icyamuzanye: {{text}}"
+    "complaintLine": "Icyamuzanye: {{text}}",
+    "possibleDx": "Indwara ishoboka"
   },
   "clinical": {
     "title": "Inyandiko z’ubuvuzi",
@@ -4047,7 +4048,9 @@
       "handoverLapsed": "Kwegurira mugenzi {{patient}} byarangiye: umurwayi yagiye ahandi.",
       "handoverEdit": "Yahinduye uko yeguriye mugenzi we {{patient}}.",
       "doctorOn": "Yanditse {{target}} nka muganga (abona amakuru y’abarwayi).",
-      "doctorOff": "Yakuyeho ko {{target}} ari muganga (ntakibona amakuru y’abarwayi)."
+      "doctorOff": "Yakuyeho ko {{target}} ari muganga (ntakibona amakuru y’abarwayi).",
+      "dxNotConfirmed": "Yabitse ko indwara ishoboka ya {{patient}} itemejwe.",
+      "dxNotConfirmedUndone": "Yakuyeho “ntiyemejwe” ku ndwara ishoboka ya {{patient}}."
     },
     "line": {
       "reason": "Impamvu: {{value}}",
@@ -4061,7 +4064,7 @@
       "reference": "Nimero ya mobile money: {{value}}",
       "phone": "Telefoni: {{value}}",
       "bill": "Fagitire: {{value}}",
-      "provisional": "Indwara ikekwa (igomba kwemezwa)",
+      "provisional": "Indwara ishoboka",
       "dose": "Uko afata umuti: {{value}}",
       "instructions": "Amabwiriza: {{value}}",
       "allergy": "Yahawe umuti nubwo umubiri we uwanga, kubera: {{value}}",
@@ -5324,7 +5327,8 @@
       "how": "Uko bikorwa",
       "confirmed": "Yemejwe",
       "notConfirmed": "Ntiyemejwe",
-      "notRecorded": "Ntibyanditswe"
+      "notRecorded": "Ntibyanditswe",
+      "notDecided": "Nta cyemezo"
     }
   },
   "access": {
@@ -6187,7 +6191,8 @@
         "title": "Ongeraho kuri fagitire ya {{name}}?",
         "body": "{{list}}",
         "yes": "Yego, ongeraho"
-      }
+      },
+      "removeDxBack": "Indwara ishoboka “{{dx}}” isubira kuri “Nta cyemezo”."
     },
     "staff": {
       "deactivate": {
@@ -8637,7 +8642,9 @@
     "af1298eb": "Ibyoherezwa by’ukwezi byamaze koherezwa: banza ubisubizeho mu gice cy’Imisoro.",
     "b12df903": "Vuga ikigo n’ukwezi.",
     "abffa9c2": "Nta cyakuwemo kuri iki kigo muri uko kwezi.",
-    "b3230e3a": "Umusoro ni ku nyungu, ku byacurujwe, umubare udahinduka, ufatirwa aho uturuka cyangwa undi."
+    "b3230e3a": "Umusoro ni ku nyungu, ku byacurujwe, umubare udahinduka, ufatirwa aho uturuka cyangwa undi.",
+    "59d9dec2": "Indwara ishoboka iba yemejwe cyangwa itemejwe, si byombi.",
+    "1cf657b1": "Iyi ndwara iri ku rutonde rw’indwara zishoboka: yihitemo aho kuyandika."
   },
   "panel": {
     "close": "Funga",
@@ -9859,7 +9866,8 @@
         "note1": "Umurwayi umwe ni kwivuza kumwe kwanditsweho iyo ndwara (kode yayo ya ICD-10, cyangwa amagambo yayo), mu bivuje muri iki gihe.",
         "note2": "Mushya: umurwayi ntiyayigize mu kwivuza kwabanje; yagarutse: yari yarayigize.",
         "note3": "Imyaka ku munsi wo kwivuza. Ubona abivuje mu mashami uyobora (abakuru b’amashami) cyangwa indwara wanditse.",
-        "note4": "Ubusanzwe habarwa indwara zemejwe (intambwe ya 5); hitamo Zishoboka kugira ngo ubone indwara zakekwaga mu ntambwe ya 3."
+        "note4": "Ubusanzwe habarwa indwara zemejwe (intambwe ya 5); hitamo Zishoboka kugira ngo ubone indwara zakekwaga mu ntambwe ya 3.",
+        "note5": "Zemejwe: indwara yemejwe, cyangwa ishoboka muganga yahisemo mu ntambwe ya 5. Zitemejwe: muganga yarayiretse atayihisemo maze abika. Nta cyemezo: ntawe urabika intambwe ya 5 kuri yo. Sisitemu ntiyigera ibyemeza ihereye ku magambo."
       },
       "rx": {
         "title": "Imiti yanditswe",
@@ -9910,7 +9918,7 @@
         "search": "Shakisha",
         "searchHint": "Umurwayi, nimero ya dosiye, umuti, ikizamini…",
         "dxStage": "Indwara zagaragaye",
-        "dxStageHint": "Zemejwe: indwara zemejwe (intambwe ya 5). Zishoboka: izo muganga yakekaga (intambwe ya 3)."
+        "dxStageHint": "Zemejwe: indwara zemejwe zo mu ntambwe ya 5. Zishoboka: izo mu ntambwe ya 3, n’icyo muganga yazemejeho."
       },
       "sex": {
         "female": "Gore",
@@ -10053,7 +10061,10 @@
         "arrivedAt": "Yageze ku isaha",
         "bookedOn": "Yafashwe ku",
         "cancelReason": "Impamvu yahagaritswe",
-        "complaint": "Icyamuzanye"
+        "complaint": "Icyamuzanye",
+        "confirmed": "Zemejwe",
+        "notConfirmed": "Zitemejwe",
+        "notDecided": "Nta cyemezo"
       },
       "g": {
         "clinician": "Ukurikije umuvuzi",
@@ -11010,7 +11021,7 @@
     },
     "differential": {
       "title": "3 · Indwara zishoboka",
-      "hint": "Indwara zishoboka nyuma y’isuzuma, zitaremezwa. Emeza imwe iyo yagaragaye.",
+      "hint": "Indwara zishoboka nyuma y’isuzuma. Iyo indwara imaze kumenyekana, hitamo izemejwe mu ntambwe ya 5.",
       "short": "Indwara zishoboka"
     },
     "tests": {
@@ -11020,9 +11031,8 @@
     },
     "definitive": {
       "title": "5 · Indwara yemejwe",
-      "hint": "Indwara zemejwe: imwe y’ingenzi, izindi z’inyongera. Iyo laboratwari yabonye ishobora kongerwa hano. Cyangwa uvuge impamvu nta ndwara yabonetse.",
       "short": "Indwara yemejwe",
-      "hintAuto": "Indwara zemejwe. Iya mbere yanditswe ni yo y’ingenzi, izikurikiraho ni iz’inyongera; iy’ingenzi ivanyweho, ikurikiyeho ifata umwanya wayo. Cyangwa uvuge impamvu nta ndwara yabonetse."
+      "hintAuto": "Hitamo indwara zishoboka zemejwe (imwe cyangwa nyinshi), cyangwa wandike indi, hanyuma ubike. Iya mbere ni yo nyamukuru. Cyangwa uvuge impamvu nta ndwara yabonetse."
     },
     "plan": {
       "title": "6 · Gahunda yo kuvura",
@@ -11051,23 +11061,13 @@
     "otherNotes": "Izindi nyandiko",
     "addDifferential": "Ongeraho indwara ishoboka",
     "saveDifferential": "Ongera ku rutonde",
-    "differentialHint": "Indwara ishoboka ntibarwa muri raporo kugeza yemejwe (intambwe ya 5).",
+    "differentialHint": "Indwara ishoboka ifatwa nk’iyemejwe ari uko uyihisemo mu ntambwe ya 5 gusa.",
     "noDifferential": "Nta ndwara ishoboka iranditswe.",
-    "possibleBadge": "Ishoboka",
     "confirmedBadge": "Yemejwe",
-    "confirm": "Emeza",
-    "confirmQ": "Emeza {{dx}} kuri {{name}}?",
-    "confirmPrimary": "Yandikwa mu ntambwe ya 5 nk’indwara y’ingenzi; iguma ku rutonde rw’indwara zishoboka, yanditseho ko yemejwe.",
-    "confirmSecondary": "Yandikwa mu ntambwe ya 5 nk’indwara y’inyongera (hasanzwe hari iy’ingenzi); iguma ku rutonde rw’indwara zishoboka, yanditseho ko yemejwe.",
-    "confirmYes": "Yego, emeza",
-    "confirmed": "{{dx}} yemejwe: iri mu ntambwe ya 5.",
     "confirmedBy": "yemejwe na {{name}} ku wa {{when}}",
     "fromDifferential": "ivuye ku rutonde rw’indwara zishoboka",
     "ddQ": "Ongera {{dx}} ku ndwara zishoboka za {{name}}?",
     "ddSaved": "Indwara ishoboka yongeweho.",
-    "addDefinitive": "Ongeraho indwara yemejwe",
-    "alsoDifferential": "No ku rutonde rw’indwara zishoboka",
-    "alsoDifferentialHint": "Ntiri ku rutonde rw’indwara zishoboka (urugero: yabonywe na laboratwari)? Hitamo “No ku rutonde rw’indwara zishoboka” kugira ngo amakuru yuzure.",
     "noDefinitive": "Nta ndwara yemejwe iraboneka.",
     "noTests": "Nta kizamini cyasabwe.",
     "prescriptions": "Imiti",
@@ -11089,7 +11089,30 @@
     "next": "Ikurikira: {{title}}",
     "toFinishShort": "Kugira ngo urangize:",
     "goFinish": "Rangiza kwivuza (intambwe ya 6)",
-    "nurseOrders": "Amategeko: byatangiwe hano"
+    "nurseOrders": "Amategeko: byatangiwe hano",
+    "pick": {
+      "title": "Ni izihe ndwara zishoboka zemejwe? Hitamo imwe cyangwa nyinshi.",
+      "none": "Nta ndwara ishoboka yanditswe mu ntambwe ya 3.",
+      "other": "Indi ndwara itari ku rutonde",
+      "otherAlone": "Indwara yemejwe",
+      "addLine": "Ongeraho indi",
+      "removeLine": "Kuraho uyu murongo",
+      "inList": "{{dx}} iri ku rutonde ruri hejuru: yihitemo aho kuyandika.",
+      "save": "Bika indwara yemejwe",
+      "q": "Kubika indwara yemejwe ya {{name}}?",
+      "sumConfirmed": "Zemejwe: {{list}}",
+      "sumNotConfirmed": "Zitemejwe: {{list}}",
+      "sumOther": "Izindi ndwara: {{list}}",
+      "sumMain": "Indwara nyamukuru: {{dx}}",
+      "sumMainStays": "Indwara nyamukuru ikomeza kuba {{dx}}.",
+      "sumNoMain": "Nta ndwara yemejwe: kugira ngo urangize kwivuza, andika imwe cyangwa uvuge impamvu nta ndwara yabonetse.",
+      "sumReplacesNoDx": "Isimbura “{{reason}}”.",
+      "saved": "Indwara yemejwe yabitswe.",
+      "needsUpdate": "Byabitswe: indwara zemejwe n’izindi zanditswe. “Ntiyemejwe” izabikwa sisitemu imaze kuvugururwa.",
+      "nothing": "Hitamo indwara ishoboka cyangwa wandike imwe kugira ngo ubike."
+    },
+    "goConfirm": "Hitamo izemejwe (intambwe ya 5)",
+    "notConfirmedBy": "ntiyemejwe na {{name}} ku wa {{when}}"
   },
   "pastHistory": {
     "title_one": "Amakuru ya kera: kwivuza {{count}} kwabanje",
@@ -11632,5 +11655,10 @@
       "periodFigures": "Imibare y’igihe",
       "taxesPaid2": "Imisoro yishyuwe muri icyo gihe (ubwoko bwose)"
     }
+  },
+  "dxOutcome": {
+    "confirmed": "Yemejwe",
+    "not_confirmed": "Ntiyemejwe",
+    "not_decided": "Nta cyemezo"
   }
 }

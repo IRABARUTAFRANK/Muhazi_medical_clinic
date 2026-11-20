@@ -13,6 +13,7 @@ import {
   FlaskConical,
   HandHeart,
   History,
+  ListChecks,
   Pencil,
   Pill,
   Plus,
@@ -55,6 +56,7 @@ import {
   NO_DIAGNOSIS_KINDS,
   type NoDiagnosisKind,
   type ClinicalNote,
+  type DefinitiveSave,
   type Diagnosis,
   type TestOrder,
   type DocPerson,
@@ -105,12 +107,14 @@ import { useConfirm } from '@/lib/confirm'
 import { Seg } from '@/components/ui/seg'
 import { noDiagnosisText } from '@/lib/no-diagnosis'
 import { sixStepsOfVisit } from '@/lib/six-steps-report'
+import { OUTCOME_TONE, confirmedLink, outcomeOf } from '@/lib/diagnosis-outcome'
 import { NurseOrderRow } from '@/components/clinical/nurse-order-row'
 import { StepBar, StepSlide } from '@/components/clinical/six-steps/step-card'
 import { STEP_KEYS, stepNumber, type StepKey } from '@/components/clinical/six-steps/steps'
 import { SectionEditor } from '@/components/clinical/six-steps/section-editor'
 import { PastHistoryPanel } from '@/components/clinical/six-steps/past-history'
 import { NurseOrdersStep } from '@/components/clinical/six-steps/nurse-orders-step'
+import { DefinitivePick } from '@/components/clinical/six-steps/definitive-pick'
 
 const errorBox =
   'bg-red-bg text-red m-0 border border-red/30 rounded-md px-3 py-2 text-[13px] font-semibold'
@@ -764,21 +768,23 @@ export function ClinicalCard({
       t(differential ? 'sixSteps.ddSaved' : 'clinical.dxSaved'),
     )
   }
-  /** 0127: a possible diagnosis confirmed: written in step 5, primary when there is none yet
-   *  (0130: the database decides). */
-  const confirmDd = async (d: Diagnosis) => {
-    if (
-      !(await confirm({
-        title: t('sixSteps.confirmQ', { dx: d.text, name }),
-        body: t(hasPrimary ? 'sixSteps.confirmSecondary' : 'sixSteps.confirmPrimary'),
-        confirmLabel: t('sixSteps.confirmYes'),
-      }))
-    )
-      return
-    void run(
-      () => actions.confirmDifferential.mutateAsync({ id: d.id }),
-      t('sixSteps.confirmed', { dx: d.text }),
-    )
+  /**
+   * 0192: step 5 saved in one go — the possible diagnoses ticked (confirmed), those left
+   * unticked (not confirmed, under the doctor's name), the others typed. A refusal shows under
+   * step 5 and nothing is saved. True when saved (the tick list then clears).
+   */
+  const saveDefinitive = async (i: DefinitiveSave): Promise<boolean> => {
+    setMsgStep('definitive')
+    setLocalError(null)
+    onError(null)
+    try {
+      const r = await actions.saveDefinitive.mutateAsync(i)
+      onDone(t(r.partial ? 'sixSteps.pick.needsUpdate' : 'sixSteps.pick.saved'))
+      return true
+    } catch (e) {
+      setLocalError(e instanceof Error ? e.message : String(e))
+      return false
+    }
   }
   /** 0127: one of the doctor's texts (steps 1, 2, 6). */
   const saveSection = (section: SectionKey) => async (text: string, reason: string | null) => {
@@ -1230,10 +1236,19 @@ export function ClinicalCard({
   const submitDxRemove = async (d: Diagnosis) => {
     if (!dxRemove || dxRemove.reason.trim().length < 3)
       return setLocalError(t('clinical.errors.reason'))
+    // 0192: a definitive diagnosis ticked from the possible ones: that one is not decided again
+    const from = d.differentialId
+      ? data?.diagnoses.find((x) => x.id === d.differentialId && !x.removedAt)
+      : undefined
     if (
       !(await confirm({
         title: t('confirm.visit.removeDx', { dx: d.text, name }),
-        body: t('confirm.visit.removeDxBody', { reason: dxRemove.reason.trim() }),
+        body: [
+          t('confirm.visit.removeDxBody', { reason: dxRemove.reason.trim() }),
+          from ? t('confirm.visit.removeDxBack', { dx: from.text }) : null,
+        ]
+          .filter(Boolean)
+          .join(' '),
         confirmLabel: t('confirm.visit.removeYes'),
         tone: 'danger',
       }))
@@ -2018,17 +2033,17 @@ export function ClinicalCard({
   const renderDx = (d: Diagnosis) => {
     const editingThis = dxEdit?.id === d.id
     const removingThis = dxRemove?.id === d.id
-    // 0127: a possible diagnosis (step 3), and whether it was confirmed in step 5
+    // 0127: a possible diagnosis (step 3); 0192: what the doctor decided about it in step 5 —
+    // confirmed (ticked), not confirmed (saved unticked) or not decided — never the words
     const differential = stepper && stageOf(d) === 'differential'
-    const confirmedAs = differential
-      ? data?.diagnoses.find((x) => x.differentialId === d.id && !x.removedAt)
-      : undefined
+    const outcome = differential ? outcomeOf(d, data?.diagnoses ?? []) : null
+    const confirmedAs = differential ? confirmedLink(d, data?.diagnoses ?? []) : undefined
     const fromList = stepper && !differential && d.differentialId
     return (
       <Row key={d.id} className="flex-wrap items-start gap-3 py-2">
-        {differential ? (
-          <Badge tone={confirmedAs ? 'green' : 'orange'} dot={false} className="mt-0.5">
-            {t(confirmedAs ? 'sixSteps.confirmedBadge' : 'sixSteps.possibleBadge')}
+        {outcome ? (
+          <Badge tone={OUTCOME_TONE[outcome]} dot={false} className="mt-0.5">
+            {t(outcome === 'confirmed' ? 'sixSteps.confirmedBadge' : `dxOutcome.${outcome}`)}
           </Badge>
         ) : (
           <Badge tone={d.type === 'primary' ? 'blue' : 'grey'} dot={false} className="mt-0.5">
@@ -2098,6 +2113,12 @@ export function ClinicalCard({
                         when: when(confirmedAs.at),
                       })
                     : null,
+                  outcome === 'not_confirmed' && d.notConfirmedAt
+                    ? t('sixSteps.notConfirmedBy', {
+                        name: d.notConfirmedBy ?? '',
+                        when: when(d.notConfirmedAt),
+                      })
+                    : null,
                   fromList ? t('sixSteps.fromDifferential') : null,
                 ]
                   .filter(Boolean)
@@ -2139,19 +2160,6 @@ export function ClinicalCard({
             </>
           )}
         </span>
-        {differential && !confirmedAs && !editingThis && !removingThis && clinician && (
-          <Button
-            size="sm"
-            variant="success"
-            onClick={() => {
-              setMsgStep('differential')
-              void confirmDd(d)
-            }}
-          >
-            <CheckCircle2 size={14} aria-hidden="true" />
-            {t('sixSteps.confirm')}
-          </Button>
-        )}
         {!editingThis && !removingThis && mayEditLine(d.byId) && (
           <span className="flex flex-wrap gap-2">
             <Button
@@ -2837,9 +2845,7 @@ export function ClinicalCard({
     tests:
       !readOnly &&
       tabBtn('test', t('clinical.addTest'), <FlaskConical size={14} aria-hidden="true" />),
-    definitive:
-      !readOnly &&
-      tabBtn('dx', t('sixSteps.addDefinitive'), <Stethoscope size={14} aria-hidden="true" />),
+    // 0192: step 5 is its own form (the tick list, the other diagnoses, one save)
   }
   const stepBody: Record<StepKey, ReactNode> = data
     ? {
@@ -2883,6 +2889,18 @@ export function ClinicalCard({
             ) : (
               <EmptyNote>{t('sixSteps.noDifferential')}</EmptyNote>
             )}
+            {/* 0192: they are confirmed (ticked) in step 5, all at once */}
+            {clinician && differentials.length > 0 && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="self-start"
+                onClick={() => goStep(STEP_KEYS.indexOf('definitive') + 1)}
+              >
+                <ListChecks size={14} aria-hidden="true" />
+                {t('sixSteps.goConfirm')}
+              </Button>
+            )}
             {msgIn('differential')}
           </>
         ),
@@ -2902,7 +2920,21 @@ export function ClinicalCard({
         ),
         definitive: (
           <>
-            {mode === 'dx' && dxForm}
+            {/* 0192: tick the confirmed possible diagnoses, write any other, save once */}
+            {clinician && (
+              <DefinitivePick
+                differentials={differentials}
+                definitive={definitive}
+                hasPrimary={hasPrimary}
+                primaryText={primaryDx()?.text ?? null}
+                noDiagnosisText={
+                  data.visit?.noDiagnosis ? noDiagnosisText(data.visit.noDiagnosis) : null
+                }
+                patientName={name}
+                saving={actions.saveDefinitive.isPending}
+                onSave={saveDefinitive}
+              />
+            )}
             {definitive.length > 0 ? (
               <div className="border-border -mx-3 border-t sm:-mx-4">
                 {definitive.map(renderDx)}

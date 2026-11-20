@@ -361,6 +361,32 @@ const diagnoses: AnyReportDef = {
       default: true,
       value: (r) => r.cases,
     },
+    // 0192: what the doctor decided about the cases (never the system): they add up to the cases;
+    // a "no diagnosis" line and a database before 0192 leave them blank
+    {
+      key: 'confirmed',
+      label: `${C}.col.confirmed`,
+      kind: 'number',
+      total: 'sum',
+      default: true,
+      value: (r) => r.confirmed ?? null,
+    },
+    {
+      key: 'notConfirmed',
+      label: `${C}.col.notConfirmed`,
+      kind: 'number',
+      total: 'sum',
+      default: true,
+      value: (r) => r.notConfirmed ?? null,
+    },
+    {
+      key: 'notDecided',
+      label: `${C}.col.notDecided`,
+      kind: 'number',
+      total: 'sum',
+      default: true,
+      value: (r) => r.notDecided ?? null,
+    },
     {
       key: 'newCases',
       label: `${C}.col.newCases`,
@@ -460,7 +486,7 @@ const diagnoses: AnyReportDef = {
   ],
   defaultSort: { key: 'cases', dir: 'desc' },
   countLabel: `${C}.count.diagnoses`,
-  notes: [`${C}.dx.note1`, `${C}.dx.note2`, `${C}.dx.note3`, `${C}.dx.note4`],
+  notes: [`${C}.dx.note1`, `${C}.dx.note2`, `${C}.dx.note3`, `${C}.dx.note4`, `${C}.dx.note5`],
   wide: true,
 }
 

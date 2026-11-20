@@ -30,6 +30,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^a bed that would be removed is occupied; discharge the patient first$/, 'dbErrors.b5993cd6', 0], // set_bed_count
   [/^bed stays are charged from the beds board \(admit or extend the stay\)$/, 'dbErrors.74135e60', 0], // add_charge
   [/^only the clinician who wrote the note \(or the manager\) can change it$/, 'dbErrors.2380398b', 0], // update_note
+  [/^this diagnosis is in the list of possible diagnoses: tick it instead$/, 'dbErrors.1cf657b1', 0], // save_definitive_diagnoses
   [/^this insurer is on an open bill; finish or change those visits first$/, 'dbErrors.697d8bbd', 0], // delete_payer
   [/^a finished visit keeps a primary diagnosis: write the new one first$/, 'dbErrors.d8e999b0', 0], // remove_condition, remove_condition_none_found, set_no_diagnosis, …
   [/^money is still due \((.+?) RWF\): say why the patient left without paying$/, 'dbErrors.c4965920', 1], // end_visit
@@ -49,6 +50,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^the expiry window is a whole number of days between 1 and 365$/, 'dbErrors.0c52507e', 0], // save_setting
   [/^too many requests for this phone today; please call reception$/, 'dbErrors.810d2ad5', 0], // create_appointment_inquiry
   [/^write the chief complaint \(step 1\) before finishing the visit$/, 'dbErrors.47437974', 0], // finish_visit
+  [/^a possible diagnosis is confirmed or not confirmed, not both$/, 'dbErrors.59d9dec2', 0], // save_definitive_diagnoses
   [/^only a verified result is corrected; edit the result instead$/, 'dbErrors.e0f675a5', 0], // correct_result
   [/^only the person who gave the task, the nurses or the manager$/, 'dbErrors.ad402386', 0], // cancel_task
   [/^the diastolic blood pressure must be between 20 and 200 mmHg$/, 'dbErrors.5a6f2876', 0], // record_vitals_to
@@ -268,7 +270,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^that person does not work at triage$/, 'dbErrors.262c8d2f', 0], // begin_visit
   [/^the quantity must be more than zero$/, 'dbErrors.c4581db5', 0], // sell_medicine
   [/^the tax amount must be zero or more$/, 'dbErrors.26943731', 0], // set_tax
-  [/^this diagnosis is already confirmed$/, 'dbErrors.21358efa', 0], // confirm_differential
+  [/^this diagnosis is already confirmed$/, 'dbErrors.21358efa', 0], // confirm_differential, save_definitive_diagnoses
   [/^this kind is recorded by the system$/, 'dbErrors.82c896d5', 0], // add_expense
   [/^trust_days must be between 0 and 90$/, 'dbErrors.51a74868', 0], // save_setting
   [/^a tax paid is undone on its period$/, 'dbErrors.c3bd06f4', 0], // void_expense

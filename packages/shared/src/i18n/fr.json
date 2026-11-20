@@ -2916,7 +2916,8 @@
     "allergiesNotRecorded": "Allergies pas encore enregistrées",
     "privateField": "Privé (médical)",
     "privateFill": "Champs privés (médicaux) : vous ne voyez pas ce qui y est enregistré. Remplissez-en un seulement s’il est vide ; une valeur déjà présente est conservée.",
-    "complaintLine": "Motif : {{text}}"
+    "complaintLine": "Motif : {{text}}",
+    "possibleDx": "Diagnostic possible"
   },
   "clinical": {
     "title": "Dossier clinique",
@@ -4038,7 +4039,9 @@
       "handoverLapsed": "La passation de {{patient}} est terminée : le patient est parti ailleurs.",
       "handoverEdit": "A modifié la passation de {{patient}}.",
       "doctorOn": "A marqué {{target}} comme médecin (voit les dossiers médicaux).",
-      "doctorOff": "A retiré la marque de médecin à {{target}} (ne voit plus les dossiers médicaux)."
+      "doctorOff": "A retiré la marque de médecin à {{target}} (ne voit plus les dossiers médicaux).",
+      "dxNotConfirmed": "A enregistré le diagnostic possible de {{patient}} comme non confirmé.",
+      "dxNotConfirmedUndone": "A retiré « non confirmé » d’un diagnostic possible de {{patient}}."
     },
     "line": {
       "reason": "Motif : {{value}}",
@@ -4052,7 +4055,7 @@
       "reference": "Référence mobile money : {{value}}",
       "phone": "Téléphone : {{value}}",
       "bill": "Facture : {{value}}",
-      "provisional": "Diagnostic provisoire (à confirmer)",
+      "provisional": "Diagnostic possible (différentiel)",
       "dose": "Posologie : {{value}}",
       "instructions": "Instructions : {{value}}",
       "allergy": "Donné malgré une allergie parce que : {{value}}",
@@ -5315,7 +5318,8 @@
       "how": "Modalités",
       "confirmed": "Confirmé",
       "notConfirmed": "Non confirmé",
-      "notRecorded": "Non renseigné"
+      "notRecorded": "Non renseigné",
+      "notDecided": "Non décidé"
     }
   },
   "access": {
@@ -6178,7 +6182,8 @@
         "title": "Ajouter à la facture de {{name}} ?",
         "body": "{{list}}",
         "yes": "Oui, ajouter"
-      }
+      },
+      "removeDxBack": "Le diagnostic possible « {{dx}} » redevient « Non décidé »."
     },
     "staff": {
       "deactivate": {
@@ -8628,7 +8633,9 @@
     "af1298eb": "Le reversement du mois a déjà été fait : annulez-le d’abord dans l’onglet Impôts.",
     "b12df903": "Dites l’organisme et le mois.",
     "abffa9c2": "Rien n’a été retenu pour cet organisme ce mois-là.",
-    "b3230e3a": "Un impôt est sur le bénéfice, sur le chiffre d’affaires, un montant fixe, retenu à la source ou autre."
+    "b3230e3a": "Un impôt est sur le bénéfice, sur le chiffre d’affaires, un montant fixe, retenu à la source ou autre.",
+    "59d9dec2": "Un diagnostic possible est soit confirmé, soit non confirmé, pas les deux.",
+    "1cf657b1": "Ce diagnostic est dans la liste des diagnostics possibles : cochez-le plutôt."
   },
   "panel": {
     "close": "Fermer",
@@ -9850,7 +9857,8 @@
         "note1": "Un cas est une visite avec ce diagnostic (son code CIM-10, sinon son libellé), parmi les visites arrivées sur la période.",
         "note2": "Nouveau : le patient ne l’avait pas eu lors d’une visite précédente ; suivi : il l’avait eu.",
         "note3": "Âge le jour de la visite. Vous voyez les visites de vos services (chefs) ou les diagnostics que vous avez écrits.",
-        "note4": "Par défaut, ce sont les diagnostics définitifs (étape 5) qui sont comptés ; choisissez Différentiels pour les diagnostics possibles de l’étape 3."
+        "note4": "Par défaut, ce sont les diagnostics définitifs (étape 5) qui sont comptés ; choisissez Différentiels pour les diagnostics possibles de l’étape 3.",
+        "note5": "Confirmé : un diagnostic définitif, ou un diagnostic possible que le médecin a coché à l’étape 5. Non confirmé : le médecin l’a laissé sans coche et a enregistré. Non décidé : personne n’a encore enregistré l’étape 5 pour lui. Le système ne le décide jamais d’après les mots."
       },
       "rx": {
         "title": "Prescriptions",
@@ -9901,7 +9909,7 @@
         "search": "Rechercher",
         "searchHint": "Patient, n° de dossier, médicament, examen…",
         "dxStage": "Diagnostics",
-        "dxStageHint": "Définitifs : confirmés (étape 5). Différentiels : les possibles de l’étape 3."
+        "dxStageHint": "Définitifs : les diagnostics confirmés de l’étape 5. Différentiels : les possibles de l’étape 3, avec ce que le médecin en a décidé."
       },
       "sex": {
         "female": "Femme",
@@ -10044,7 +10052,10 @@
         "arrivedAt": "Arrivé à",
         "bookedOn": "Pris le",
         "cancelReason": "Motif d’annulation",
-        "complaint": "Motif de consultation"
+        "complaint": "Motif de consultation",
+        "confirmed": "Confirmés",
+        "notConfirmed": "Non confirmés",
+        "notDecided": "Non décidés"
       },
       "g": {
         "clinician": "Par soignant",
@@ -11001,7 +11012,7 @@
     },
     "differential": {
       "title": "3 · Diagnostic différentiel",
-      "hint": "Les diagnostics possibles après l’examen, pas encore confirmés. Confirmez-en un quand il est établi.",
+      "hint": "Les diagnostics possibles après l’examen. Quand le diagnostic est établi, cochez les confirmés à l’étape 5.",
       "short": "Différentiel"
     },
     "tests": {
@@ -11011,9 +11022,8 @@
     },
     "definitive": {
       "title": "5 · Diagnostic définitif",
-      "hint": "Les diagnostics confirmés : un principal, les autres secondaires. Un diagnostic trouvé par le laboratoire peut être ajouté ici. Ou dites pourquoi aucun n’a été trouvé.",
       "short": "Diagnostic définitif",
-      "hintAuto": "Les diagnostics confirmés. Le premier inscrit est le diagnostic principal, les suivants sont secondaires ; si le principal est retiré, le suivant prend sa place. Ou dites pourquoi aucun n’a été trouvé."
+      "hintAuto": "Cochez les diagnostics possibles qui sont confirmés (un ou plusieurs), ou écrivez-en un autre, puis enregistrez. Le premier est le diagnostic principal. Ou dites pourquoi aucun n’a été trouvé."
     },
     "plan": {
       "title": "6 · Plan de traitement",
@@ -11042,23 +11052,13 @@
     "otherNotes": "Autres notes",
     "addDifferential": "Ajouter un diagnostic possible",
     "saveDifferential": "Ajouter à la liste",
-    "differentialHint": "Un diagnostic possible n’est pas compté dans les rapports tant qu’il n’est pas confirmé (étape 5).",
+    "differentialHint": "Un diagnostic possible ne compte comme confirmé que lorsque vous le cochez à l’étape 5.",
     "noDifferential": "Aucun diagnostic possible noté pour l’instant.",
-    "possibleBadge": "Possible",
     "confirmedBadge": "Confirmé",
-    "confirm": "Confirmer",
-    "confirmQ": "Confirmer {{dx}} pour {{name}} ?",
-    "confirmPrimary": "Il est inscrit à l’étape 5 comme diagnostic principal ; il reste dans la liste différentielle, marqué confirmé.",
-    "confirmSecondary": "Il est inscrit à l’étape 5 comme diagnostic secondaire (il y a déjà un principal) ; il reste dans la liste différentielle, marqué confirmé.",
-    "confirmYes": "Oui, confirmer",
-    "confirmed": "{{dx}} confirmé : il est à l’étape 5.",
     "confirmedBy": "confirmé par {{name}} le {{when}}",
     "fromDifferential": "issu de la liste différentielle",
     "ddQ": "Ajouter {{dx}} aux diagnostics possibles de {{name}} ?",
     "ddSaved": "Diagnostic possible ajouté.",
-    "addDefinitive": "Ajouter un diagnostic définitif",
-    "alsoDifferential": "Aussi dans la liste différentielle",
-    "alsoDifferentialHint": "Absent de la liste différentielle (trouvé par le laboratoire, par exemple) ? Cochez « Aussi dans la liste différentielle » pour garder un dossier complet.",
     "noDefinitive": "Pas encore de diagnostic définitif.",
     "noTests": "Aucun examen demandé.",
     "prescriptions": "Médicaments",
@@ -11080,7 +11080,30 @@
     "next": "Suivant : {{title}}",
     "toFinishShort": "Pour terminer :",
     "goFinish": "Terminer la consultation (étape 6)",
-    "nurseOrders": "Ordres : donné ici"
+    "nurseOrders": "Ordres : donné ici",
+    "pick": {
+      "title": "Quels diagnostics possibles sont confirmés ? Cochez-en un ou plusieurs.",
+      "none": "Aucun diagnostic possible n’a été noté à l’étape 3.",
+      "other": "Un autre diagnostic, absent de la liste",
+      "otherAlone": "Le diagnostic définitif",
+      "addLine": "Ajouter un autre",
+      "removeLine": "Retirer cette ligne",
+      "inList": "{{dx}} est dans la liste ci-dessus : cochez-le plutôt.",
+      "save": "Enregistrer le diagnostic",
+      "q": "Enregistrer le diagnostic de {{name}} ?",
+      "sumConfirmed": "Confirmés : {{list}}",
+      "sumNotConfirmed": "Non confirmés : {{list}}",
+      "sumOther": "Autre diagnostic : {{list}}",
+      "sumMain": "Diagnostic principal : {{dx}}",
+      "sumMainStays": "Le diagnostic principal reste {{dx}}.",
+      "sumNoMain": "Aucun diagnostic définitif : pour terminer la visite, écrivez-en un ou dites pourquoi aucun n’a été trouvé.",
+      "sumReplacesNoDx": "Il remplace « {{reason}} ».",
+      "saved": "Diagnostic enregistré.",
+      "needsUpdate": "Enregistré : les diagnostics confirmés et les autres. « Non confirmé » sera enregistré quand la base de données sera mise à jour.",
+      "nothing": "Cochez un diagnostic possible ou écrivez-en un pour enregistrer."
+    },
+    "goConfirm": "Cocher les confirmés (étape 5)",
+    "notConfirmedBy": "non confirmé par {{name}} le {{when}}"
   },
   "pastHistory": {
     "title_one": "Antécédents : {{count}} consultation précédente",
@@ -11623,5 +11646,10 @@
       "periodFigures": "Chiffres de la période",
       "taxesPaid2": "Impôts payés dans la période (toutes natures)"
     }
+  },
+  "dxOutcome": {
+    "confirmed": "Confirmé",
+    "not_confirmed": "Non confirmé",
+    "not_decided": "Non décidé"
   }
 }

@@ -1,5 +1,6 @@
 import { addDays, isoDate } from '@mmc/shared'
 import { dxText } from '@/lib/no-diagnosis'
+import type { DxOutcome } from '@/lib/diagnosis-outcome'
 import type { ReportContext, ReportPeriod } from '@/lib/reports/defs/types'
 import { ApiError } from './errors'
 import { reportCall } from './reports-options'
@@ -59,6 +60,14 @@ export interface DiagnosisRow {
   age25to49: number
   age50plus: number
   ageUnknown: number
+  /**
+   * 0192: of the cases, what the doctor decided: confirmed (a definitive diagnosis, or a possible
+   * one ticked in step 5), not confirmed (saved unticked), not decided (step 5 not saved for it).
+   * They add up to the cases; null on a "no diagnosis" line; absent before 0192 (blank cells).
+   */
+  confirmed?: number | null
+  notConfirmed?: number | null
+  notDecided?: number | null
 }
 
 export type Supply = 'pharmacy' | 'room' | 'outside'
@@ -721,24 +730,26 @@ const DIFFERENTIAL_OF: Record<string, [string, string]> = {
 function sampleDiagnoses(a: DiagnosesArgs, ctx: ReportContext): DiagnosisRow[] {
   const rows = new Map<string, DiagnosisRow>()
   const stage = a.stage ?? 'definitive'
+  let seen = 0
   for (const v of sampleVisits(a.period)) {
     if (v.clinician.role === 'nurse' || !visible(ctx, v)) continue
     if (a.doctor && v.clinician.id !== a.doctor) continue
     if (a.department && v.clinician.department !== a.department) continue
     const noDx = noDxSample(v.encounterId)
     const dd = noDx ? undefined : DIFFERENTIAL_OF[v.dx[0]]
-    // [code, text, a differential]
-    const found: [string, string, boolean][] = [
-      ...(stage !== 'differential'
-        ? [
-            noDx
-              ? (['[no-dx:check_up]', '[no-dx:check_up]', false] as [string, string, boolean])
-              : ([v.dx[0], v.dx[1], false] as [string, string, boolean]),
-          ]
-        : []),
-      ...(stage !== 'definitive' && dd ? [[dd[0], dd[1], true] as [string, string, boolean]] : []),
-    ]
-    for (const [code, text, differential] of found) {
+    // 0192: the visit's own diagnosis was a possible one ticked in step 5 (confirmed); the other
+    // possible one was saved unticked (not confirmed), or step 5 not saved for it (every 4th)
+    const other: DxOutcome = seen++ % 4 === 3 ? 'not_decided' : 'not_confirmed'
+    // [code, text, primary, what the doctor decided (null: no diagnosis found)]: one per diagnosis
+    // of the visit; in both lists the visit counts once per diagnosis, confirmed first
+    const found: [string, string, boolean, DxOutcome | null][] = []
+    if (noDx) {
+      if (stage !== 'differential') found.push(['[no-dx:check_up]', '[no-dx:check_up]', true, null])
+    } else {
+      found.push([v.dx[0], v.dx[1], stage !== 'differential', 'confirmed'])
+      if (stage !== 'definitive' && dd) found.push([dd[0], dd[1], false, other])
+    }
+    for (const [code, text, primary, outcome] of found) {
       const r =
         rows.get(code) ??
         ({
@@ -758,9 +769,15 @@ function sampleDiagnoses(a: DiagnosesArgs, ctx: ReportContext): DiagnosisRow[] {
           age25to49: 0,
           age50plus: 0,
           ageUnknown: 0,
+          confirmed: outcome ? 0 : null,
+          notConfirmed: outcome ? 0 : null,
+          notDecided: outcome ? 0 : null,
         } satisfies DiagnosisRow)
       r.cases++
-      if (!differential) r.primary++
+      if (outcome === 'confirmed') r.confirmed = (r.confirmed ?? 0) + 1
+      else if (outcome === 'not_confirmed') r.notConfirmed = (r.notConfirmed ?? 0) + 1
+      else if (outcome === 'not_decided') r.notDecided = (r.notDecided ?? 0) + 1
+      if (primary) r.primary++
       if (v.followUp) r.followUp++
       else r.newCases++
       if (v.patient.sex === 'female') r.female++

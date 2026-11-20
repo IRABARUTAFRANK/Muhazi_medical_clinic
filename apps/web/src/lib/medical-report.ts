@@ -32,6 +32,7 @@ import {
   type Letterhead,
   type TFn,
 } from './doc-style'
+import type { DxOutcome } from './diagnosis-outcome'
 
 /**
  * The clinic's medical documents, laid out by the document design standard (doc-style.ts):
@@ -132,7 +133,16 @@ export interface ReportVisit {
    * the six numbered headings.
    */
   complaint?: string | null
-  differentials?: { text: string; icd10: string | null; confirmed?: boolean }[]
+  /**
+   * 0192: `outcome` is what the doctor saved (confirmed, not confirmed, not decided);
+   * `confirmed` is the older shape (true: confirmed, false: not confirmed).
+   */
+  differentials?: {
+    text: string
+    icd10: string | null
+    outcome?: DxOutcome
+    confirmed?: boolean
+  }[]
   nurseOrders?: { text: string; how: string; status: string }[]
 }
 
@@ -344,6 +354,7 @@ function medWords(t: TFn) {
     how: kd('how', 'How'),
     confirmed: kd('confirmed', 'Confirmed'),
     notConfirmed: kd('notConfirmed', 'Not confirmed'),
+    notDecided: kd('notDecided', 'Not decided'),
     notRecorded: kd('notRecorded', 'Not recorded'),
   }
 }
@@ -835,10 +846,19 @@ function sixStepPieces(v: ReportVisit, c: Ctx, inVisit: boolean): Piece[] {
       { label: c.w.icd10, share: 14 },
       { label: c.w.status, share: 22 },
     ]
+    // 0192: what the doctor decided (an older caller's `confirmed` true / false still reads)
+    const outcome = (d: (typeof dd)[number]): DxOutcome =>
+      d.outcome ??
+      (d.confirmed === true ? 'confirmed' : d.confirmed === false ? 'not_confirmed' : 'not_decided')
+    const chip: Record<DxOutcome, CellValue> = {
+      confirmed: chipCell(c.w.confirmed, 'ok'),
+      not_confirmed: chipCell(c.w.notConfirmed, 'muted'),
+      not_decided: chipCell(c.w.notDecided, 'warn'),
+    }
     const rows: CellValue[][] = dd.map((d) => [
       d.text,
       d.icd10 ? { html: `<strong>${esc(d.icd10)}</strong>` } : null,
-      d.confirmed ? chipCell(c.w.confirmed, 'ok') : chipCell(c.w.notConfirmed, 'muted'),
+      chip[outcome(d)],
     ])
     out.push(
       tablePiece(h(3), rows.length, (a, b, w) =>

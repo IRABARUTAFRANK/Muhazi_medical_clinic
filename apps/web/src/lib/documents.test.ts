@@ -378,6 +378,8 @@ describe('medical report: the six steps (0127)', () => {
       differentials: [
         { text: 'Malaria', icd10: 'B54', confirmed: true },
         { text: 'Typhoid fever', icd10: 'A01.0', confirmed: false },
+        // 0192: nobody saved step 5 for it yet
+        { text: 'Viral fever', icd10: null, outcome: 'not_decided' },
       ],
       tests: [{ name: 'Malaria RDT', findings: 'Positive', impression: null, verified: true }],
       diagnoses: [{ text: 'Malaria', icd10: 'B54', primary: true, provisional: false }],
@@ -396,6 +398,8 @@ describe('medical report: the six steps (0127)', () => {
     expect([...steps].sort((a, b) => a - b)).toEqual(steps)
     expect(html).toContain('Fever and headache for 3 days')
     expect(html).toContain('<span class="chip ok">Confirmed</span>')
+    expect(html).toContain('<span class="chip">Not confirmed</span>')
+    expect(html).toContain('<span class="chip warn">Not decided</span>')
     expect(html).toContain('Typhoid fever')
     expect(html).toContain('IM injection')
     expect(html.indexOf('Treat malaria')).toBeGreaterThan(steps[5]!)

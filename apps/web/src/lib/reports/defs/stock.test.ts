@@ -74,7 +74,9 @@ describe('stock and clinical report definitions', () => {
       expect(new Set(d.filters.map((f) => f.key)).size, d.id).toBe(d.filters.length)
       const shown = d.columns.filter((c) => c.default).length
       expect(shown, d.id).toBeGreaterThanOrEqual(5)
-      expect(shown, d.id).toBeLessThanOrEqual(9)
+      // a wide (landscape) report shows one more: 0192's Diagnoses report adds Confirmed / Not
+      // confirmed / Not decided beside the cases
+      expect(shown, d.id).toBeLessThanOrEqual(d.wide ? 10 : 9)
       expect(d.title).toMatch(/^reports\.(stock|clinical)\./)
       for (const c of d.columns)
         expect(c.label, `${d.id}.${c.key}`).toMatch(/^reports\.(stock|clinical)\./)

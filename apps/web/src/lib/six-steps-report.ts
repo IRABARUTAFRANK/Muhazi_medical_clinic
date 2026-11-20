@@ -1,3 +1,4 @@
+import { outcomeOf } from './diagnosis-outcome'
 import type { ReportVisit } from './medical-report'
 
 /** What the medical report needs of a visit's record (visit_clinical, 0127): a loose shape so a
@@ -12,6 +13,10 @@ export interface SixStepsSource {
     stage?: 'differential' | 'definitive' | null
     differentialId?: string | null
     removedAt?: string | null
+    /** 0192: a possible diagnosis the doctor saved unticked in step 5 (visit_clinical). */
+    notConfirmedAt?: string | null
+    /** 0192: the same, as the patient file says it (patient_file). */
+    notConfirmed?: boolean
   }[]
   sections?: Partial<
     Record<'complaint' | 'hpi' | 'exam' | 'plan', { text: string } | null | undefined>
@@ -39,10 +44,11 @@ export const isDifferential = (d: SixStepsSource['diagnoses'][number]) =>
 
 /**
  * The six steps of a visit for the medical report (0127): the chief complaint and history (step
- * 1), the examination (2), the differential diagnoses with whether each was confirmed (3), the
- * definitive diagnoses (5), the plan and the orders to the nurses (6). The tests (4), medicines
- * and treatments are mapped by the callers as before. A removed diagnosis is not part of the
- * record of care.
+ * 1), the examination (2), the differential diagnoses with what the doctor decided about each
+ * (3: confirmed, not confirmed or not decided — 0192: from what he saved, never from the words),
+ * the definitive diagnoses (5), the plan and the orders to the nurses (6). The tests (4),
+ * medicines and treatments are mapped by the callers as before. A removed diagnosis is not part
+ * of the record of care.
  */
 export function sixStepsOfVisit(
   c: SixStepsSource,
@@ -53,7 +59,6 @@ export function sixStepsOfVisit(
 > {
   const standing = c.diagnoses.filter((d) => !d.removedAt)
   const definitive = standing.filter((d) => !isDifferential(d))
-  const confirmedFrom = new Set(definitive.map((d) => d.differentialId).filter(Boolean))
   const text = (k: 'complaint' | 'hpi' | 'exam' | 'plan') => c.sections?.[k]?.text?.trim() || null
   const route = (r: string) => t(`clinical.routes.${r}`, { defaultValue: r })
   const frequency = (f: string) => t(`clinical.frequencies.${f}`, { defaultValue: f })
@@ -71,14 +76,9 @@ export function sixStepsOfVisit(
     differentials: standing.filter(isDifferential).map((d) => ({
       text: d.text,
       icd10: d.icd10,
-      // confirmed: a definitive one came from it, or one says the same
-      confirmed:
-        (!!d.id && confirmedFrom.has(d.id)) ||
-        definitive.some(
-          (x) =>
-            (!!x.icd10 && x.icd10 === d.icd10) ||
-            x.text.trim().toLowerCase() === d.text.trim().toLowerCase(),
-        ),
+      // 0192: confirmed only when the doctor ticked it (a definitive one points at it), not
+      // confirmed when he saved it unticked, else not decided — the same words count for nothing
+      outcome: outcomeOf(d, standing),
     })),
     nurseOrders: (c.nurseOrders ?? [])
       .filter((o) => o.status !== 'cancelled')

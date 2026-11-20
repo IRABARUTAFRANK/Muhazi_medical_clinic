@@ -15,6 +15,7 @@ import { useSession } from '@/store/session'
 import type { Sex, Station } from '@/lib/api/visits'
 import { withDefaults, type BuiltinStates } from '@/lib/patient-rules'
 import { isDoctorUser } from '@/lib/roles'
+import { cleanDefinitiveSave, dxKey } from '@/lib/diagnosis-outcome'
 
 /**
  * The patient register and the patient file. Every patient the clinic registers stays in
@@ -252,6 +253,12 @@ export interface PatientCondition {
   icd10: string | null
   type: 'primary' | 'secondary'
   provisional: boolean
+  /** 0127: step 3 (possible) or step 5 (definitive). */
+  stage?: DiagnosisStage
+  /** 0192: a definitive diagnosis ticked in step 5: the possible diagnosis it confirms. */
+  differentialId?: string | null
+  /** 0192: a possible diagnosis the doctor saved unticked in step 5. */
+  notConfirmed?: boolean
   at: string
   by: string | null
 }
@@ -489,6 +496,33 @@ const buildSampleFileBase = (id: string): PatientFile => {
         icd10: 'B54',
         type: 'primary',
         provisional: false,
+        // 0192: ticked in step 5 from the possible diagnoses
+        stage: 'definitive',
+        differentialId: 'c-1dd',
+        at: r.lastVisitAt ?? r.registeredAt,
+        by: 'Dr. Mukamana Béatrice',
+      },
+      {
+        id: 'c-1dd',
+        encounterId: 'e-9',
+        text: 'Malaria (uncomplicated)',
+        icd10: 'B54',
+        type: 'secondary',
+        provisional: true,
+        stage: 'differential',
+        at: r.lastVisitAt ?? r.registeredAt,
+        by: 'Dr. Mukamana Béatrice',
+      },
+      {
+        id: 'c-1dd2',
+        encounterId: 'e-9',
+        text: 'Typhoid fever',
+        icd10: 'A01.0',
+        type: 'secondary',
+        provisional: true,
+        stage: 'differential',
+        // 0192: left unticked when step 5 was saved
+        notConfirmed: true,
         at: r.lastVisitAt ?? r.registeredAt,
         by: 'Dr. Mukamana Béatrice',
       },
@@ -849,6 +883,27 @@ export interface Diagnosis {
   removedBy?: string | null
   removeReason?: string | null
   history?: RecordVersion[]
+  /**
+   * 0192: a possible diagnosis (step 3) the doctor left unticked when he saved step 5: when, by
+   * whom. Absent (null) otherwise, and on a database before 0192.
+   */
+  notConfirmedAt?: string | null
+  notConfirmedBy?: string | null
+  notConfirmedById?: string | null
+}
+/**
+ * 0192: what the doctor saves in step 5, in one go: the possible diagnoses ticked (in the order
+ * shown: the first is the main diagnosis when none stands), those left unticked ("not
+ * confirmed"), and the other diagnoses typed.
+ */
+export interface DefinitiveSave {
+  confirm: string[]
+  notConfirmed: string[]
+  other: string[]
+}
+/** partial: a database before 0192 saved the ticks and the typed ones, not the "not confirmed". */
+export interface DefinitiveSaved {
+  partial: boolean
 }
 export type DiagnosisStage = 'differential' | 'definitive'
 /** The step of a diagnosis (0127), read from the provisional mark before 0127. */
@@ -1233,6 +1288,14 @@ let sampleRxSeq = 122
 // diagnoses (one confirmed by the malaria test), two tests with their results, the plan; the
 // orders to the nurses come from nurse-orders.ts.
 const sampleDoc = { by: 'Dr. Mukamana Béatrice', byId: 'u-doc' }
+/**
+ * 0192, sample mode: the possible diagnoses the doctor saved unticked in step 5 ("not
+ * confirmed"), by id. On e-1: malaria confirmed (ticked), typhoid not confirmed (the Widal test
+ * was not significant), viral fever not decided.
+ */
+const sampleNotConfirmed = new Map<string, { at: string; by: string | null; byId: string | null }>([
+  ['d-s0b', { at: sampleAgo(29), ...sampleDoc }],
+])
 sampleClinical.set('e-1', {
   ...EMPTY_CLINICAL,
   sections: {
@@ -1536,6 +1599,13 @@ export function useVisitClinical(encounterId: string) {
         return sampleForDesk(
           {
             ...c,
+            // 0192: a possible diagnosis saved unticked in step 5: by whom, when
+            diagnoses: c.diagnoses.map((d) => {
+              const n = stageOf(d) === 'differential' ? sampleNotConfirmed.get(d.id) : undefined
+              return n
+                ? { ...d, notConfirmedAt: n.at, notConfirmedBy: n.by, notConfirmedById: n.byId }
+                : d
+            }),
             // the reason no diagnosis was found and the follow-up booked, as they are now
             visit: {
               ...(c.visit ?? sampleVisit(encounterId)),
@@ -1720,8 +1790,11 @@ export function useClinicalActions(encounterId: string) {
   /** 0130: the primary removed (or made a possible one): the oldest definitive one takes it. */
   const sampleSettlePrimary = () => {
     const left = local().diagnoses.filter((x) => !x.removedAt && stageOf(x) === 'definitive')
-    if (left.length && !left.some((x) => x.type === 'primary'))
-      [...left].sort((a, b) => a.at.localeCompare(b.at))[0]!.type = 'primary'
+    if (left.length && !left.some((x) => x.type === 'primary')) {
+      ;[...left].sort((a, b) => a.at.localeCompare(b.at))[0]!.type = 'primary'
+      // a primary diagnosis written: "no diagnosis found" no longer stands (as the database)
+      sampleNoDx.delete(encounterId)
+    }
   }
   const addDiagnosis = useMutation({
     mutationFn: async (i: {
@@ -1791,39 +1864,106 @@ export function useClinicalActions(encounterId: string) {
     },
     onSuccess: refresh,
   })
-  /** 0127: a differential confirmed: the definitive diagnosis (step 5) linked to it. */
-  const confirmDifferential = useMutation({
-    mutationFn: async (i: { id: string; type?: 'primary' | 'secondary' }) => {
+  /**
+   * 0192: step 5 in one save, all or nothing (save_definitive_diagnoses): the possible
+   * diagnoses ticked get their definitive diagnosis, linked; those left unticked are "not
+   * confirmed" under the doctor's name; the typed ones are new definitive diagnoses.
+   */
+  const saveDefinitive = useMutation({
+    mutationFn: async (input: DefinitiveSave): Promise<DefinitiveSaved> => {
+      const i = cleanDefinitiveSave(input)
       if (!supabase) {
+        const user = sampleUser()
+        // 0126: the record is the doctor's
+        if (!isDoctorUser(user))
+          throw apiError({
+            code: '42501',
+            message: 'not allowed: patient records are for doctors',
+            hint: 'not_doctor',
+          })
         sampleMayWrite(encounterId)
         const c = local()
-        const d = c.diagnoses.find((x) => x.id === i.id && !x.removedAt)
-        if (!d) throw apiError({ code: 'P0002', message: 'diagnosis not found' })
-        if (c.diagnoses.some((x) => x.differentialId === i.id && !x.removedAt))
+        const possible = (id: string) =>
+          c.diagnoses.find((x) => x.id === id && !x.removedAt && stageOf(x) === 'differential')
+        // every check before anything is written, as the database
+        if (i.confirm.some((id) => i.notConfirmed.includes(id)))
+          throw apiError({
+            code: '22023',
+            message: 'a possible diagnosis is confirmed or not confirmed, not both',
+          })
+        const sent = [...i.confirm, ...i.notConfirmed]
+        if (sent.some((id) => !possible(id)))
+          throw apiError({ code: 'P0002', message: 'diagnosis not found' })
+        if (sent.some((id) => c.diagnoses.some((x) => x.differentialId === id && !x.removedAt)))
           throw apiError({
             code: '22023',
             message: 'this diagnosis is already confirmed',
             hint: 'already_confirmed',
           })
-        const type = i.type ?? sampleNextType()
-        c.diagnoses.push({
-          id: `d-${Date.now()}`,
-          text: d.text,
-          icd10: d.icd10,
-          type,
-          provisional: false,
-          stage: 'definitive',
-          differentialId: d.id,
-          at: now(),
-          by: sampleUser()?.name ?? null,
-          byId: sampleUser()?.id ?? null,
-        })
-        if (type === 'primary') sampleNoDx.delete(encounterId)
-        return
+        const listed = new Set(
+          c.diagnoses
+            .filter((x) => !x.removedAt && stageOf(x) === 'differential')
+            .map((x) => dxKey(x.text)),
+        )
+        if (i.other.some((t) => listed.has(dxKey(t))))
+          throw apiError({
+            code: '22023',
+            message: 'this diagnosis is in the list of possible diagnoses: tick it instead',
+          })
+        if (i.other.some((t) => t.length < 2))
+          throw apiError({ code: '22023', message: 'the diagnosis needs a description' })
+        const by = { by: user?.name ?? null, byId: user?.id ?? null }
+        for (const id of i.notConfirmed)
+          if (!sampleNotConfirmed.has(id)) sampleNotConfirmed.set(id, { at: now(), ...by })
+        const stamp = Date.now()
+        let n = 0
+        const add = (text: string, icd10: string | null, differentialId: string | null) =>
+          c.diagnoses.push({
+            id: `d-${stamp}-${n++}`,
+            text,
+            icd10,
+            // 0130: the first definitive diagnosis of the visit is the primary one
+            type: sampleNextType(),
+            provisional: false,
+            stage: 'definitive',
+            differentialId,
+            at: now(),
+            ...by,
+          })
+        for (const id of i.confirm) {
+          const d = possible(id)!
+          add(d.text, d.icd10, d.id)
+          // ticked now: a "not confirmed" of before is taken back
+          sampleNotConfirmed.delete(id)
+        }
+        for (const text of i.other) add(text, null, null)
+        if (c.diagnoses.some((x) => !x.removedAt && x.type === 'primary'))
+          sampleNoDx.delete(encounterId)
+        return { partial: false }
       }
-      await call('confirm_differential', { p_id: i.id, p_type: i.type ?? null })
+      const res = await supabase.rpc('save_definitive_diagnoses', {
+        p_encounter_id: encounterId,
+        p_confirm: i.confirm,
+        p_not_confirmed: i.notConfirmed,
+        p_other: i.other,
+      })
+      if (!res.error) return { partial: false }
+      if (!isMissingFunction(res.error)) throw apiError(res.error)
+      // a database before 0192: one call per tick, then the typed ones (not all or nothing; the
+      // refresh shows what was saved); "not confirmed" waits for the update
+      for (const id of i.confirm) await call('confirm_differential', { p_id: id, p_type: null })
+      for (const text of i.other)
+        await call('add_visit_diagnosis', {
+          p_encounter_id: encounterId,
+          p_text: text,
+          p_icd10: null,
+          p_type: null,
+          p_stage: 'definitive',
+          p_also_differential: false,
+        })
+      return { partial: i.notConfirmed.length > 0 }
     },
-    onSuccess: refresh,
+    onSettled: refresh,
   })
   /** 0127: the doctor's text of a step (complaint, history, examination, plan); '' clears it. */
   const saveSection = useMutation({
@@ -1931,6 +2071,9 @@ export function useClinicalActions(encounterId: string) {
           icd10: i.icd10 == null ? d.icd10 : i.icd10.trim().toUpperCase() || null,
           type: i.provisional ? 'secondary' : (i.type ?? d.type),
           provisional: i.provisional,
+          // the step follows the mark, as update_condition does (a possible one links nothing)
+          stage: i.provisional ? 'differential' : 'definitive',
+          ...(i.provisional ? { differentialId: null } : {}),
           editedAt: now(),
           editedBy: sampleUser()?.name ?? null,
           editReason: i.reason.trim(),
@@ -2434,7 +2577,7 @@ export function useClinicalActions(encounterId: string) {
   })
   return {
     addDiagnosis,
-    confirmDifferential,
+    saveDefinitive,
     saveSection,
     addNote,
     updateDiagnosis,
