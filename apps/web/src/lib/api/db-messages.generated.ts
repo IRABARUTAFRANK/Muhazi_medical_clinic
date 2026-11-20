@@ -8,6 +8,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^only a clinician who treated the patient in this visit \(or the manager\) may edit it after it is finished$/, 'dbErrors.f96f1e67', 0], // request_visit_edit
   [/^deleting, switching off, the code, the box size and the stock levels change only through their screens$/, 'dbErrors.621ea696', 0], // guard_item
   [/^a medicine is counted in whole pieces \(tablets, capsules, bottles\): write a half in the dose$/, 'dbErrors.a270e78e', 0], // create_order_here
+  [/^a percentage is of the money in, of the result before tax, or of an amount typed when paying$/, 'dbErrors.825d1537', 0], // set_tax
   [/^only the doctor who asked for the test, or who took the patient over, marks the result seen$/, 'dbErrors.ca6fef80', 0], // mark_result_reviewed
   [/^not allowed: bookings are made by the people who treat patients, reception and the manager$/, 'dbErrors.e80bc03d', 0], // book_follow_up
   [/^this medicine is no longer waiting at the pharmacy \(handed over, not given or cancelled\)$/, 'dbErrors.d8d1076f', 0], // cancel_prescription
@@ -46,6 +47,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^this is ordered, not added: use Orders so that (.+?) gets the patient$/, 'dbErrors.db962d48', 1], // add_charge
   [/^verified report (.+?) is immutable; issue a corrected report instead$/, 'dbErrors.af4e6ca0', 1], // guard_verified_report
   [/^only doctors, sonographers, nurses and managers keep a calendar$/, 'dbErrors.bfaad0ce', 0], // save_calendar
+  [/^the amount the percentage is calculated on must be zero or more$/, 'dbErrors.5987f22e', 0], // pay_tax
   [/^this medicine was already given or cancelled: it stays as it is$/, 'dbErrors.6b5fd4a1', 0], // rx_set_supply
   [/^only the pharmacy \(or the manager\) sends stock to a room store$/, 'dbErrors.37f09728', 0], // send_to_room
   [/^not allowed: only the manager removes an employee's documents$/, 'dbErrors.4b7a938c', 0], // remove_staff_document
@@ -120,6 +122,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^the booking slot must be between 5 and 240 minutes$/, 'dbErrors.e61b8bcc', 0], // save_calendar
   [/^the measurement time is before the patient arrived$/, 'dbErrors.ac3f5d11', 0], // record_vitals_to
   [/^the new version cannot start before the one in use$/, 'dbErrors.d66cec14', 0], // import_tariff
+  [/^the percentage must be more than 0 and at most 100$/, 'dbErrors.0b8d9c3f', 0], // add_expense, set_tax
   [/^the units on the way belong to their transfer note$/, 'dbErrors.810b5f7d', 0], // assert_store_work
   [/^this medicine is no longer waiting at the pharmacy$/, 'dbErrors.fc53c552', 0], // rx_not_given
   [/^a patient with this national ID already exists: (.+?)$/, 'dbErrors.e8755b51', 1], // patient_identity
@@ -148,6 +151,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^the recording's path is not in the clips folder$/, 'dbErrors.e69735c5', 0], // save_voice_clip
   [/^this appointment is not waiting for the patient$/, 'dbErrors.1b56fa84', 0], // appointment_arrived
   [/^tick at least one service this person does in (.+?)$/, 'dbErrors.348637e5', 1], // set_staff_departments
+  [/^type the amount the percentage is calculated on$/, 'dbErrors.ce374193', 0], // add_expense, pay_tax
   [/^a clinic-wide list makes its treatments itself$/, 'dbErrors.c3b95821', 0], // adopt_tariff_lines
   [/^a difference goes back \(returned\) or is a loss$/, 'dbErrors.5492db37', 0], // confirm_receipt
   [/^booking\.colleague_accept must be true or false$/, 'dbErrors.77308620', 0], // save_setting
@@ -160,6 +164,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^a typed price is not allowed for this service$/, 'dbErrors.f09b0eb9', 0], // add_charge_internal
   [/^both files have a visit open: close one first$/, 'dbErrors.85f65a44', 0], // merge_patients
   [/^each working period must start before it ends$/, 'dbErrors.60e7e4d6', 0], // save_calendar
+  [/^give a fixed amount or a percentage, not both$/, 'dbErrors.58b7f7e2', 0], // add_expense, set_tax
   [/^hours must be a whole number between 1 and 12$/, 'dbErrors.3a0edf89', 0], // save_setting
   [/^no batch of this item yet: receive it instead$/, 'dbErrors.da9f4990', 0], // adjust_stock
   [/^no pharmacy store yet: create one under Stock$/, 'dbErrors.0bcbe76f', 0], // add_stock, dispense_prescription

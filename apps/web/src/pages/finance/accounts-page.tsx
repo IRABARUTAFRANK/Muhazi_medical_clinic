@@ -34,9 +34,12 @@ import {
   PAYE_MODES,
   SALARY_INTERVALS,
   SYSTEM_OUT_KINDS,
+  cleanPercent,
   intervalWords,
   deductionName,
   kindName,
+  rateWorkWords,
+  workedOut,
   useAccountsActions,
   useDeductions,
   useDailySalaryAlertCheck,
@@ -1073,7 +1076,9 @@ function SalaryForm({
                         : ''}
                     </span>
                   </span>
-                  {k.on && r.current?.employeeAmount != null && (
+                  {/* 0194: a deduction the accountant added (a loan, an advance) can end on a
+                      date, whether a percentage or a fixed amount */}
+                  {k.on && (!r.code || r.current?.employeeAmount != null) && (
                     <input
                       type="date"
                       aria-label={t('accounts.salaries.until')}
@@ -1231,33 +1236,49 @@ function ExpensesTab() {
   const chosen = choices.find((k) => k.id === kindId)
   const [label, setLabel] = useState('')
   const [amount, setAmount] = useState('')
+  // 0194: a one-off tax: a fixed amount, or a percentage of an amount typed here
+  const [how, setHow] = useState<'fixed' | 'percent'>('fixed')
+  const [rate, setRate] = useState('')
+  const [base, setBase] = useState('')
   const [method, setMethod] = useState<string>('cash')
   const [reference, setReference] = useState('')
   const [paidOn, setPaidOn] = useState(kigaliToday())
   const [note, setNote] = useState('')
   const [msg, setMsg] = useState<Msg | null>(null)
   const methodWord = (m: string) => t(`visit.payment.methods.${m}`, { defaultValue: m })
+  const pct = chosen?.code === 'tax' && how === 'percent'
+  const pRate = Number(rate)
+  const pBase = Number(base)
+  const rateOk = rate !== '' && Number.isFinite(pRate) && pRate > 0 && pRate <= 100
+  const baseOk = base !== '' && Number.isFinite(pBase) && pBase > 0
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     const a = Number(amount)
     if (!kindId) return setMsg({ ok: false, text: t('accounts.expenses.errors.kind') })
     if (label.trim().length < 2)
       return setMsg({ ok: false, text: t('accounts.expenses.errors.label') })
-    if (!Number.isFinite(a) || a <= 0)
+    if (pct && (!rateOk || !baseOk))
+      return setMsg({ ok: false, text: t('accounts.expenses.errors.rate') })
+    if (!pct && (!Number.isFinite(a) || a <= 0))
       return setMsg({ ok: false, text: t('accounts.expenses.errors.amount') })
     try {
       await addExpense.mutateAsync({
         label: label.trim(),
-        amount: Math.round(a),
+        amount: pct ? null : Math.round(a),
         method,
         reference,
         paidOn,
         note,
         kindId,
+        rate: pct ? pRate : null,
+        baseAmount: pct ? Math.round(pBase) : null,
       })
       setMsg({ ok: true, text: t('accounts.expenses.added') })
       setLabel('')
       setAmount('')
+      setRate('')
+      setBase('')
+      setHow('fixed')
       setReference('')
       setNote('')
     } catch (err) {
@@ -1296,11 +1317,14 @@ function ExpensesTab() {
       {msg && <Note msg={msg} />}
       <Panel i={1} icon={Receipt} tint="violet" title={t('accounts.expenses.add')}>
         <form onSubmit={submit} className="flex flex-col gap-3">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
+          <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-6">
             <Select
               label={t('accounts.expenses.kindField')}
               value={kindId}
-              onChange={(e) => setKindId(e.target.value)}
+              onChange={(e) => {
+                setKindId(e.target.value)
+                setHow('fixed')
+              }}
             >
               <option value="">{t('accounts.expenses.kindPh')}</option>
               {choices.map((k) => (
@@ -1320,12 +1344,40 @@ function ExpensesTab() {
               value={label}
               onChange={(e) => setLabel(e.target.value)}
             />
-            <Field
-              label={t('report.cols.amount')}
-              inputMode="numeric"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value.replace(/[^\d]/g, ''))}
-            />
+            {chosen?.code === 'tax' && (
+              <Select
+                label={t('accounts.taxes.howField')}
+                value={how}
+                onChange={(e) => setHow(e.target.value as 'fixed' | 'percent')}
+              >
+                <option value="fixed">{t('accounts.taxes.how.fixed')}</option>
+                <option value="percent">{t('accounts.taxes.how.percent')}</option>
+              </Select>
+            )}
+            {pct ? (
+              <>
+                <Field
+                  label={t('accounts.taxes.rateField')}
+                  inputMode="decimal"
+                  placeholder="15"
+                  value={rate}
+                  onChange={(e) => setRate(cleanPercent(e.target.value))}
+                />
+                <Field
+                  label={t('accounts.taxes.cols.base')}
+                  inputMode="numeric"
+                  value={base}
+                  onChange={(e) => setBase(e.target.value.replace(/[^\d]/g, '').slice(0, 12))}
+                />
+              </>
+            ) : (
+              <Field
+                label={t('report.cols.amount')}
+                inputMode="numeric"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value.replace(/[^\d]/g, ''))}
+              />
+            )}
             <Select
               label={t('report.cols.method')}
               value={method}
@@ -1345,6 +1397,15 @@ function ExpensesTab() {
               onChange={(e) => setPaidOn(e.target.value)}
             />
           </div>
+          {pct && rateOk && baseOk && (
+            <p className="text-ink m-0 text-[14px] font-semibold">
+              {t('accounts.taxes.payWork', {
+                rate: pRate,
+                base: formatRwf(Math.round(pBase)),
+                amount: formatRwf(workedOut(pBase, pRate)),
+              })}
+            </p>
+          )}
           {chosen?.description && (
             <p className="text-ink-3 m-0 text-[13px]">{chosen.description}</p>
           )}
@@ -1415,6 +1476,11 @@ function ExpensesTab() {
                     )}
                   >
                     {formatRwf(r.amount)}
+                    {r.rate != null && r.baseAmount != null && (
+                      <span className="text-ink-3 block text-[12px] font-normal">
+                        {rateWorkWords(t, r.rate, r.baseAmount)}
+                      </span>
+                    )}
                   </td>
                   <td className={tableCell}>
                     {methodWord(r.method)}

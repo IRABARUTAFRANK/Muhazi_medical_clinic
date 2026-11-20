@@ -10,6 +10,7 @@ import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
 import {
   AGENCIES,
+  cleanPercent,
   deductionName,
   rateWords,
   useAccountsActions,
@@ -22,11 +23,18 @@ import { cn } from '@/lib/utils'
 import { Note, PanelForm } from './accounts-kit'
 import { errText, type Msg } from './accounts-tabs'
 
+/** A share as typed (0194): a percentage takes a comma as the decimal mark ('0,5' → 0.5); a
+ *  fixed amount is whole francs. */
+const shareInput = (kind: 'rate' | 'amount', v: string) =>
+  kind === 'rate' ? cleanPercent(v) : v.replace(/[^\d]/g, '').slice(0, 9)
+
 /**
  * The deductions on salaries (0186): PAYE with its bands, RSSB pension, maternity, Mutuelle,
  * occupational hazards, RAMA, and any other the accountant adds (a loan, a union fee…). Each is
  * a percentage or a fixed amount, with the employee's share and the employer's share, on the
- * gross or on the net, valid from a date. An employee's salary ticks which apply.
+ * gross or on the net, valid from a date. An employee's salary ticks which apply. 0194: switching
+ * a share between Percentage and Fixed amount empties its number; a percentage takes a comma and
+ * is at most 100.
  */
 export function DeductionsPanel({ i }: { i: number }) {
   const { t } = useTranslation()
@@ -235,6 +243,12 @@ function DeductionForm({
       return onMsg({ ok: false, text: t('accounts.deductions.errors.rate') })
     if (!paye && emp == null && er == null)
       return onMsg({ ok: false, text: t('accounts.deductions.errors.rate') })
+    // 0194: a share in percent is at most 100 (said in plain words before the database refuses)
+    if (
+      (employeeKind === 'rate' && emp != null && emp > 100) ||
+      (employerKind === 'rate' && er != null && er > 100)
+    )
+      return onMsg({ ok: false, text: t('accounts.deductions.errors.percent') })
     if (!paye && !validFrom)
       return onMsg({ ok: false, text: t('accounts.deductions.errors.validFrom') })
     try {
@@ -321,27 +335,43 @@ function DeductionForm({
         </div>
         {!paye && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {kindSelect(employeeKind, setEmployeeKind, t('accounts.deductions.employeeKind'))}
+            {/* 0194: switching Percentage / Fixed amount empties the number, so 6 (%) never
+                silently becomes RWF 6 */}
+            {kindSelect(
+              employeeKind,
+              (v) => {
+                setEmployeeKind(v)
+                setEmployee('')
+              },
+              t('accounts.deductions.employeeKind'),
+            )}
             <Field
               label={t(
                 employeeKind === 'rate'
                   ? 'accounts.deductions.employeeRate'
                   : 'accounts.deductions.employeeAmount',
               )}
-              inputMode="decimal"
+              inputMode={employeeKind === 'rate' ? 'decimal' : 'numeric'}
               value={employee}
-              onChange={(e) => setEmployee(e.target.value.replace(/[^\d.]/g, ''))}
+              onChange={(e) => setEmployee(shareInput(employeeKind, e.target.value))}
             />
-            {kindSelect(employerKind, setEmployerKind, t('accounts.deductions.employerKind'))}
+            {kindSelect(
+              employerKind,
+              (v) => {
+                setEmployerKind(v)
+                setEmployer('')
+              },
+              t('accounts.deductions.employerKind'),
+            )}
             <Field
               label={t(
                 employerKind === 'rate'
                   ? 'accounts.deductions.employerRate'
                   : 'accounts.deductions.employerAmount',
               )}
-              inputMode="decimal"
+              inputMode={employerKind === 'rate' ? 'decimal' : 'numeric'}
               value={employer}
-              onChange={(e) => setEmployer(e.target.value.replace(/[^\d.]/g, ''))}
+              onChange={(e) => setEmployer(shareInput(employerKind, e.target.value))}
             />
           </div>
         )}

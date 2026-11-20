@@ -16,6 +16,7 @@ import {
   type CustomUnit,
   type Expense,
   type PeriodStatus,
+  type RateBase,
   type SalaryInterval,
 } from './accounts'
 import { chosen, inChosen, matches, searchText, selected, switchedOn } from './reports-options'
@@ -165,6 +166,12 @@ export interface TaxRow {
   dueOn: string
   /** The tax's amount, or what was paid; null for a tax worked out each time and not yet paid. */
   amount: number | null
+  /** 0194: a percentage period: the percentage, what it is taken from, the figure, the amount
+   *  worked out. */
+  rate: number | null
+  rateBase: RateBase | null
+  baseAmount: number | null
+  workedOut: number | null
   status: PeriodStatus
   paidOn: string | null
   paidAmount: number | null
@@ -198,6 +205,10 @@ export async function loadTaxRows(f: ReportFilterValues, ctx: ReportContext): Pr
           periodEnd: p.periodEnd,
           dueOn: p.dueOn,
           amount: p.amount,
+          rate: p.rate,
+          rateBase: p.rateBase,
+          baseAmount: p.baseAmount,
+          workedOut: p.workedOut,
           status: p.status,
           paidOn: p.paidOn,
           paidAmount: p.paidAmount,

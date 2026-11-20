@@ -7,7 +7,15 @@ import { Panel } from '@/components/dash/kit'
 import { tableCell, tableFirstCell, tableRow } from '@/components/dash/kit-style'
 import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import { Field } from '@/components/ui/field'
-import { TAX_KINDS, fetchTaxOverview, useFinanceSummary, type TaxKind } from '@/lib/api/accounts'
+import {
+  TAX_KINDS,
+  cleanPercent,
+  fetchTaxOverview,
+  useFinanceSummary,
+  useTaxOverview,
+  type TaxKind,
+} from '@/lib/api/accounts'
+import { kigaliToday } from '@/lib/clock'
 import { usePeriod } from '@/lib/period'
 import { cn } from '@/lib/utils'
 
@@ -18,7 +26,7 @@ import { cn } from '@/lib/utils'
  * withheld at source and what was paid on the taxes of kind "on the profit" in the period), the
  * other taxes paid by kind with their totals, then all taxes and the result after taxes paid.
  * Information for the accountant, who types the declared amount on the tax itself; nothing
- * here is booked.
+ * here is booked. 0194: the rate starts from the percentage saved on the income tax.
  */
 
 /** A tax's payments within the period: from the overviews of the years the period spans. */
@@ -56,7 +64,14 @@ export function TaxBasePanel({ i }: { i: number }) {
     queryKey: ['accounts', 'tax-base', period.from, period.to],
     queryFn: () => fetchTaxesPaid(period.from, period.to),
   })
-  const [rate, setRate] = useState('28')
+  // 0194: the rate starts from the one saved on the income tax (Percentage of the result before
+  // tax), so the system holds one 28%; a rate typed here is for this estimate only
+  const { data: overview } = useTaxOverview(Number(kigaliToday().slice(0, 4)))
+  const saved = (overview?.taxes ?? []).find(
+    (x) => x.kind === 'profit' && x.rateBase === 'result' && x.rate != null,
+  )
+  const [typed, setTyped] = useState<string | null>(null)
+  const rate = typed ?? (saved?.rate != null ? String(saved.rate) : '28')
   const r = Number(rate) || 0
   const result = s?.net ?? 0
   const estimate = Math.max(0, Math.round((result * r) / 100))
@@ -106,9 +121,13 @@ export function TaxBasePanel({ i }: { i: number }) {
                   label={t('accounts.taxBase.rate')}
                   inputMode="decimal"
                   value={rate}
-                  onChange={(e) => setRate(e.target.value.replace(/[^\d.]/g, '').slice(0, 5))}
+                  onChange={(e) => setTyped(cleanPercent(e.target.value))}
                 />
-                <p className="text-ink-3 m-0 pb-2 text-[13px]">{t('accounts.taxBase.rateHint')}</p>
+                <p className="text-ink-3 m-0 min-w-0 flex-1 pb-2 text-[13px]">
+                  {saved && typed == null
+                    ? t('accounts.taxBase.rateFrom', { name: saved.name })
+                    : t('accounts.taxBase.rateHint')}
+                </p>
               </div>
               <Group title={t('accounts.taxBase.incomeTax')}>
                 <Row label={t('accounts.taxBase.estimate', { rate: r })} value={estimate} strong />

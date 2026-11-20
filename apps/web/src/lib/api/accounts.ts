@@ -5,15 +5,18 @@
  * Live: salary_overview, set_salary, remove_salary, pay_salary, unpay_salary, skip_salary,
  * tax_overview, set_tax, remove_tax, pay_tax, unpay_tax, skip_tax, add_expense, void_expense,
  * expenses_list, finance_summary, finance_alert_check; 0185: money_kinds, set_money_kind,
- * remove_money_kind, add_income, void_income, incomes_list. Sample mode: figures kept in memory
- * for the session.
+ * remove_money_kind, add_income, void_income, incomes_list. 0194: a tax is a fixed amount, a
+ * percentage (of the result before tax, of all money in, or of an amount typed when paying) or
+ * typed when paying; a one-off tax on Other expenses may be a percentage too. Sample mode: figures
+ * kept in memory for the session.
  */
 import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { formatRwf } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
 import { kigaliToday } from '@/lib/clock'
-import { apiError, isMissingFunction } from './errors'
+import { NotReadyError, apiError, isMissingFunction } from './errors'
 
 export const SALARY_INTERVALS = [
   'weekly',
@@ -186,7 +189,22 @@ export interface TaxPeriod extends Omit<
   'amount' | 'gross' | 'net' | 'employerTotal' | 'deductions'
 > {
   amount: number | null
+  /** 0194: a percentage period: the percentage, what it is taken from, the figure (null before
+   *  the period starts, or for an amount typed when paying), the amount worked out; "so far"
+   *  while the period runs. A settled period keeps what it was worked out on. */
+  rate: number | null
+  rateBase: RateBase | null
+  baseAmount: number | null
+  workedOut: number | null
+  running: boolean
 }
+/** 0194: what a percentage is taken from: the result before tax of the period, all money in
+ *  during the period, or an amount typed when paying (what a payer paid on a tender). */
+export const RATE_BASES = ['result', 'money_in', 'typed'] as const
+export type RateBase = (typeof RATE_BASES)[number]
+/** 0194: how much a tax is, chosen in the tax window. */
+export const TAX_HOWS = ['fixed', 'percent', 'typed'] as const
+export type TaxHow = (typeof TAX_HOWS)[number]
 /** How a tax is computed (0187): on the profit, on the turnover, a fixed amount, withheld at
  *  source by a payer (a credit, not money out), or other. */
 export const TAX_KINDS = ['profit', 'turnover', 'fixed', 'withheld', 'other'] as const
@@ -196,6 +214,9 @@ export interface Tax {
   name: string
   kind: TaxKind
   amount: number | null
+  /** 0194: a percentage tax (amount null). */
+  rate: number | null
+  rateBase: RateBase | null
   intervalKind: SalaryInterval
   customEvery: number | null
   customUnit: CustomUnit | null
@@ -230,6 +251,41 @@ export interface TaxOverview {
   base: TaxBase
   today: string
 }
+
+type Words = (k: string, o?: Record<string, unknown>) => string
+/** 0194: the base a percentage starts from, by kind: Income tax → the result before tax, Flat
+ *  tax on sales → all money in, any other kind → an amount typed when paying. */
+export const defaultRateBase = (k: TaxKind): RateBase =>
+  k === 'profit' ? 'result' : k === 'turnover' ? 'money_in' : 'typed'
+/** 0194: a percentage when it has a rate, a fixed amount when it has an amount, else typed. */
+export const taxHowOf = (x: { amount: number | null; rate: number | null }): TaxHow =>
+  x.rate != null ? 'percent' : x.amount != null ? 'fixed' : 'typed'
+/** 0194: a percentage as typed: a comma is the decimal mark too ('0,5' → '0.5'); digits and one
+ *  dot, 7 characters at most. */
+export const cleanPercent = (s: string) => {
+  const v = s.replace(/,/g, '.').replace(/[^\d.]/g, '')
+  const dot = v.indexOf('.')
+  return (dot < 0 ? v : v.slice(0, dot + 1) + v.slice(dot + 1).replace(/\./g, '')).slice(0, 7)
+}
+/** 0194: the amount a percentage gives on a figure (a loss gives 0). */
+export const workedOut = (base: number, rate: number) =>
+  Math.round((Math.max(base, 0) * rate) / 100)
+/** 0194: "RWF 60,000", "28% of the result before tax" or "Typed when paying". */
+export const taxHowWords = (
+  t: Words,
+  x: { amount: number | null; rate: number | null; rateBase: RateBase | null },
+) =>
+  x.rate != null
+    ? t('accounts.taxes.rateWords', {
+        rate: x.rate,
+        base: t(`accounts.taxes.baseWords.${x.rateBase ?? 'typed'}`),
+      })
+    : x.amount != null
+      ? formatRwf(x.amount)
+      : t('accounts.taxes.how.typed')
+/** 0194: "28% of RWF 800,000". */
+export const rateWorkWords = (t: Words, rate: number, base: number) =>
+  t('accounts.taxes.rateWork', { rate, amount: formatRwf(base) })
 
 /** A kind of money in or out (0185). A code means built in: filled by the system, its name
  *  translated on the screens (kindName), only its description editable. */
@@ -285,6 +341,9 @@ export interface Expense {
   voided: boolean
   voidReason: string | null
   periodId: string | null
+  /** 0194: a one-off tax recorded as a percentage: the percentage and the amount it was taken from. */
+  rate?: number | null
+  baseAmount?: number | null
 }
 
 export interface FinanceSummary {
@@ -475,6 +534,8 @@ const sampleDeductions: Deductions = {
     sampleRule('d-cbhi', 'cbhi', 'Mutuelle de santé (CBHI)', 'rssb', 'net', 0.5, null),
     sampleRule('d-hazard', 'hazard', 'Occupational hazards', 'rssb', 'gross', null, 2),
     sampleRule('d-rama', 'rama', 'RSSB medical (RAMA)', 'rssb', 'gross', 7.5, 7.5, false),
+    // the accountant's own rule (no code): 1% of the gross, ticked per employee, with an end date
+    { ...sampleRule('d-union', 'x', 'Union fee', 'other', 'gross', 1, null, false), code: null },
   ],
   payeBands: [
     { validFrom: '2024-01-01', lower: 0, rate: 0 },
@@ -625,33 +686,153 @@ const sampleOverview = (year: number): SalaryOverview => ({
     { id: 'u-lab', name: 'Uwera Diane', role: 'lab_tech' },
   ],
 })
-const sampleTaxOverview = (year: number): TaxOverview => ({
-  year,
-  today: kigaliToday(),
-  taxes: [
-    {
+/** A date of the calendar (no time zone), as YYYY-MM-DD; month 0-based, day 0 = the month's last
+ *  day before. */
+const isoDay = (y: number, m: number, d: number) =>
+  new Date(Date.UTC(y, m, d)).toISOString().slice(0, 10)
+/**
+ * 0194: a tax's periods in sample mode, every `months` months from 1 January, due on the pay day
+ * of the month after (or the day after the period). A percentage is worked out from `base(k)`:
+ * paid when `paid(k)` says so (the figure kept), "so far" for the period holding today, nothing
+ * before a period starts; an amount typed when paying shows no figure until paid.
+ */
+const sampleRatePeriods = (
+  year: number,
+  months: number,
+  payDay: number | null,
+  rate: number,
+  rateBase: RateBase,
+  base: (k: number) => number,
+  paid: (k: number) => 'paid' | 'skipped' | null,
+): TaxPeriod[] => {
+  const today = kigaliToday()
+  const out: TaxPeriod[] = []
+  for (let k = 0; k * months < 12; k++) {
+    const m = (k + 1) * months
+    const start = isoDay(year, k * months, 1)
+    const end = isoDay(year, m, 0)
+    const last = Number(isoDay(year, m + 1, 0).slice(8))
+    const dueOn = payDay ? isoDay(year, m, Math.min(payDay, last)) : isoDay(year, m, 1)
+    const settled = start <= today ? paid(k) : null
+    const figure = start <= today && rateBase !== 'typed' ? base(k) : null
+    const calc = figure == null ? null : workedOut(figure, rate)
+    if (settled === 'paid') {
+      const kept = workedOut(base(k), rate)
+      const on = dueOn < today ? dueOn : today
+      out.push({
+        periodStart: start,
+        periodEnd: end,
+        dueOn,
+        amount: kept,
+        status: 'paid',
+        id: `tp-${year}-${k}`,
+        paidOn: on,
+        paidAmount: kept,
+        method: 'bank',
+        reference: `RRA-${year}-${k + 1}`,
+        note: null,
+        paidBy: 'Mugisha Samuel',
+        rate,
+        rateBase,
+        baseAmount: base(k),
+        workedOut: kept,
+        running: false,
+      })
+      continue
+    }
+    out.push({
+      periodStart: start,
+      periodEnd: end,
+      dueOn,
+      amount: settled === 'skipped' ? null : calc,
+      status: settled ?? (dueOn < today ? 'overdue' : 'due'),
+      id: settled ? `tp-${year}-${k}` : null,
+      paidOn: null,
+      paidAmount: null,
+      method: null,
+      reference: null,
+      note: settled === 'skipped' ? 'No tender paid this month' : null,
+      paidBy: settled ? 'Mugisha Samuel' : null,
+      rate: settled === 'skipped' ? null : rate,
+      rateBase: settled === 'skipped' ? null : rateBase,
+      baseAmount: settled === 'skipped' ? null : figure,
+      workedOut: settled === 'skipped' ? null : calc,
+      running: !settled && start <= today && today <= end,
+    })
+  }
+  return out
+}
+/** The paid total, the overdue periods and the next due date of a sample tax. */
+const sampleTax = (x: Omit<Tax, 'paidThisYear' | 'overdue' | 'nextDue'>): Tax => {
+  const open = x.periods.filter((p) => p.status === 'due' || p.status === 'overdue')
+  return {
+    ...x,
+    paidThisYear: x.periods.reduce(
+      (s, p) => s + (p.status === 'paid' ? (p.paidAmount ?? 0) : 0),
+      0,
+    ),
+    overdue: open.filter((p) => p.status === 'overdue').length,
+    nextDue: open.map((p) => p.dueOn).sort()[0] ?? null,
+  }
+}
+/** A fixed tax's periods (built like the salaries'), with no percentage. */
+const fixedPeriods = (periods: SalaryPeriod[]): TaxPeriod[] =>
+  periods.map((p) => ({
+    periodStart: p.periodStart,
+    periodEnd: p.periodEnd,
+    dueOn: p.dueOn,
+    amount: p.amount,
+    status: p.status,
+    id: p.id,
+    paidOn: p.paidOn,
+    paidAmount: p.paidAmount,
+    method: p.method,
+    reference: p.reference,
+    note: p.note,
+    paidBy: p.paidBy,
+    rate: null,
+    rateBase: null,
+    baseAmount: null,
+    workedOut: p.amount,
+    running: false,
+  }))
+const sampleTaxOverview = (year: number): TaxOverview => {
+  const thisYear = Number(kigaliToday().slice(0, 4))
+  // the income tax: 28% of each quarter's result before tax (the first two quarters paid)
+  const citBases = [2_900_000, 3_100_000, 2_750_000, 1_950_000]
+  const taxes: Tax[] = [
+    sampleTax({
       id: 'tx-cit',
-      name: 'Income tax (CIT) · quarterly prepayments',
+      name: 'Income tax (CIT)',
       kind: 'profit',
       amount: null,
+      rate: 28,
+      rateBase: 'result',
       intervalKind: 'quarterly',
       customEvery: null,
       customUnit: null,
-      anchorOn: `${year}-04-01`,
+      anchorOn: `${year}-01-01`,
       payDay: 30,
-      note: 'Last year’s tax ÷ turnover × the quarter’s turnover',
+      note: 'Quarterly prepayments',
       setAt: `${year}-01-05T09:00:00Z`,
       setBy: 'Mugisha Samuel',
-      periods: [],
-      paidThisYear: 2_100_000,
-      overdue: 0,
-      nextDue: `${year}-12-31`,
-    },
+      periods: sampleRatePeriods(
+        year,
+        3,
+        30,
+        28,
+        'result',
+        (k) => citBases[k] ?? 0,
+        (k) => (k < 2 || year < thisYear ? 'paid' : null),
+      ),
+    }),
     {
       id: 'tx-paye',
       name: 'PAYE (salaries)',
       kind: 'other',
       amount: 420000,
+      rate: null,
+      rateBase: null,
       intervalKind: 'monthly',
       customEvery: null,
       customUnit: null,
@@ -660,7 +841,7 @@ const sampleTaxOverview = (year: number): TaxOverview => ({
       note: null,
       setAt: `${year}-01-05T09:00:00Z`,
       setBy: 'Mugisha Samuel',
-      periods: samplePeriods(`${year}-01-01`, year, 420000, 9),
+      periods: fixedPeriods(samplePeriods(`${year}-01-01`, year, 420000, 9)),
       paidThisYear: 420000 * 9,
       overdue: 1,
       nextDue: null,
@@ -670,6 +851,8 @@ const sampleTaxOverview = (year: number): TaxOverview => ({
       name: 'VAT',
       kind: 'turnover',
       amount: null,
+      rate: null,
+      rateBase: null,
       intervalKind: 'quarterly',
       customEvery: null,
       customUnit: null,
@@ -688,6 +871,8 @@ const sampleTaxOverview = (year: number): TaxOverview => ({
       name: 'Trading licence',
       kind: 'fixed',
       amount: 60000,
+      rate: null,
+      rateBase: null,
       intervalKind: 'yearly',
       customEvery: null,
       customUnit: null,
@@ -701,22 +886,60 @@ const sampleTaxOverview = (year: number): TaxOverview => ({
       overdue: 0,
       nextDue: null,
     },
-  ],
-  base: {
-    moneyIn: 58_300_000,
-    netRevenue: 56_020_000,
-    otherIncome: 2_280_000,
-    salaries: 21_600_000,
-    statutory: 2_700_000,
-    remittances: 4_100_000,
-    otherExpenses: 4_900_000,
-    stockBought: 13_400_000,
-    expenses: 46_700_000,
-    resultBeforeTax: 11_600_000,
-    taxesPaid: 5_940_000,
-    paidByKind: { profit: 2_100_000, other: 3_780_000, fixed: 60_000 },
-  },
-})
+    // a tender: 3% of what the payer paid, typed when paying (March: 3% of RWF 1,500,000)
+    sampleTax({
+      id: 'tx-tender',
+      name: 'Tender 3%',
+      kind: 'withheld',
+      amount: null,
+      rate: 3,
+      rateBase: 'typed',
+      intervalKind: 'monthly',
+      customEvery: null,
+      customUnit: null,
+      anchorOn: `${year}-01-01`,
+      payDay: null,
+      note: 'RSSB tender',
+      setAt: `${year}-01-05T09:00:00Z`,
+      setBy: 'Mugisha Samuel',
+      periods: sampleRatePeriods(
+        year,
+        1,
+        null,
+        3,
+        'typed',
+        () => 1_500_000,
+        (k) => {
+          const end = isoDay(year, k + 1, 0)
+          if (k === 2) return 'paid'
+          return end < kigaliToday() ? 'skipped' : null
+        },
+      ),
+    }),
+  ]
+  const paidByKind: Partial<Record<TaxKind, number>> = {}
+  for (const x of taxes) paidByKind[x.kind] = (paidByKind[x.kind] ?? 0) + x.paidThisYear
+  return {
+    year,
+    today: kigaliToday(),
+    taxes,
+    base: {
+      moneyIn: 58_300_000,
+      netRevenue: 56_020_000,
+      otherIncome: 2_280_000,
+      salaries: 21_600_000,
+      statutory: 2_700_000,
+      remittances: 4_100_000,
+      otherExpenses: 4_900_000,
+      stockBought: 13_400_000,
+      expenses: 46_700_000,
+      resultBeforeTax: 11_600_000,
+      // the taxes paid are money out, the tender's credit is not
+      taxesPaid: taxes.reduce((s, x) => s + (x.kind === 'withheld' ? 0 : x.paidThisYear), 0),
+      paidByKind,
+    },
+  }
+}
 const sampleKinds: MoneyKind[] = [
   {
     id: 'k-bills',
@@ -911,6 +1134,26 @@ const sampleExpenses: Expense[] = [
     voided: false,
     voidReason: null,
     periodId: 'tp-9',
+  },
+  // 0194: a one-off tax recorded as a percentage: 15% of RWF 300,000
+  {
+    id: 'e-4',
+    kind: 'tax',
+    kindId: 'k-tax',
+    kindCode: 'tax',
+    kindName: 'Taxes',
+    label: 'Withholding on a supplier',
+    amount: 45000,
+    method: 'bank',
+    reference: 'RRA-WHT',
+    note: null,
+    paidOn: kigaliToday(),
+    paidBy: 'Mugisha Samuel',
+    voided: false,
+    voidReason: null,
+    periodId: null,
+    rate: 15,
+    baseAmount: 300000,
   },
 ]
 const sampleSummary = (from: string, to: string): FinanceSummary => ({
@@ -1155,7 +1398,15 @@ const toTaxPeriod = (x: Partial<TaxPeriod>): TaxPeriod => ({
   reference: x.reference ?? null,
   note: x.note ?? null,
   paidBy: x.paidBy ?? null,
+  // 0194 (a database before it: all null, read as a fixed amount or typed when paying)
+  rate: numOrNull(x.rate),
+  rateBase: toRateBase(x.rateBase),
+  baseAmount: numOrNull(x.baseAmount),
+  workedOut: numOrNull(x.workedOut),
+  running: x.running === true,
 })
+const toRateBase = (v: unknown): RateBase | null =>
+  RATE_BASES.includes(v as RateBase) ? (v as RateBase) : null
 
 const toTaxBase = (b: Partial<TaxBase>): TaxBase => ({
   moneyIn: num(b.moneyIn),
@@ -1190,6 +1441,9 @@ export async function fetchTaxOverview(year: number, sample = !supabase): Promis
         name: String(x.name ?? ''),
         kind: (TAX_KINDS.includes(x.kind as TaxKind) ? x.kind : 'other') as TaxKind,
         amount: numOrNull(x.amount),
+        // 0194: a percentage (a rate with an unknown base: taken as typed when paying)
+        rate: numOrNull(x.rate),
+        rateBase: x.rate == null ? null : (toRateBase(x.rateBase) ?? 'typed'),
         intervalKind: (x.intervalKind ?? 'monthly') as SalaryInterval,
         customEvery: numOrNull(x.customEvery),
         customUnit: (x.customUnit ?? null) as CustomUnit | null,
@@ -1305,6 +1559,8 @@ export async function fetchExpenses(
     voided: !!e.voided,
     voidReason: e.voidReason ?? null,
     periodId: e.periodId ?? null,
+    rate: numOrNull(e.rate),
+    baseAmount: numOrNull(e.baseAmount),
   }))
 }
 
@@ -1377,10 +1633,13 @@ export function useIncomes(from: string, to: string, enabled = true) {
 }
 
 /* ---------------------------------------------------------------- actions */
-/** A tax's settings (0184): the amount null when worked out each time. */
+/** A tax's settings (0184): the amount null when worked out each time; 0194: or a percentage
+ *  (rate) of what rateBase says, the amount then null. */
 export interface TaxInput {
   kind: TaxKind
   amount: number | null
+  rate: number | null
+  rateBase: RateBase | null
   interval: SalaryInterval
   customEvery?: number | null
   customUnit?: CustomUnit | null
@@ -1431,6 +1690,8 @@ export function useAccountsActions() {
   const rpc = async (fn: string, args: Record<string, unknown>) => {
     if (!supabase) return null
     const { data, error } = await supabase.rpc(fn, args)
+    // 0194: a database without the latest update (a percentage sent to the old set_tax…)
+    if (error && isMissingFunction(error)) throw new NotReadyError()
     if (error) throw apiError(error)
     return data
   }
@@ -1589,6 +1850,8 @@ export function useAccountsActions() {
         p_custom_every: i.interval === 'custom' ? (i.customEvery ?? null) : null,
         p_custom_unit: i.interval === 'custom' ? (i.customUnit ?? null) : null,
         p_kind: i.kind,
+        // 0194: sent only for a percentage, so a fixed or typed tax still saves on an older database
+        ...(i.rate != null ? { p_rate: i.rate, p_rate_base: i.rateBase } : {}),
       }),
     onSuccess: refresh,
   })
@@ -1605,6 +1868,8 @@ export function useAccountsActions() {
       method: string
       reference: string
       note: string
+      /** 0194: a percentage: the figure it is taken from, as shown (or typed). */
+      baseAmount?: number | null
     }) =>
       rpc('pay_tax', {
         p_tax: i.taxId,
@@ -1614,6 +1879,7 @@ export function useAccountsActions() {
         p_method: i.method,
         p_reference: i.reference || null,
         p_note: i.note || null,
+        ...(i.baseAmount != null ? { p_base_amount: i.baseAmount } : {}),
       }),
     onSuccess: refresh,
   })
@@ -1630,23 +1896,28 @@ export function useAccountsActions() {
   const addExpense = useMutation({
     mutationFn: (i: {
       label: string
-      amount: number
+      /** null for a percentage (0194): the database works the amount out. */
+      amount: number | null
       method: string
       reference: string
       paidOn: string
       note: string
       /** 0185: the kind of money out chosen from the list (a one-off tax: the Taxes kind). */
       kindId: string
+      /** 0194: a one-off tax as a percentage of an amount typed. */
+      rate?: number | null
+      baseAmount?: number | null
     }) =>
       rpc('add_expense', {
         p_label: i.label,
-        p_amount: i.amount,
+        p_amount: i.rate != null ? null : i.amount,
         p_method: i.method,
         p_reference: i.reference || null,
         p_paid_on: i.paidOn,
         p_note: i.note || null,
         p_kind: 'other',
         p_kind_id: i.kindId,
+        ...(i.rate != null ? { p_rate: i.rate, p_base_amount: i.baseAmount ?? null } : {}),
       }),
     onSuccess: refresh,
   })

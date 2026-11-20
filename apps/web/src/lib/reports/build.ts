@@ -9,6 +9,7 @@ import type { LabOrder, LabSummary } from '@/lib/api/lab'
 import { isLowStock, type StockItem, type StockMovement, type StockSales } from '@/lib/api/stock'
 import {
   intervalWords,
+  taxHowWords,
   type FinanceSummary,
   type SalaryOverview,
   type SalaryPeriod,
@@ -1146,7 +1147,8 @@ export function taxesReport(
             columns: [
               { label: t('accounts.taxes.cols.tax'), pdfWidth: '24%' },
               { label: t('accounts.taxes.kindField'), nowrap: true },
-              { label: t('accounts.taxes.cols.amount'), kind: 'money' },
+              // 0194: how much, in words: "RWF 60,000", "28% of the result before tax"…
+              { label: t('accounts.taxes.cols.howMuch') },
               { label: t('accounts.salaries.cols.interval') },
               { label: t('accounts.taxes.anchor'), kind: 'date' },
               { label: t('accounts.salaries.cols.paidYear'), kind: 'money' },
@@ -1155,7 +1157,7 @@ export function taxesReport(
             rows: o.taxes.map((x) => [
               x.name,
               t(`accounts.taxes.kinds.${x.kind}`),
-              x.amount,
+              taxHowWords(t, x),
               intervalWords(t, x.intervalKind, x.customEvery, x.customUnit),
               x.anchorOn,
               x.paidThisYear,

@@ -13,14 +13,24 @@ import { Select } from '@/components/ui/select'
 import { SidePanel } from '@/components/ui/side-panel'
 import {
   CUSTOM_UNITS,
+  RATE_BASES,
   SALARY_INTERVALS,
+  TAX_HOWS,
   TAX_KINDS,
+  cleanPercent,
+  defaultRateBase,
   intervalWords,
+  rateWorkWords,
+  taxHowOf,
+  taxHowWords,
   useAccountsActions,
   useTaxOverview,
+  workedOut,
   type CustomUnit,
+  type RateBase,
   type SalaryInterval,
   type Tax,
+  type TaxHow,
   type TaxKind,
   type TaxPeriod,
 } from '@/lib/api/accounts'
@@ -36,10 +46,12 @@ import { TaxBasePanel } from './tax-base-panel'
 
 /**
  * Taxes (0184): the taxes the clinic pays, each with its schedule (monthly, quarterly, yearly,
- * custom…) and every period of the year marked paid or not, like the salaries. A tax's amount
- * is fixed, or left empty when the accountant works it out and types it when paying. A tax
- * paid is an expense of kind tax. The list is compact: one row per tax, one View button; the
- * tax's side panel holds the periods and every action.
+ * custom…) and every period of the year marked paid or not, like the salaries. How much (0194):
+ * a fixed amount, a percentage (of the result before tax of the period, of all money in during
+ * the period, or of an amount typed when paying — worked out by the database for each period,
+ * "so far" while it runs, the figure correctable when paying), or typed when paying. A tax paid
+ * is an expense of kind tax (a tax kept by the payer is a credit). The list is compact: one row
+ * per tax, one View button; the tax's side panel holds the periods and every action.
  */
 export function TaxesTab({ user, initialYear }: { user: StaffUser; initialYear?: number }) {
   const { t } = useTranslation()
@@ -105,7 +117,7 @@ export function TaxesTab({ user, initialYear }: { user: StaffUser; initialYear?:
               <thead className="bg-surface">
                 <tr className="border-border border-b">
                   <th className={tableHead}>{t('accounts.taxes.cols.tax')}</th>
-                  <th className={cn(tableHead, 'text-right')}>{t('accounts.taxes.cols.amount')}</th>
+                  <th className={tableHead}>{t('accounts.taxes.cols.howMuch')}</th>
                   <th className={tableHead}>{t('accounts.salaries.cols.nextDue')}</th>
                   <th className={cn(tableHead, 'text-right')}>
                     {t('accounts.salaries.cols.paidYear')}
@@ -115,61 +127,77 @@ export function TaxesTab({ user, initialYear }: { user: StaffUser; initialYear?:
                 </tr>
               </thead>
               <tbody>
-                {taxes.map((x, i) => (
-                  <tr key={x.id} className={tableRow}>
-                    <td className={tableFirstCell}>
-                      {(i === 0 || taxes[i - 1]?.kind !== x.kind) && (
-                        <span className="text-violet mb-0.5 block text-[11px] font-semibold tracking-wide uppercase">
-                          {t(`accounts.taxes.kinds.${x.kind}`)}
+                {taxes.map((x, i) => {
+                  // 0194: a percentage tax: the amount of the next period to pay, from its figures
+                  const next =
+                    x.rate != null && x.nextDue
+                      ? x.periods.find(
+                          (p) =>
+                            p.dueOn === x.nextDue && (p.status === 'due' || p.status === 'overdue'),
+                        )
+                      : undefined
+                  return (
+                    <tr key={x.id} className={tableRow}>
+                      <td className={tableFirstCell}>
+                        {(i === 0 || taxes[i - 1]?.kind !== x.kind) && (
+                          <span className="text-violet mb-0.5 block text-[11px] font-semibold tracking-wide uppercase">
+                            {t(`accounts.taxes.kinds.${x.kind}`)}
+                          </span>
+                        )}
+                        {x.name}
+                        {x.note && <span className="text-ink-3 block text-[12px]">{x.note}</span>}
+                      </td>
+                      <td className={cn(tableCell, 'min-w-44 font-semibold tabular-nums')}>
+                        {taxHowWords(t, x)}
+                        <span className="text-ink-3 block text-[12px] font-normal">
+                          {intervalWords(t, x.intervalKind, x.customEvery, x.customUnit)}
                         </span>
-                      )}
-                      {x.name}
-                      {x.note && <span className="text-ink-3 block text-[12px]">{x.note}</span>}
-                    </td>
-                    <td className={cn(tableCell, 'text-right font-semibold tabular-nums')}>
-                      {x.amount == null ? t('accounts.taxes.selfAssessed') : formatRwf(x.amount)}
-                      <span className="text-ink-3 block text-[12px] font-normal">
-                        {intervalWords(t, x.intervalKind, x.customEvery, x.customUnit)}
-                      </span>
-                    </td>
-                    <td className={cn(tableCell, 'whitespace-nowrap')}>
-                      {x.nextDue ? formatDate(new Date(x.nextDue)) : '—'}
-                      {x.overdue > 0 && (
-                        <Badge tone="red" className="ml-2">
-                          {t('accounts.salaries.overdueCount', { count: x.overdue })}
-                        </Badge>
-                      )}
-                    </td>
-                    <td className={cn(tableCell, 'text-right tabular-nums')}>
-                      {formatRwf(x.paidThisYear)}
-                    </td>
-                    <td className={tableCell}>
-                      <span className="flex flex-wrap gap-1">
-                        {STATUSES.map((s) => {
-                          const n = x.periods.filter((p) => p.status === s).length
-                          return n > 0 ? (
-                            <Badge key={s} tone={STATUS_TONE[s]}>
-                              {n} {t(`accounts.status.${s}`)}
-                            </Badge>
-                          ) : null
-                        })}
-                      </span>
-                    </td>
-                    <td className={cn(tableCell, 'text-right whitespace-nowrap')}>
-                      <Button
-                        size="sm"
-                        variant="tint-blue"
-                        onClick={() => {
-                          setMsg(null)
-                          setWho(x.id)
-                        }}
-                      >
-                        <Eye size={14} aria-hidden="true" />
-                        {t('accounts.salaries.view')}
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className={cn(tableCell, 'whitespace-nowrap')}>
+                        {x.nextDue ? formatDate(new Date(x.nextDue)) : '—'}
+                        {x.overdue > 0 && (
+                          <Badge tone="red" className="ml-2">
+                            {t('accounts.salaries.overdueCount', { count: x.overdue })}
+                          </Badge>
+                        )}
+                        {next?.amount != null && (
+                          <span className="text-ink-2 block text-[12px] tabular-nums">
+                            {formatRwf(next.amount)}
+                            {next.running ? ` ${t('accounts.taxes.soFar')}` : ''}
+                          </span>
+                        )}
+                      </td>
+                      <td className={cn(tableCell, 'text-right tabular-nums')}>
+                        {formatRwf(x.paidThisYear)}
+                      </td>
+                      <td className={tableCell}>
+                        <span className="flex flex-wrap gap-1">
+                          {STATUSES.map((s) => {
+                            const n = x.periods.filter((p) => p.status === s).length
+                            return n > 0 ? (
+                              <Badge key={s} tone={STATUS_TONE[s]}>
+                                {n} {t(`accounts.status.${s}`)}
+                              </Badge>
+                            ) : null
+                          })}
+                        </span>
+                      </td>
+                      <td className={cn(tableCell, 'text-right whitespace-nowrap')}>
+                        <Button
+                          size="sm"
+                          variant="tint-blue"
+                          onClick={() => {
+                            setMsg(null)
+                            setWho(x.id)
+                          }}
+                        >
+                          <Eye size={14} aria-hidden="true" />
+                          {t('accounts.salaries.view')}
+                        </Button>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -289,10 +317,8 @@ function TaxPanel({
         {tax && !editing && (
           <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-2 text-[14px] sm:grid-cols-3">
             <div>
-              <dt className="text-ink-3 text-[12px]">{t('accounts.taxes.cols.amount')}</dt>
-              <dd className="m-0 font-semibold tabular-nums">
-                {tax.amount == null ? t('accounts.taxes.selfAssessed') : formatRwf(tax.amount)}
-              </dd>
+              <dt className="text-ink-3 text-[12px]">{t('accounts.taxes.cols.howMuch')}</dt>
+              <dd className="m-0 font-semibold tabular-nums">{taxHowWords(t, tax)}</dd>
             </div>
             <div>
               <dt className="text-ink-3 text-[12px]">{t('accounts.salaries.cols.interval')}</dt>
@@ -329,7 +355,13 @@ function TaxPanel({
           />
         )}
         {paying && tax && !editing && (
-          <TaxPayForm tax={tax} period={paying} onClose={() => setPaying(null)} onMsg={onMsg} />
+          <TaxPayForm
+            key={paying.periodStart}
+            tax={tax}
+            period={paying}
+            onClose={() => setPaying(null)}
+            onMsg={onMsg}
+          />
         )}
         {tax && !editing && (
           <div className="overflow-x-auto">
@@ -360,6 +392,27 @@ function TaxPanel({
                         : ''
                   const here = paying?.periodStart === x.periodStart
                   const amount = x.paidAmount ?? x.amount
+                  // 0194: how a percentage period was (or is being) worked out
+                  const work =
+                    x.rate == null
+                      ? []
+                      : x.baseAmount != null && x.baseAmount < 0 && !x.id
+                        ? [t('accounts.taxes.loss')]
+                        : [
+                            // no figure yet (not started, or typed when paying): the amount is "—"
+                            x.baseAmount != null
+                              ? rateWorkWords(t, x.rate, x.baseAmount) +
+                                (x.running ? ` · ${t('accounts.taxes.soFar')}` : '')
+                              : null,
+                            x.status === 'paid' &&
+                            x.paidAmount != null &&
+                            x.workedOut != null &&
+                            x.paidAmount !== x.workedOut
+                              ? t('accounts.taxes.workedOutWas', {
+                                  amount: formatRwf(x.workedOut),
+                                })
+                              : null,
+                          ].filter((w): w is string => !!w)
                   return (
                     <tr key={x.periodStart} className={cn(tableRow, here && 'bg-yellow-bg')}>
                       <td className={cn(tableFirstCell, 'whitespace-nowrap')}>
@@ -369,7 +422,14 @@ function TaxPanel({
                         {formatDate(new Date(x.dueOn))}
                       </td>
                       <td className={cn(tableCell, 'text-right tabular-nums')}>
-                        {amount == null ? '—' : formatRwf(amount)}
+                        <span className="whitespace-nowrap">
+                          {amount == null ? '—' : formatRwf(amount)}
+                        </span>
+                        {work.map((w) => (
+                          <span key={w} className="text-ink-3 block text-[12px]">
+                            {w}
+                          </span>
+                        ))}
                       </td>
                       <td className={tableCell}>
                         <Badge tone={STATUS_TONE[x.status]}>
@@ -430,7 +490,15 @@ function TaxForm({
   const confirm = useConfirm()
   const [name, setName] = useState(current?.name ?? '')
   const [kind, setKind] = useState<TaxKind>(current?.kind ?? 'other')
+  // 0194: how much: a fixed amount (a new tax starts there), a percentage, or typed when paying
+  const [how, setHow] = useState<TaxHow>(current ? taxHowOf(current) : 'fixed')
   const [amount, setAmount] = useState(current?.amount != null ? String(current.amount) : '')
+  const [rate, setRate] = useState(current?.rate != null ? String(current.rate) : '')
+  // what the percentage is taken from: follows the kind until the accountant chooses
+  const [rateBase, setRateBase] = useState<RateBase>(
+    current?.rateBase ?? defaultRateBase(current?.kind ?? 'other'),
+  )
+  const [baseTouched, setBaseTouched] = useState(current?.rateBase != null)
   const [interval, setInterval] = useState<SalaryInterval>(current?.intervalKind ?? 'monthly')
   const [every, setEvery] = useState(current?.customEvery ? String(current.customEvery) : '')
   const [unit, setUnit] = useState<CustomUnit>(current?.customUnit ?? 'days')
@@ -440,9 +508,12 @@ function TaxForm({
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (name.trim().length < 2) return onMsg({ ok: false, text: t('accounts.taxes.errors.name') })
-    const a = amount === '' ? null : Number(amount)
-    if (a != null && (!Number.isFinite(a) || a < 0))
+    const a = Number(amount)
+    if (how === 'fixed' && (amount === '' || !Number.isFinite(a) || a < 0))
       return onMsg({ ok: false, text: t('accounts.taxes.errors.amount') })
+    const r = Number(rate)
+    if (how === 'percent' && (rate === '' || !Number.isFinite(r) || r <= 0 || r > 100))
+      return onMsg({ ok: false, text: t('accounts.taxes.errors.rate') })
     if (!anchor) return onMsg({ ok: false, text: t('accounts.taxes.errors.anchor') })
     const n = Number(every)
     if (interval === 'custom' && (!Number.isInteger(n) || n < 1 || n > 365))
@@ -452,7 +523,9 @@ function TaxForm({
         id: current?.id ?? null,
         name: name.trim(),
         kind,
-        amount: a == null ? null : Math.round(a),
+        amount: how === 'fixed' ? Math.round(a) : null,
+        rate: how === 'percent' ? r : null,
+        rateBase: how === 'percent' ? rateBase : null,
         interval,
         customEvery: interval === 'custom' ? n : null,
         customUnit: interval === 'custom' ? unit : null,
@@ -504,7 +577,11 @@ function TaxForm({
           <Select
             label={t('accounts.taxes.kindField')}
             value={kind}
-            onChange={(e) => setKind(e.target.value as TaxKind)}
+            onChange={(e) => {
+              const k = e.target.value as TaxKind
+              setKind(k)
+              if (!baseTouched) setRateBase(defaultRateBase(k))
+            }}
           >
             {TAX_KINDS.map((k) => (
               <option key={k} value={k}>
@@ -515,13 +592,71 @@ function TaxForm({
           <p className="text-ink-3 m-0 text-[13px] sm:col-span-2">
             {t(`accounts.taxes.kindHints.${kind}`)} {t('accounts.taxes.kindRule')}
           </p>
-          <Field
-            label={t('accounts.taxes.amountField')}
-            inputMode="numeric"
-            placeholder={t('accounts.taxes.amountPh')}
-            value={amount}
-            onChange={(e) => setAmount(e.target.value.replace(/[^\d]/g, ''))}
-          />
+          <div className="border-border bg-card flex flex-col gap-2 rounded-md border p-3 sm:col-span-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Select
+                label={t('accounts.taxes.howField')}
+                value={how}
+                onChange={(e) => setHow(e.target.value as TaxHow)}
+              >
+                {TAX_HOWS.map((h) => (
+                  <option key={h} value={h}>
+                    {t(`accounts.taxes.how.${h}`)}
+                  </option>
+                ))}
+              </Select>
+              {how === 'fixed' && (
+                <Field
+                  label={t('accounts.taxes.fixedField')}
+                  inputMode="numeric"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value.replace(/[^\d]/g, '').slice(0, 9))}
+                />
+              )}
+              {how === 'percent' && (
+                <Field
+                  label={t('accounts.taxes.rateField')}
+                  inputMode="decimal"
+                  placeholder="28"
+                  value={rate}
+                  onChange={(e) => setRate(cleanPercent(e.target.value))}
+                />
+              )}
+              {how === 'percent' && (
+                <Select
+                  wrapperClassName="sm:col-span-2"
+                  label={t('accounts.taxes.baseField')}
+                  value={rateBase}
+                  onChange={(e) => {
+                    setRateBase(e.target.value as RateBase)
+                    setBaseTouched(true)
+                  }}
+                >
+                  {RATE_BASES.map((b) => (
+                    <option key={b} value={b}>
+                      {t(`accounts.taxes.bases.${b}`)}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </div>
+            <p className="text-ink-3 m-0 text-[13px]">{t(`accounts.taxes.howHints.${how}`)}</p>
+            {how === 'percent' && (
+              <p className="text-ink-3 m-0 text-[13px]">
+                {t(`accounts.taxes.baseHints.${rateBase}`)}
+              </p>
+            )}
+            {how === 'percent' && Number(rate) > 0 && (
+              <p className="text-ink m-0 text-[14px] font-semibold">
+                {rateBase === 'typed'
+                  ? t('accounts.taxes.rateMeansTyped', { rate: Number(rate) })
+                  : t('accounts.taxes.rateMeans', {
+                      rate: Number(rate),
+                      base: t(`accounts.taxes.baseWords.${rateBase}`),
+                    })}
+              </p>
+            )}
+          </div>
           <Select
             label={t('accounts.salaries.cols.interval')}
             value={interval}
@@ -604,14 +739,37 @@ function TaxPayForm({
 }) {
   const { t } = useTranslation()
   const { payTax } = useAccountsActions()
+  // 0194: a percentage: the figure it is taken from (the period's own, or typed), the working,
+  // and the amount paid following the amount worked out until the accountant types over it
+  const rate = tax.rate
+  const pct = rate != null
+  const figure = period.baseAmount
+  const [base, setBase] = useState(figure == null ? '' : String(figure))
   const [paidOn, setPaidOn] = useState(kigaliToday())
   const [amount, setAmount] = useState(period.amount == null ? '' : String(period.amount))
+  const [amountTyped, setAmountTyped] = useState(false)
   const [method, setMethod] = useState<string>('bank')
   const [reference, setReference] = useState('')
   const [note, setNote] = useState('')
+  const baseNum = base === '' ? null : Number(base)
+  const calc = pct && baseNum != null && Number.isFinite(baseNum) ? workedOut(baseNum, rate) : null
+  const changeBase = (v: string) => {
+    setBase(v)
+    if (!amountTyped && rate != null) setAmount(v === '' ? '' : String(workedOut(Number(v), rate)))
+  }
+  const baseHint = !pct
+    ? null
+    : figure == null || tax.rateBase === 'typed'
+      ? t('accounts.taxes.baseToType')
+      : base !== String(figure)
+        ? t('accounts.taxes.baseChanged', { amount: formatRwf(figure) })
+        : t('accounts.taxes.baseFromFigures') +
+          (period.running ? ` · ${t('accounts.taxes.soFar')}` : '')
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     const a = Number(amount)
+    if (pct && base === '' && amount === '')
+      return onMsg({ ok: false, text: t('accounts.taxes.errors.base') })
     if (!amount || !Number.isFinite(a) || a <= 0)
       return onMsg({ ok: false, text: t('accounts.taxes.errors.paid') })
     try {
@@ -623,10 +781,15 @@ function TaxPayForm({
         method,
         reference,
         note,
+        // the figure as shown (a loss is left to the database's own figure)
+        baseAmount: pct && baseNum != null && baseNum >= 0 ? Math.round(baseNum) : null,
       })
       onMsg({
         ok: true,
-        text: t('accounts.taxes.paidOk', { name: tax.name, date: formatDate(new Date(paidOn)) }),
+        text: t(tax.kind === 'withheld' ? 'accounts.taxes.creditOk' : 'accounts.taxes.paidOk', {
+          name: tax.name,
+          date: formatDate(new Date(paidOn)),
+        }),
       })
       onClose()
     } catch (err) {
@@ -649,12 +812,37 @@ function TaxPayForm({
             max={kigaliToday()}
             onChange={(e) => setPaidOn(e.target.value)}
           />
+          {pct && (
+            <div className="flex flex-col gap-1">
+              <Field
+                label={t('accounts.taxes.cols.base')}
+                inputMode="numeric"
+                value={base}
+                onChange={(e) => changeBase(e.target.value.replace(/[^\d]/g, '').slice(0, 12))}
+              />
+              {baseHint && <span className="text-ink-3 text-[12px]">{baseHint}</span>}
+            </div>
+          )}
+          {pct && baseNum != null && Number.isFinite(baseNum) && (
+            <p className="text-ink m-0 self-center text-[14px] font-semibold sm:col-span-2">
+              {baseNum < 0
+                ? t('accounts.taxes.payLoss')
+                : t('accounts.taxes.payWork', {
+                    rate,
+                    base: formatRwf(baseNum),
+                    amount: formatRwf(calc ?? 0),
+                  })}
+            </p>
+          )}
           <Field
             label={t('accounts.salaries.paidAmount')}
             inputMode="numeric"
             placeholder={period.amount == null ? t('accounts.taxes.amountYouWorkedOut') : undefined}
             value={amount}
-            onChange={(e) => setAmount(e.target.value.replace(/[^\d]/g, ''))}
+            onChange={(e) => {
+              setAmount(e.target.value.replace(/[^\d]/g, ''))
+              setAmountTyped(true)
+            }}
           />
           <Select
             label={t('report.cols.method')}

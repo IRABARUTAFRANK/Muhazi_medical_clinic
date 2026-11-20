@@ -8646,7 +8646,12 @@
     "771c8e56": "Le nombre de jours est entre 1 et 365.",
     "4229ad39": "Rien n’a été donné ni fait sur cet ordre : il n’y a rien à défaire.",
     "6de6c2e4": "Seule la personne qui l’a donné (ou le gérant) peut le défaire.",
-    "38396af5": "Un ordre donné un autre jour est défait par le gérant."
+    "38396af5": "Un ordre donné un autre jour est défait par le gérant.",
+    "58b7f7e2": "Indiquez un montant fixe ou un pourcentage, pas les deux.",
+    "0b8d9c3f": "Le pourcentage doit être supérieur à 0 et au plus 100.",
+    "825d1537": "Un pourcentage porte sur l’argent entré, le résultat avant impôts ou un montant saisi au paiement.",
+    "ce374193": "Saisissez le montant sur lequel porte le pourcentage.",
+    "5987f22e": "Le montant sur lequel porte le pourcentage doit être zéro ou plus."
   },
   "panel": {
     "close": "Fermer",
@@ -9328,7 +9333,8 @@
       "people": "Employés",
       "withheld": "Retenu aux employés",
       "employerShare": "Part de la clinique",
-      "taxKind": "Nature"
+      "taxKind": "Nature",
+      "taxWork": "Calculé comme"
     },
     "filters": {
       "method": "Mode de paiement",
@@ -9520,7 +9526,7 @@
       "title": "Impôts : les périodes",
       "description": "Chaque période d’impôt qui échoit dans la période : payée, due, en retard ou sautée, avec ce qui a été payé et comment.",
       "note1": "Une ligne par période d’impôt, datée par son échéance.",
-      "note2": "Payé : le montant marqué payé (sa dépense est dans le rapport des dépenses) ; un impôt calculé à chaque fois n’a pas de montant avant d’être payé."
+      "note2": "Payé : le montant marqué payé (sa dépense est dans le rapport des dépenses). Un impôt saisi au paiement n’a pas de montant avant d’être payé ; un pourcentage montre le montant calculé à partir des chiffres de sa période (jusqu’ici, tant que la période court)."
     },
     "income": {
       "title": "Autres entrées d’argent",
@@ -11445,7 +11451,7 @@
         "casual": "Travailleur occasionnel (15 %)"
       },
       "deductionsTitle": "Retenu sur ce salaire",
-      "deductionsHint": "Décoché : rien n’est retenu pour cela. Une retenue fixe (un prêt) peut s’arrêter à une date.",
+      "deductionsHint": "Décoché : rien n’est retenu pour cela. Une retenue que vous avez ajoutée (un prêt, une avance), en pourcentage ou en montant fixe, ou toute retenue fixe peut s’arrêter à une date.",
       "until": "Jusqu’au",
       "employerPlus": "la clinique ajoute {{share}}",
       "gross": "Brut",
@@ -11482,7 +11488,8 @@
       "errors": {
         "label": "Dites pour quoi est la dépense.",
         "amount": "Tapez le montant payé.",
-        "kind": "Choisissez la nature de la dépense."
+        "kind": "Choisissez la nature de la dépense.",
+        "rate": "Saisissez le pourcentage (plus de 0, au plus 100) et le montant sur lequel il porte."
       },
       "kindField": "Nature",
       "taxPh": "ex. Retenue à la source, pénalité",
@@ -11527,17 +11534,16 @@
       "oneOffHint": "Un impôt payé une seule fois, sans échéancier (une retenue, une pénalité…), s’enregistre dans l’onglet Autres dépenses avec la nature « Impôt ».",
       "cols": {
         "tax": "Impôt",
-        "amount": "Montant (RWF)"
+        "amount": "Montant (RWF)",
+        "howMuch": "Combien",
+        "base": "Calculé sur (RWF)"
       },
-      "selfAssessed": "Calculé à chaque fois",
       "newTitle": "Nouvel impôt",
       "setTitle": "Impôt : {{name}}",
       "name": "Nom de l’impôt",
       "namePh": "ex. PAYE, TVA, patente, impôt sur le revenu",
-      "amountField": "Montant (RWF) — vide quand vous le calculez à chaque fois",
-      "amountPh": "Vide : saisi au paiement",
       "anchor": "Compte depuis (début de la première période)",
-      "setHint": "Les périodes suivent la date de début et l’intervalle : payé chaque mois depuis le 1er janvier, la période de janvier est due le 1er février… Un jour de paie du mois déplace chaque échéance mensuelle ou plus longue à ce jour (PAYE : jour 15 → due le 15 février pour janvier). Laissez le montant vide pour un impôt que vous calculez à partir des chiffres ; vous le saisissez en marquant la période payée.",
+      "setHint": "Les périodes suivent la date de début et l’intervalle : payé chaque mois depuis le 1er janvier, la période de janvier est due le 1er février… Un jour de paie du mois déplace chaque échéance mensuelle ou plus longue à ce jour (PAYE : jour 15 → due le 15 février pour janvier). Combien : un montant fixe est le même à chaque période ; un pourcentage se calcule à partir des chiffres de chaque période, ou d’un montant que vous saisissez au paiement ; saisi au paiement est le montant que vous calculez et saisissez en marquant la période payée. Un changement s’applique aux périodes pas encore payées ; les périodes payées gardent ce qui a été payé.",
       "save": "Enregistrer l’impôt",
       "saved": "Impôt « {{name}} » enregistré.",
       "remove": "Retirer l’impôt",
@@ -11551,26 +11557,70 @@
       "skipBody": "La période due le {{date}} ne sera pas payée (exonéré, rien à déclarer…).",
       "errors": {
         "name": "Saisissez le nom de l’impôt.",
-        "amount": "Le montant est zéro ou plus, ou vide.",
+        "amount": "Saisissez le montant par période (zéro ou plus).",
         "anchor": "Choisissez la date depuis laquelle les périodes comptent.",
-        "paid": "Saisissez le montant d’impôt payé."
+        "paid": "Saisissez le montant d’impôt payé.",
+        "rate": "Saisissez le pourcentage : plus de 0, au plus 100.",
+        "base": "Saisissez le montant sur lequel porte le pourcentage."
       },
       "kindField": "Nature de l’impôt",
       "kinds": {
         "profit": "Impôt sur le revenu (sur le bénéfice)",
-        "turnover": "Impôt forfaitaire sur les ventes (3 %)",
-        "fixed": "Montant fixe (patente, redevance)",
-        "withheld": "Retenu par le payeur (3 % sur marchés)",
+        "turnover": "Impôt forfaitaire sur les ventes",
+        "fixed": "Patente ou redevance",
+        "withheld": "Retenu par le payeur (sur marchés)",
         "other": "Autre impôt"
       },
       "kindHints": {
-        "profit": "Impôt sur le revenu (CIT, 28 % du bénéfice imposable) : les trois acomptes trimestriels au 30 juin, 30 septembre et 31 décembre, le solde au 31 mars. Laissez le montant vide et saisissez chaque montant déclaré au paiement.",
-        "turnover": "L’impôt forfaitaire d’une petite entreprise : 3 % du chiffre d’affaires (entre 12 et 20 millions) à la place de l’impôt sur le revenu.",
-        "fixed": "Un montant fixé par période : la patente au 31 janvier (ou par trimestre), une redevance.",
-        "withheld": "Impôt retenu par un payeur avant de payer la clinique (3 % sur un marché public). Marquer une période payée enregistre un crédit, pas une sortie d’argent : il se déduit de l’impôt annuel.",
+        "profit": "Impôt sur le revenu (CIT) : 28 % du bénéfice imposable ; les trois acomptes trimestriels au 30 juin, 30 septembre et 31 décembre, le solde au 31 mars. Choisissez Pourcentage, 28 % du résultat avant impôts, pour voir le montant de chaque période, ou Saisi au paiement pour saisir chaque montant déclaré.",
+        "turnover": "L’impôt forfaitaire d’une petite entreprise (chiffre d’affaires entre 12 et 20 millions), à la place de l’impôt sur le revenu : choisissez Pourcentage, 3 % de tout l’argent entré.",
+        "fixed": "Un montant fixé par période : la patente au 31 janvier, une redevance.",
+        "withheld": "Impôt retenu par un payeur avant de payer la clinique (3 % sur un marché public) : choisissez Pourcentage d’un montant saisi au paiement (ce que le payeur a payé). Marquer une période payée enregistre un crédit, pas une sortie d’argent : il se déduit de l’impôt sur le revenu.",
         "other": "Tout autre impôt avec son propre calendrier."
       },
-      "kindRule": "Seul un impôt de nature « Sur le bénéfice » compte contre l’impôt sur le revenu estimé dans la base imposable ; les autres natures sont listées à part."
+      "kindRule": "Seul un impôt de nature « Impôt sur le revenu (sur le bénéfice) » compte dans l’estimation de l’impôt sur le revenu ; les autres natures sont listées à part.",
+      "howField": "Combien",
+      "how": {
+        "fixed": "Montant fixe",
+        "percent": "Pourcentage",
+        "typed": "Saisi au paiement"
+      },
+      "howHints": {
+        "fixed": "Le même montant à chaque période (par exemple la patente).",
+        "percent": "Un pourcentage d’un chiffre de chaque période, calculé par le système ; vous pouvez corriger le chiffre au paiement.",
+        "typed": "Vous calculez le montant vous-même et le saisissez en marquant chaque période payée."
+      },
+      "fixedField": "Montant par période (RWF)",
+      "rateField": "Pourcentage (%)",
+      "baseField": "Calculé sur",
+      "bases": {
+        "result": "Le résultat avant impôts de la période",
+        "money_in": "Tout l’argent entré pendant la période",
+        "typed": "Un montant saisi au paiement"
+      },
+      "baseWords": {
+        "result": "du résultat avant impôts",
+        "money_in": "de tout l’argent entré",
+        "typed": "d’un montant saisi au paiement"
+      },
+      "baseHints": {
+        "result": "L’argent entré moins les salaires, la part de la clinique versée à la RSSB, le PAYE et la RSSB reversés, les autres dépenses et le stock acheté, comme « Résultat avant impôts » dans l’onglet « L’argent ». Une perte ne donne rien à payer.",
+        "money_in": "Les paiements des patients moins les remboursements, plus les autres entrées. Les paiements des assureurs ne comptent qu’une fois enregistrés comme autres entrées.",
+        "typed": "Par exemple ce qu’un payeur a payé à la clinique sur un marché : vous le saisissez à chaque fois, et l’impôt est calculé à partir de ce montant."
+      },
+      "rateWords": "{{rate}} % {{base}}",
+      "rateWork": "{{rate}} % de {{amount}}",
+      "rateMeans": "Chaque période paie {{rate}} % {{base}} de cette période.",
+      "rateMeansTyped": "Chaque période paie {{rate}} % du montant que vous saisissez au paiement.",
+      "soFar": "jusqu’ici",
+      "loss": "Une perte : rien à payer",
+      "workedOutWas": "Calculé : {{amount}}",
+      "baseFromFigures": "D’après les chiffres enregistrés pour cette période. Changez-le si le chiffre que vous déclarez est différent.",
+      "baseToType": "Saisissez le montant sur lequel le pourcentage est pris.",
+      "baseChanged": "Vous l’avez changé ; les chiffres donnent {{amount}}.",
+      "payWork": "Calcul : {{rate}} % de {{base}} = {{amount}}",
+      "payLoss": "Une perte : rien à payer. Sautez la période si rien n’est dû.",
+      "creditOk": "{{name}} enregistré le {{date}} comme impôt retenu par le payeur : un crédit, pas de sortie d’argent."
     },
     "kinds": {
       "kind": "Nature",
@@ -11704,7 +11754,8 @@
         "name": "Saisissez le nom de la retenue.",
         "rate": "Saisissez un pourcentage ou un montant pour l’employé ou la clinique.",
         "validFrom": "Choisissez la date depuis laquelle les taux s’appliquent.",
-        "bands": "Chaque tranche a besoin d’une borne inférieure et d’un taux de 0 à 100."
+        "bands": "Chaque tranche a besoin d’une borne inférieure et d’un taux de 0 à 100.",
+        "percent": "Un pourcentage est au plus 100."
       },
       "builtinNames": {
         "paye": "PAYE (impôt sur les salaires)",
@@ -11736,7 +11787,7 @@
       "moneyIn": "Argent entré",
       "expenses": "Dépenses",
       "rate": "Taux %",
-      "rateHint": "Rwanda : 28 % du bénéfice imposable ; 3 % du chiffre d’affaires pour une petite entreprise.",
+      "rateHint": "Rwanda : 28 % du bénéfice imposable. Enregistrez le taux sur l’impôt sur le revenu (Pourcentage du résultat avant impôts) et il est utilisé ici.",
       "estimate": "Impôt sur le revenu estimé à {{rate}} %",
       "withheld": "Moins : retenu par les payeurs sur marchés (crédits)",
       "paidOnProfit": "Moins : impôt sur le revenu déjà payé",
@@ -11756,7 +11807,8 @@
       "yearFigures": "Chiffres de l’année",
       "title2": "Estimation de l’impôt sur le revenu",
       "periodFigures": "Chiffres de la période",
-      "taxesPaid2": "Impôts payés dans la période (toutes natures)"
+      "taxesPaid2": "Impôts payés dans la période (toutes natures)",
+      "rateFrom": "Le taux enregistré sur l’impôt « {{name}} »."
     }
   },
   "dxOutcome": {

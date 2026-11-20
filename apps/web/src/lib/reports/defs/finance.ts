@@ -25,7 +25,7 @@ import {
   type PaymentRow,
   type RefundRow,
 } from '@/lib/api/reports-finance'
-import { AGENCIES, TAX_KINDS, intervalWords } from '@/lib/api/accounts'
+import { AGENCIES, TAX_KINDS, intervalWords, rateWorkWords, taxHowWords } from '@/lib/api/accounts'
 import {
   EXPENSE_KINDS,
   SALARY_STATUSES,
@@ -1505,6 +1505,17 @@ const taxes: ReportDef<TaxRow> = {
       default: true,
       total: 'sum',
       value: (r) => r.amount,
+    },
+    // 0194: how a percentage period is worked out ("28% of RWF 800,000")
+    {
+      key: 'work',
+      label: `${K}.cols.taxWork`,
+      value: (r) =>
+        r.rate == null
+          ? null
+          : r.baseAmount != null
+            ? rateWorkWords(t, r.rate, r.baseAmount)
+            : taxHowWords(t, { amount: null, rate: r.rate, rateBase: r.rateBase }),
     },
     {
       key: 'status',

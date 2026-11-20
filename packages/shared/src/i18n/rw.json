@@ -8655,7 +8655,12 @@
     "771c8e56": "Umubare w’iminsi uri hagati ya 1 na 365.",
     "4229ad39": "Nta kintu cyatanzwe cyangwa cyakozwe kuri iri tegeko: nta cyo gusubiza uko cyari.",
     "6de6c2e4": "Uwabitanze (cyangwa umuyobozi) ni we wenyine ushobora kubisubiza uko byari.",
-    "38396af5": "Itegeko ryatanzwe undi munsi risubizwa uko ryari n’umuyobozi."
+    "38396af5": "Itegeko ryatanzwe undi munsi risubizwa uko ryari n’umuyobozi.",
+    "58b7f7e2": "Tanga umubare udahinduka cyangwa ijanisha, si byombi.",
+    "0b8d9c3f": "Ijanisha rigomba kuba hejuru ya 0 kandi ritarenze 100.",
+    "825d1537": "Ijanisha rifatwa ku mafaranga yinjiye, ku musaruro mbere y’imisoro, cyangwa ku mubare wandikwa igihe cyo kwishyura.",
+    "ce374193": "Andika umubare ijanisha ribarirwaho.",
+    "5987f22e": "Umubare ijanisha ribarirwaho ugomba kuba zeru cyangwa urenga."
   },
   "panel": {
     "close": "Funga",
@@ -9337,7 +9342,8 @@
       "people": "Abakozi",
       "withheld": "Byakuwe ku bakozi",
       "employerShare": "Umugabane wa kiliniki",
-      "taxKind": "Ubwoko"
+      "taxKind": "Ubwoko",
+      "taxWork": "Uko byabazwe"
     },
     "filters": {
       "method": "Uburyo bwo kwishyura",
@@ -9529,7 +9535,7 @@
       "title": "Imisoro: ibihe",
       "description": "Buri gihe cy’umusoro kigomba kwishyurwa muri icyo gihe: cyishyuwe, kigomba kwishyurwa, cyatinze cyangwa cyasimbutswe, hamwe n’ibyishyuwe n’uko byishyuwe.",
       "note1": "Umurongo umwe kuri buri gihe cy’umusoro, ushyizweho itariki yacyo yo kwishyura.",
-      "note2": "Cyishyuwe: umubare washyizweho ko wishyuwe (isohoka ryacyo riri muri raporo y’amasohoka); umusoro ubarwa buri gihe nta mubare ugaragaza mbere yo kwishyurwa."
+      "note2": "Cyishyuwe: umubare washyizweho ko wishyuwe (isohoka ryacyo riri muri raporo y’amasohoka). Umusoro wandikwa igihe cyo kwishyura nta mubare ugaragaza mbere yo kwishyurwa; ijanisha rigaragaza umubare wabazwe ku mibare y’igihe cyaryo (kugeza ubu, igihe icyo gihe kitararangira)."
     },
     "income": {
       "title": "Andi mafaranga yinjiye",
@@ -11454,7 +11460,7 @@
         "casual": "Umukozi w’igihe gito (15%)"
       },
       "deductionsTitle": "Ibikurwa kuri uyu mushahara",
-      "deductionsHint": "Nta kamenyetso: nta cyo gikurwaho. Igikurwaho kidahinduka (inguzanyo) gishobora guhagarara ku itariki.",
+      "deductionsHint": "Nta kamenyetso: nta cyo gikurwaho. Igikurwaho wongeyeho (inguzanyo, amafaranga yatanzwe mbere), cyaba ijanisha cyangwa umubare udahinduka, cyangwa igikurwaho cyose kidahinduka, gishobora guhagarara ku itariki.",
       "until": "Kugeza",
       "employerPlus": "kiliniki yongeraho {{share}}",
       "gross": "Mbumbe",
@@ -11491,7 +11497,8 @@
       "errors": {
         "label": "Vuga icyo isohoka ari icyo.",
         "amount": "Andika amafaranga yishyuwe.",
-        "kind": "Hitamo ubwoko bw’isohoka."
+        "kind": "Hitamo ubwoko bw’isohoka.",
+        "rate": "Andika ijanisha (hejuru ya 0, ntirirenze 100) n’umubare ribarirwaho."
       },
       "kindField": "Ubwoko",
       "taxPh": "urugero: Umusoro ufatirwa, ihazabu",
@@ -11536,17 +11543,16 @@
       "oneOffHint": "Umusoro wishyurwa rimwe, udafite gahunda (umusoro ufatirwa, ihazabu…), wandikwa mu gice cy’Andi masohoka ufite ubwoko “Umusoro”.",
       "cols": {
         "tax": "Umusoro",
-        "amount": "Umubare (RWF)"
+        "amount": "Umubare (RWF)",
+        "howMuch": "Angahe",
+        "base": "Bibarwa ku (RWF)"
       },
-      "selfAssessed": "Ubarwa buri gihe",
       "newTitle": "Umusoro mushya",
       "setTitle": "Umusoro: {{name}}",
       "name": "Izina ry’umusoro",
       "namePh": "urugero: PAYE, TVA, patanti, umusoro ku nyungu",
-      "amountField": "Umubare (RWF) — usige ubusa iyo uwubara buri gihe",
-      "amountPh": "Ubusa: wandikwa igihe cyo kwishyura",
       "anchor": "Ubarwa guhera (itangira ry’igihe cya mbere)",
-      "setHint": "Ibihe bikurikira itariki yo gutangira n’intera: wishyurwa buri kwezi guhera ku ya 1 Mutarama, igihe cya Mutarama kigomba kwishyurwa ku ya 1 Gashyantare… Umunsi wo kwishyura mu kwezi wimurira buri tariki ya buri kwezi cyangwa irenze kuri uwo munsi (PAYE: umunsi wa 15 → ku ya 15 Gashyantare kuri Mutarama). Siga umubare ubusa ku musoro ubara ukurikije imibare buri gihe; uwandika igihe ushyiraho ko igihe cyishyuwe.",
+      "setHint": "Ibihe bikurikira itariki yo gutangira n’intera: wishyurwa buri kwezi guhera ku ya 1 Mutarama, igihe cya Mutarama kigomba kwishyurwa ku ya 1 Gashyantare… Umunsi wo kwishyura mu kwezi wimurira buri tariki ya buri kwezi cyangwa irenze kuri uwo munsi (PAYE: umunsi wa 15 → ku ya 15 Gashyantare kuri Mutarama). Angahe: umubare udahinduka ni umwe buri gihe; ijanisha ribarwa ku mibare ya buri gihe, cyangwa ku mubare wandika igihe cyo kwishyura; wandikwa igihe cyo kwishyura ni umubare ubara ukawandika igihe ushyiraho ko igihe cyishyuwe. Impinduka ireba ibihe bitarishyurwa; ibihe byishyuwe bigumana ibyishyuwe.",
       "save": "Bika umusoro",
       "saved": "Umusoro “{{name}}” wabitswe.",
       "remove": "Kura umusoro",
@@ -11560,26 +11566,70 @@
       "skipBody": "Igihe kigomba kwishyurwa ku ya {{date}} ntikizishyurwa (gisonewe, nta cyo gutangaza…).",
       "errors": {
         "name": "Andika izina ry’umusoro.",
-        "amount": "Umubare ni zeru cyangwa urenga, cyangwa ubusa.",
+        "amount": "Andika umubare kuri buri gihe (zeru cyangwa urenga).",
         "anchor": "Hitamo itariki ibihe bibarwa guhera.",
-        "paid": "Andika umubare w’umusoro wishyuwe."
+        "paid": "Andika umubare w’umusoro wishyuwe.",
+        "rate": "Andika ijanisha: hejuru ya 0, ntirirenze 100.",
+        "base": "Andika umubare ijanisha ribarirwaho."
       },
       "kindField": "Ubwoko bw’umusoro",
       "kinds": {
         "profit": "Umusoro ku nyungu",
-        "turnover": "Umusoro w’igipimo kimwe ku byagurishijwe (3%)",
-        "fixed": "Umubare udahinduka (patanti, amahoro)",
-        "withheld": "Ufatirwa n’uwishyura (3% ku masoko)",
+        "turnover": "Umusoro w’igipimo kimwe ku byagurishijwe",
+        "fixed": "Patanti cyangwa amahoro",
+        "withheld": "Ufatirwa n’uwishyura (ku masoko)",
         "other": "Undi musoro"
       },
       "kindHints": {
-        "profit": "Umusoro ku nyungu (CIT, 28% by’inyungu isoreshwa): ibyishyurwa mbere bitatu bya buri gihembwe ku ya 30 Kamena, 30 Nzeri na 31 Ukuboza, igisigaye ku ya 31 Werurwe. Siga umubare ubusa wandike buri mubare watangajwe igihe cyo kwishyura.",
-        "turnover": "Umusoro w’igipimo kimwe w’ubucuruzi buto: 3% by’ibyacurujwe (hagati ya miliyoni 12 na 20) mu mwanya w’umusoro ku nyungu.",
-        "fixed": "Umubare washyizweho kuri buri gihe: patanti ku ya 31 Mutarama (cyangwa buri gihembwe), amahoro.",
-        "withheld": "Umusoro ufatirwa n’uwishyura mbere yo kwishyura kiliniki (3% ku isoko rya Leta). Gushyiraho ko igihe cyishyuwe byandika inguzanyo y’umusoro, si amafaranga yasohotse: ikurwa ku musoro w’umwaka.",
+        "profit": "Umusoro ku nyungu (CIT): 28% by’inyungu isoreshwa; ibyishyurwa mbere bitatu bya buri gihembwe ku ya 30 Kamena, 30 Nzeri na 31 Ukuboza, igisigaye ku ya 31 Werurwe. Hitamo Ijanisha, 28% by’umusaruro mbere y’imisoro, kugira ngo ubone umubare wa buri gihe, cyangwa Wandikwa igihe cyo kwishyura kugira ngo wandike buri mubare watangajwe.",
+        "turnover": "Umusoro w’igipimo kimwe w’ubucuruzi buto (ibyacurujwe hagati ya miliyoni 12 na 20), mu mwanya w’umusoro ku nyungu: hitamo Ijanisha, 3% by’amafaranga yose yinjiye.",
+        "fixed": "Umubare washyizweho kuri buri gihe: patanti ku ya 31 Mutarama, amahoro.",
+        "withheld": "Umusoro ufatirwa n’uwishyura mbere yo kwishyura kiliniki (3% ku isoko rya Leta): hitamo Ijanisha ry’umubare wandikwa igihe cyo kwishyura (ibyo uwishyura yishyuye). Gushyiraho ko igihe cyishyuwe byandika inguzanyo y’umusoro, si amafaranga yasohotse: ikurwa ku musoro ku nyungu.",
         "other": "Undi musoro wose ufite gahunda yawo."
       },
-      "kindRule": "Umusoro w’ubwoko “Ku nyungu” ni wo wonyine ubarirwa ku musoro ku nyungu ugereranyijwe mu Ishingiro ry’umusoro; ubundi bwoko bugaragazwa ukwabwo."
+      "kindRule": "Umusoro w’ubwoko “Umusoro ku nyungu” ni wo wonyine ubarirwa mu igereranyo ry’umusoro ku nyungu; ubundi bwoko bugaragazwa ukwabwo.",
+      "howField": "Angahe",
+      "how": {
+        "fixed": "Umubare udahinduka",
+        "percent": "Ijanisha",
+        "typed": "Wandikwa igihe cyo kwishyura"
+      },
+      "howHints": {
+        "fixed": "Umubare umwe kuri buri gihe (urugero: patanti).",
+        "percent": "Ijanisha ry’umubare wa buri gihe, ribarwa na sisitemu; ushobora gukosora uwo mubare igihe cyo kwishyura.",
+        "typed": "Ubara umubare ubwawe, ukawandika igihe ushyiraho ko buri gihe cyishyuwe."
+      },
+      "fixedField": "Umubare kuri buri gihe (RWF)",
+      "rateField": "Ijanisha (%)",
+      "baseField": "Bibarwa ku",
+      "bases": {
+        "result": "Umusaruro mbere y’imisoro w’icyo gihe",
+        "money_in": "Amafaranga yose yinjiye muri icyo gihe",
+        "typed": "Umubare wandikwa igihe cyo kwishyura"
+      },
+      "baseWords": {
+        "result": "by’umusaruro mbere y’imisoro",
+        "money_in": "by’amafaranga yose yinjiye",
+        "typed": "by’umubare wandikwa igihe cyo kwishyura"
+      },
+      "baseHints": {
+        "result": "Amafaranga yinjiye ukuyemo imishahara, umugabane wa kiliniki wishyurwa RSSB, PAYE na RSSB byoherejwe, andi masohoka n’ububiko bwaguzwe, nka “Umusaruro mbere y’imisoro” mu gice “Amafaranga”. Igihombo nta cyo gitanga cyo kwishyura.",
+        "money_in": "Ubwishyu bw’abarwayi ukuyemo amafaranga yasubijwe, wongeyeho andi mafaranga yinjiye. Ubwishyu bw’ibigo by’ubwishingizi bubarwa gusa iyo bwanditswe nk’andi mafaranga yinjiye.",
+        "typed": "Urugero: ibyo uwishyura yishyuye kiliniki ku isoko: ubyandika buri gihe, umusoro ukabarwa ubishingiyeho."
+      },
+      "rateWords": "{{rate}}% {{base}}",
+      "rateWork": "{{rate}}% bya {{amount}}",
+      "rateMeans": "Buri gihe cyishyura {{rate}}% {{base}}, bibarwa kuri icyo gihe.",
+      "rateMeansTyped": "Buri gihe cyishyura {{rate}}% by’umubare wandika igihe cyo kwishyura.",
+      "soFar": "kugeza ubu",
+      "loss": "Igihombo: nta cyo kwishyura",
+      "workedOutWas": "Byabazwe: {{amount}}",
+      "baseFromFigures": "Bivuye ku mibare yanditswe muri iki gihe. Uwuhindure niba umubare utangaza utandukanye.",
+      "baseToType": "Andika umubare ijanisha rifatirwaho.",
+      "baseChanged": "Wawuhinduye; imibare igaragaza {{amount}}.",
+      "payWork": "Ibarwa: {{rate}}% bya {{base}} = {{amount}}",
+      "payLoss": "Igihombo: nta cyo kwishyura. Simbuka iki gihe niba nta kigomba kwishyurwa.",
+      "creditOk": "{{name}} yanditswe ku ya {{date}} nk’umusoro wafatiriwe n’uwishyura: inguzanyo y’umusoro, nta mafaranga yasohotse."
     },
     "kinds": {
       "kind": "Ubwoko",
@@ -11713,7 +11763,8 @@
         "name": "Andika izina ry’igikurwaho.",
         "rate": "Andika ijanisha cyangwa umubare w’umukozi cyangwa wa kiliniki.",
         "validFrom": "Hitamo itariki ibipimo bikoreshwa guhera.",
-        "bands": "Buri cyiciro gikeneye imbibi yo hasi n’ijanisha riri hagati ya 0 na 100."
+        "bands": "Buri cyiciro gikeneye imbibi yo hasi n’ijanisha riri hagati ya 0 na 100.",
+        "percent": "Ijanisha ntirirenga 100."
       },
       "builtinNames": {
         "paye": "PAYE (umusoro ku mishahara)",
@@ -11745,7 +11796,7 @@
       "moneyIn": "Amafaranga yinjiye",
       "expenses": "Amasohoka",
       "rate": "Igipimo %",
-      "rateHint": "U Rwanda: 28% by’inyungu isoreshwa; 3% by’ibyacurujwe ku bucuruzi buto.",
+      "rateHint": "U Rwanda: 28% by’inyungu isoreshwa. Bika igipimo ku musoro ku nyungu (Ijanisha ry’umusaruro mbere y’imisoro) maze gikoreshwe hano.",
       "estimate": "Umusoro ku nyungu ugereranyijwe kuri {{rate}}%",
       "withheld": "Hakuwemo: ufatirwa n’abishyura ku masoko (inguzanyo)",
       "paidOnProfit": "Hakuwemo: umusoro ku nyungu wamaze kwishyurwa",
@@ -11765,7 +11816,8 @@
       "yearFigures": "Imibare y’umwaka",
       "title2": "Igereranyo ry’umusoro ku nyungu",
       "periodFigures": "Imibare y’igihe",
-      "taxesPaid2": "Imisoro yishyuwe muri icyo gihe (ubwoko bwose)"
+      "taxesPaid2": "Imisoro yishyuwe muri icyo gihe (ubwoko bwose)",
+      "rateFrom": "Igipimo cyabitswe ku musoro “{{name}}”."
     }
   },
   "dxOutcome": {

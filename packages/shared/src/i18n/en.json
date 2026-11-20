@@ -8646,7 +8646,12 @@
     "771c8e56": "The number of days is between 1 and 365.",
     "4229ad39": "Nothing was given or done on this order: there is nothing to undo.",
     "6de6c2e4": "Only the person who gave it (or the manager) can undo it.",
-    "38396af5": "An order given on another day is undone by the manager."
+    "38396af5": "An order given on another day is undone by the manager.",
+    "58b7f7e2": "Give a fixed amount or a percentage, not both.",
+    "0b8d9c3f": "The percentage must be more than 0 and at most 100.",
+    "825d1537": "A percentage is of the money in, of the result before tax, or of an amount typed when paying.",
+    "ce374193": "Type the amount the percentage is calculated on.",
+    "5987f22e": "The amount the percentage is calculated on must be zero or more."
   },
   "panel": {
     "close": "Close",
@@ -9328,7 +9333,8 @@
       "people": "Employees",
       "withheld": "Taken from employees",
       "employerShare": "Clinic’s part",
-      "taxKind": "Kind"
+      "taxKind": "Kind",
+      "taxWork": "Worked out as"
     },
     "filters": {
       "method": "Payment method",
@@ -9520,7 +9526,7 @@
       "title": "Taxes: the periods",
       "description": "Every tax period falling due in the period: paid, due, overdue or skipped, with what was paid and how.",
       "note1": "One row per tax period, dated by its due date.",
-      "note2": "Paid: the amount marked paid (its expense is in the expenses report); a tax worked out each time shows no amount until it is paid."
+      "note2": "Paid: the amount marked paid (its expense is in the expenses report). A tax typed when paying shows no amount until it is paid; a percentage shows the amount worked out from the figures of its period (so far, while the period runs)."
     },
     "income": {
       "title": "Other money in",
@@ -11445,7 +11451,7 @@
         "casual": "Casual worker (15%)"
       },
       "deductionsTitle": "Taken from this salary",
-      "deductionsHint": "Unticked: nothing taken for it. A fixed deduction (a loan) can stop on a date.",
+      "deductionsHint": "Unticked: nothing taken for it. A deduction you added (a loan, an advance), as a percentage or a fixed amount, or any fixed deduction can stop on a date.",
       "until": "Until",
       "employerPlus": "clinic adds {{share}}",
       "gross": "Gross",
@@ -11482,7 +11488,8 @@
       "errors": {
         "label": "Say what the expense is for.",
         "amount": "Type the amount paid.",
-        "kind": "Choose the kind of expense."
+        "kind": "Choose the kind of expense.",
+        "rate": "Type the percentage (more than 0, at most 100) and the amount it is calculated on."
       },
       "kindField": "Kind",
       "taxPh": "e.g. Withholding tax, penalty",
@@ -11527,17 +11534,16 @@
       "oneOffHint": "A tax paid once, with no schedule (a withholding, a penalty…), is recorded on the Other expenses tab with the kind “Tax”.",
       "cols": {
         "tax": "Tax",
-        "amount": "Amount (RWF)"
+        "amount": "Amount (RWF)",
+        "howMuch": "How much",
+        "base": "Calculated on (RWF)"
       },
-      "selfAssessed": "Worked out each time",
       "newTitle": "New tax",
       "setTitle": "Tax: {{name}}",
       "name": "Name of the tax",
       "namePh": "e.g. PAYE, VAT, trading licence, income tax",
-      "amountField": "Amount (RWF) — leave empty when you work it out each time",
-      "amountPh": "Empty: typed when paying",
       "anchor": "Counts from (the first period starts)",
-      "setHint": "The periods follow the start date and the interval: paid monthly from 1 January, the January period is due on 1 February… A pay day of the month moves every monthly or longer due date to that day (PAYE: pay day 15 → due 15 February for January). Leave the amount empty for a tax you work out from the figures each time; you type it when marking the period paid.",
+      "setHint": "The periods follow the start date and the interval: paid monthly from 1 January, the January period is due on 1 February… A pay day of the month moves every monthly or longer due date to that day (PAYE: pay day 15 → due 15 February for January). How much: a fixed amount is the same every period; a percentage is worked out from the figures of each period, or from an amount you type when paying; typed when paying is the amount you work out and type when marking the period paid. A change applies to the periods not yet paid; the periods paid keep what was paid.",
       "save": "Save the tax",
       "saved": "Tax “{{name}}” saved.",
       "remove": "Remove the tax",
@@ -11551,26 +11557,70 @@
       "skipBody": "The period due on {{date}} will not be paid (exempt, nothing to declare…).",
       "errors": {
         "name": "Type the name of the tax.",
-        "amount": "The amount is zero or more, or empty.",
+        "amount": "Type the amount each period (zero or more).",
         "anchor": "Choose the date the periods count from.",
-        "paid": "Type the amount of tax paid."
+        "paid": "Type the amount of tax paid.",
+        "rate": "Type the percentage: more than 0, at most 100.",
+        "base": "Type the amount the percentage is calculated on."
       },
       "kindField": "Kind of tax",
       "kinds": {
         "profit": "Income tax (on the profit)",
-        "turnover": "Flat tax on sales (3%)",
-        "fixed": "Fixed amount (licence, fee)",
-        "withheld": "Kept by the payer (3% on tenders)",
+        "turnover": "Flat tax on sales",
+        "fixed": "Licence or fee",
+        "withheld": "Kept by the payer (on tenders)",
         "other": "Other tax"
       },
       "kindHints": {
-        "profit": "Income tax (CIT, 28% of the taxable profit): the three quarterly prepayments by 30 June, 30 September and 31 December, the balance by 31 March. Leave the amount empty and type each declared amount when paying.",
-        "turnover": "The flat tax of a small business: 3% of the turnover (turnover between 12 and 20 million) instead of the income tax.",
-        "fixed": "A set amount per period: the trading licence by 31 January (or quarterly), a fee.",
-        "withheld": "Tax retained by a payer before paying the clinic (3% on a public tender). Marking a period paid records a credit, not money out: it is deducted from the annual income tax.",
+        "profit": "Income tax (CIT): 28% of the taxable profit; the three quarterly prepayments by 30 June, 30 September and 31 December, the balance by 31 March. Choose Percentage, 28% of the result before tax, to see each period’s amount, or Typed when paying to type each declared amount.",
+        "turnover": "The flat tax of a small business (turnover between 12 and 20 million), instead of the income tax: choose Percentage, 3% of all money in.",
+        "fixed": "A set amount per period: the trading licence by 31 January, a fee.",
+        "withheld": "Tax kept by a payer before paying the clinic (3% on a public tender): choose Percentage of an amount typed when paying (what the payer paid). Marking a period paid records a credit, not money out: it comes off the income tax.",
         "other": "Any other tax with its own schedule."
       },
-      "kindRule": "Only a tax of kind “On the profit” counts against the estimated income tax in the Tax base; the other kinds are listed apart."
+      "kindRule": "Only a tax of kind “Income tax (on the profit)” counts against the income tax estimate; the other kinds are listed apart.",
+      "howField": "How much",
+      "how": {
+        "fixed": "Fixed amount",
+        "percent": "Percentage",
+        "typed": "Typed when paying"
+      },
+      "howHints": {
+        "fixed": "The same amount every period (for example the trading licence).",
+        "percent": "A percentage of a figure of each period, worked out by the system; you can correct the figure when paying.",
+        "typed": "You work the amount out yourself and type it when you mark each period paid."
+      },
+      "fixedField": "Amount each period (RWF)",
+      "rateField": "Percentage (%)",
+      "baseField": "Calculated on",
+      "bases": {
+        "result": "The result before tax of the period",
+        "money_in": "All money in during the period",
+        "typed": "An amount typed when paying"
+      },
+      "baseWords": {
+        "result": "the result before tax",
+        "money_in": "all money in",
+        "typed": "an amount typed when paying"
+      },
+      "baseHints": {
+        "result": "Money in less the salaries, the clinic’s RSSB share, PAYE and RSSB handed over, the other expenses and the stock bought, as “Result before tax” on the tab “The money”. A loss gives nothing to pay.",
+        "money_in": "The patients’ payments less the refunds, plus the other money in. Insurers’ payments count only once recorded as other money in.",
+        "typed": "For example what a payer paid the clinic on a tender: you type it each time, and the tax is worked out from it."
+      },
+      "rateWords": "{{rate}}% of {{base}}",
+      "rateWork": "{{rate}}% of {{amount}}",
+      "rateMeans": "Each period pays {{rate}}% of {{base}} of that period.",
+      "rateMeansTyped": "Each period pays {{rate}}% of the amount you type when paying.",
+      "soFar": "so far",
+      "loss": "A loss: nothing to pay",
+      "workedOutWas": "Worked out: {{amount}}",
+      "baseFromFigures": "From the figures recorded for this period. Change it if the figure you declare is different.",
+      "baseToType": "Type the amount the percentage is taken from.",
+      "baseChanged": "You changed it; the figures say {{amount}}.",
+      "payWork": "Worked out: {{rate}}% of {{base}} = {{amount}}",
+      "payLoss": "A loss: nothing to pay. Skip the period if nothing is due.",
+      "creditOk": "{{name}} recorded on {{date}} as tax kept by the payer: a credit, no money out."
     },
     "kinds": {
       "kind": "Kind",
@@ -11704,7 +11754,8 @@
         "name": "Type the name of the deduction.",
         "rate": "Type a percentage or an amount for the employee or the clinic.",
         "validFrom": "Choose the date the rates apply from.",
-        "bands": "Each band needs a lower bound and a rate from 0 to 100."
+        "bands": "Each band needs a lower bound and a rate from 0 to 100.",
+        "percent": "A percentage is at most 100."
       },
       "builtinNames": {
         "paye": "PAYE (income tax on salaries)",
@@ -11736,7 +11787,7 @@
       "moneyIn": "Money in",
       "expenses": "Expenses",
       "rate": "Rate %",
-      "rateHint": "Rwanda: 28% of the taxable profit; 3% of the turnover for a small business.",
+      "rateHint": "Rwanda: 28% of the taxable profit. Save the rate on the income tax (Percentage of the result before tax) and it is used here.",
       "estimate": "Estimated income tax at {{rate}}%",
       "withheld": "Less: kept by payers on tenders (credits)",
       "paidOnProfit": "Less: income tax already paid",
@@ -11756,7 +11807,8 @@
       "yearFigures": "Figures of the year",
       "title2": "Income tax estimate",
       "periodFigures": "Figures of the period",
-      "taxesPaid2": "Taxes paid in the period (all kinds)"
+      "taxesPaid2": "Taxes paid in the period (all kinds)",
+      "rateFrom": "The rate saved on the tax “{{name}}”."
     }
   },
   "dxOutcome": {

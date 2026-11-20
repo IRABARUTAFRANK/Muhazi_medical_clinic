@@ -25338,6 +25338,12 @@ await step(
     )
     // 0187 again: 0184 brings back the nine-value set_tax (ambiguous with 0187's ten)
     await db.exec(await readFile(path.join(migrationsDir, '20270211090000_tax_kinds.sql'), 'utf8'))
+    // 0194 again: 0184/0187 bring back the seven-value pay_tax and the ten-value set_tax, 0185 the
+    // eight-value add_expense (ambiguous with 0194's eight, twelve and ten), and 0184/0185/0187
+    // their own tax_periods, expenses_list and tax_overview
+    await db.exec(
+      await readFile(path.join(migrationsDir, '20270214090000_fixed_or_percent.sql'), 'utf8'),
+    )
     const refused = await codeAs(d1, `select salary_overview(2026)`)
     await as(staff.cashier)
     await db.query(`select set_salary($1, 500000, 'monthly', '2026-02-02', null, 'contract')`, [d1])
@@ -27214,6 +27220,541 @@ await step(
   },
 )
 // @@t193-end
+// @@t194-begin
+// ---------------------------------------------------------------- 0194: a tax is a fixed amount or a percentage
+// A tax is a fixed amount, a percentage (of the result before tax of the period, of all money in
+// during the period, or of an amount typed when paying) or typed when paying. The steps use 2024
+// (empty, checked first) so every figure below is exact.
+const t194 = {}
+const json194 = (x) => JSON.stringify(x)
+/** The SQLSTATE and the database's sentence of a statement run as someone (null when it works). */
+const refusal194 = async (who, sql, params = []) => {
+  await as(who)
+  try {
+    await db.query(sql, params)
+    return null
+  } catch (e) {
+    return `${e.code} ${String(e.message).split('\n')[0]}`
+  } finally {
+    await asAdmin()
+  }
+}
+const periods194 = async (tax, year = 2024) =>
+  (await one(`select tax_periods($1, $2) as j`, [tax, year])).j
+const at194 = (list, start) => (list ?? []).find((p) => p.periodStart === start) ?? {}
+const n194 = (v) => (v == null ? null : Number(v))
+const fig194 = async (base, from, to) =>
+  n194((await one(`select money_figure($1, $2::date, $3::date) as n`, [base, from, to])).n)
+// the 0179 step re-applies the finance files in order and ends on 0194; the 0192 and 0193 steps
+// touch none of these functions: 0194 again all the same (twice: it runs again)
+await step('0194: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  const sql = await readFile(
+    path.join(migrationsDir, '20270214090000_fixed_or_percent.sql'),
+    'utf8',
+  )
+  await db.exec(sql)
+  await db.exec(sql)
+  const fns = (
+    await db.query(
+      `select proname || '/' || pronargs as f from pg_proc
+        where proname in ('set_tax', 'pay_tax', 'add_expense', 'money_figure') order by 1`,
+    )
+  ).rows.map((r) => r.f)
+  const cols = (
+    await db.query(
+      `select table_name || '.' || column_name as c from information_schema.columns
+        where table_schema = 'public'
+          and ((table_name = 'tax' and column_name in ('rate', 'rate_base'))
+            or (table_name = 'tax_period' and column_name in ('rate', 'rate_base', 'base_amount'))
+            or (table_name = 'expense' and column_name in ('rate', 'base_amount')))
+        order by 1`,
+    )
+  ).rows.map((r) => r.c)
+  const rights = await one(
+    `select has_function_privilege('authenticated', 'money_figure(text, date, date)', 'execute') as figure,
+            has_function_privilege('authenticated',
+              'set_tax(uuid, text, numeric, text, date, integer, text, integer, text, text, numeric, text)', 'execute') as tax`,
+  )
+  // nothing in 2024, so the exact numbers of the next steps cannot drift
+  await as(staff.cashier)
+  const y = (await one(`select finance_summary('2024-01-01', '2024-12-31') as j`)).j
+  await asAdmin()
+  if (json194(fns) !== json194(['add_expense/10', 'money_figure/3', 'pay_tax/8', 'set_tax/12']))
+    throw new Error('functions: ' + json194(fns))
+  if (cols.length !== 7) throw new Error('columns: ' + json194(cols))
+  if (rights.figure || !rights.tax) throw new Error('rights: ' + json194(rights))
+  if (Number(y.moneyIn) !== 0 || Number(y.net) !== 0 || Number(y.taxes) !== 0)
+    throw new Error('2024 is not empty: ' + json194({ in: y.moneyIn, net: y.net, t: y.taxes }))
+  return 'ran twice; one set_tax (12 values), pay_tax (8), add_expense (10); money_figure not callable by the screens; 7 new columns; 2024 empty (money in 0, result 0, taxes 0)'
+})
+await step(
+  '0194 A: a tax is a fixed amount, a percentage (of the result before tax, of all money in, of an amount typed when paying) or typed when paying; each period worked out from its own figures, a loss gives 0; the figures equal the money summary; refusals; a doctor refused',
+  async () => {
+    await as(staff.cashier)
+    const kind = (
+      await one(
+        `select set_money_kind(null, 'in', 'Consultancy fees 0194', 'A training given by the clinic') as id`,
+      )
+    ).id
+    const inc1 = (
+      await one(
+        `select add_income($1, 1000000, 'cash', null, '2024-03-10', 'A school', null) as id`,
+        [kind],
+      )
+    ).id
+    const exp1 = (
+      await one(
+        `select add_expense('Repairs 0194', 200000, 'cash', null, '2024-03-12', null, 'other', null) as id`,
+      )
+    ).id
+    const exp2 = (
+      await one(
+        `select add_expense('Repairs 0194 b', 50000, 'cash', null, '2024-04-08', null, 'other', null) as id`,
+      )
+    ).id
+    const inc2 = (
+      await one(`select add_income($1, 100000, 'cash', null, '2024-06-05', null, null) as id`, [
+        kind,
+      ])
+    ).id
+    const setTax = async (args) => (await one(`select set_tax(${args}) as j`)).j
+    const inc = await setTax(
+      `null, 'Income tax 0194', null, 'monthly', '2024-01-01', 15, null, null, null, 'profit', 28, 'result'`,
+    )
+    const flat = await setTax(
+      `null, 'Flat tax 0194', null, 'quarterly', '2024-01-01', 15, null, null, null, 'turnover', 3, 'money_in'`,
+    )
+    const tender = await setTax(
+      `null, 'Tender 0194', null, 'monthly', '2024-01-01', null, null, null, null, 'withheld', 3, 'typed'`,
+    )
+    // the seven-value call of before: a fixed amount, and typed when paying
+    const lic = await setTax(`null, 'Licence 0194', 60000, 'yearly', '2024-01-01', 31, null`)
+    const vat = await setTax(`null, 'VAT 0194', null, 'quarterly', '2024-01-01', 15, null`)
+    const pi = await periods194(inc.id)
+    const pf = await periods194(flat.id)
+    const pt = await periods194(tender.id)
+    const pl = await periods194(lic.id)
+    const pv = await periods194(vat.id)
+    const r = {
+      both: await refusal194(
+        staff.cashier,
+        `select set_tax(null, 'x 0194', 1000, 'monthly', '2024-01-01', null, null, null, null, 'other', 5, 'typed')`,
+      ),
+      zero: await refusal194(
+        staff.cashier,
+        `select set_tax(null, 'x 0194', null, 'monthly', '2024-01-01', null, null, null, null, 'other', 0, 'typed')`,
+      ),
+      over: await refusal194(
+        staff.cashier,
+        `select set_tax(null, 'x 0194', null, 'monthly', '2024-01-01', null, null, null, null, 'other', 120, 'typed')`,
+      ),
+      noBase: await refusal194(
+        staff.cashier,
+        `select set_tax(null, 'x 0194', null, 'monthly', '2024-01-01', null, null, null, null, 'other', 5, null)`,
+      ),
+      oddBase: await refusal194(
+        staff.cashier,
+        `select set_tax(null, 'x 0194', null, 'monthly', '2024-01-01', null, null, null, null, 'other', 5, 'sales')`,
+      ),
+      doctor: await refusal194(
+        d1,
+        `select set_tax(null, 'x 0194', null, 'monthly', '2024-01-01', 15, null, null, null, 'profit', 28, 'result')`,
+      ),
+      figure: await refusal194(
+        staff.cashier,
+        `select money_figure('money_in', '2024-03-01', '2024-03-31')`,
+      ),
+    }
+    await asAdmin()
+    // the figure of a period is the Money tab's own: the result before tax, all money in
+    const sumMar = (await one(`select finance_summary('2024-03-01', '2024-03-31') as j`)).j
+    const sumQ1 = (await one(`select finance_summary('2024-01-01', '2024-03-31') as j`)).j
+    const figMar = await fig194('result', '2024-03-01', '2024-03-31')
+    const figQ1 = await fig194('money_in', '2024-01-01', '2024-03-31')
+    const figTyped = await fig194('typed', '2024-03-01', '2024-03-31')
+    const left = await one(
+      `select count(*)::int as n from tax where name like 'x 0194%' and deleted_at is null`,
+    )
+    Object.assign(t194, { kind, inc1, inc2, exp1, exp2, inc, flat, tender, lic, vat })
+    if (
+      json194([n194(inc.rate), inc.rateBase, n194(flat.rate), flat.rateBase]) !==
+        json194([28, 'result', 3, 'money_in']) ||
+      json194([n194(tender.rate), tender.rateBase, inc.amount]) !== json194([3, 'typed', null])
+    )
+      throw new Error('saved: ' + json194({ inc, flat, tender }))
+    const jan = at194(pi, '2024-01-01')
+    const mar = at194(pi, '2024-03-01')
+    const apr = at194(pi, '2024-04-01')
+    const jun = at194(pi, '2024-06-01')
+    const got = {
+      n: pi.length,
+      jan: [n194(jan.rate), jan.rateBase, n194(jan.baseAmount), n194(jan.amount), jan.running],
+      mar: [n194(mar.baseAmount), n194(mar.amount), n194(mar.workedOut)],
+      apr: [n194(apr.baseAmount), n194(apr.amount)],
+      jun: [n194(jun.baseAmount), n194(jun.amount)],
+      q1: [n194(pf[0]?.baseAmount), n194(pf[0]?.amount)],
+      q2: [n194(pf[1]?.baseAmount), n194(pf[1]?.amount)],
+      tender: [
+        n194(pt[0]?.rate),
+        pt[0]?.rateBase,
+        pt[0]?.amount ?? null,
+        pt[0]?.baseAmount ?? null,
+      ],
+      lic: [pl[0]?.rate ?? null, n194(pl[0]?.amount)],
+      vat: [pv[0]?.rate ?? null, pv[0]?.amount ?? null],
+    }
+    const want = {
+      n: 12,
+      jan: [28, 'result', 0, 0, false],
+      mar: [800000, 224000, 224000],
+      apr: [-50000, 0],
+      jun: [100000, 28000],
+      q1: [1000000, 30000],
+      q2: [100000, 3000],
+      tender: [3, 'typed', null, null],
+      lic: [null, 60000],
+      vat: [null, null],
+    }
+    if (json194(got) !== json194(want)) throw new Error('periods: ' + json194(got))
+    const sentence = {
+      both: '22023 give a fixed amount or a percentage, not both',
+      zero: '22023 the percentage must be more than 0 and at most 100',
+      over: '22023 the percentage must be more than 0 and at most 100',
+      noBase:
+        '22023 a percentage is of the money in, of the result before tax, or of an amount typed when paying',
+      oddBase:
+        '22023 a percentage is of the money in, of the result before tax, or of an amount typed when paying',
+    }
+    for (const [k, v] of Object.entries(sentence))
+      if (r[k] !== v) throw new Error(`refusal ${k}: ${r[k]}`)
+    if (!String(r.doctor).startsWith('42501') || !String(r.figure).startsWith('42501'))
+      throw new Error('rights: ' + json194({ doctor: r.doctor, figure: r.figure }))
+    if (left.n !== 0) throw new Error('a refused tax was saved')
+    if (
+      figMar !== 800000 ||
+      Number(sumMar.net) !== 800000 ||
+      figQ1 !== 1000000 ||
+      Number(sumQ1.moneyIn) !== 1000000 ||
+      figTyped !== null
+    )
+      throw new Error(
+        'figures: ' + json194({ figMar, net: sumMar.net, figQ1, in: sumQ1.moneyIn, figTyped }),
+      )
+    return 'income tax 28% of the result (monthly): Jan 0, Mar 800,000 → 224,000, Apr a loss −50,000 → 0, Jun 100,000 → 28,000; flat tax 3% of the money in: Q1 1,000,000 → 30,000, Q2 → 3,000; tender 3% typed: no amount; licence 60,000 and VAT typed (the 7-value call); March result = money summary 800,000, Q1 money in 1,000,000; both / 0% / 120% / no base / odd base 22023 with their sentences; doctor and money_figure 42501'
+  },
+)
+await step(
+  '0194 B: paid → the percentage, the figure and the amount worked out are kept; later entries change nothing; the figure corrected when paying; the amount typed wins; a loss refused then skipped; a percentage of an amount typed (a tender credit)',
+  async () => {
+    const { kind, inc, flat, tender } = t194
+    await as(staff.cashier)
+    const paidMar = (
+      await one(
+        `select pay_tax($1, '2024-03-01', '2024-04-10', null, 'bank', 'RRA-0194', null) as j`,
+        [inc.id],
+      )
+    ).j
+    await asAdmin()
+    const row = await one(
+      `select amount, paid_amount, rate, rate_base, base_amount from tax_period where id = $1`,
+      [paidMar.id],
+    )
+    await as(staff.cashier)
+    // money in after March was paid: March keeps its figure, the unpaid quarter follows
+    const inc3 = (
+      await one(`select add_income($1, 500000, 'cash', null, '2024-03-20', null, null) as id`, [
+        kind,
+      ])
+    ).id
+    const pi2 = await periods194(inc.id)
+    const pf2 = await periods194(flat.id)
+    // February: the figure says 0, the accountant declares 600,000
+    const paidFeb = (
+      await one(
+        `select pay_tax($1, '2024-02-01', '2024-03-14', null, 'bank', 'RRA-0194-2', null, 600000) as j`,
+        [inc.id],
+      )
+    ).j
+    // the flat tax: 40,000 typed although 45,000 is worked out
+    const paidFlat = (
+      await one(
+        `select pay_tax($1, '2024-01-01', '2024-04-12', 40000, 'bank', 'RRA-FLAT', null) as j`,
+        [flat.id],
+      )
+    ).j
+    const pf3 = await periods194(flat.id)
+    const loss = await refusal194(staff.cashier, `select pay_tax($1, '2024-04-01', '2024-05-10')`, [
+      inc.id,
+    ])
+    await as(staff.cashier)
+    const skipped = (
+      await one(`select skip_tax($1, '2024-04-01', 'a loss in April') as id`, [inc.id])
+    ).id
+    const pi3 = await periods194(inc.id)
+    // a percentage of an amount typed when paying: the tender
+    const noBase = await refusal194(
+      staff.cashier,
+      `select pay_tax($1, '2024-03-01', '2024-03-25')`,
+      [tender.id],
+    )
+    const negBase = await refusal194(
+      staff.cashier,
+      `select pay_tax($1, '2024-03-01', '2024-03-25', null, 'bank', null, null, -5)`,
+      [tender.id],
+    )
+    await as(staff.cashier)
+    const tMar = (
+      await one(
+        `select pay_tax($1, '2024-03-01', '2024-03-25', null, 'bank', 'TENDER-3', null, 2000000) as j`,
+        [tender.id],
+      )
+    ).j
+    const tApr = (
+      await one(
+        `select pay_tax($1, '2024-04-01', '2024-04-20', 44000, 'bank', 'TENDER-4', null, 1500000) as j`,
+        [tender.id],
+      )
+    ).j
+    const pt2 = await periods194(tender.id)
+    await asAdmin()
+    const tAprRow = await one(
+      `select amount, paid_amount, base_amount, expense_id from tax_period where id = $1`,
+      [tApr.id],
+    )
+    Object.assign(t194, { inc3, paidMar, paidFeb, paidFlat, skipped, tMar, tApr })
+    const got = {
+      paid: [
+        n194(paidMar.amount),
+        n194(paidMar.workedOut),
+        n194(paidMar.baseAmount),
+        n194(paidMar.rate),
+        !!paidMar.expenseId,
+      ],
+      row: [
+        n194(row.amount),
+        n194(row.paid_amount),
+        n194(row.rate),
+        row.rate_base,
+        n194(row.base_amount),
+      ],
+      marKept: [
+        at194(pi2, '2024-03-01').status,
+        n194(at194(pi2, '2024-03-01').paidAmount),
+        n194(at194(pi2, '2024-03-01').baseAmount),
+      ],
+      q1Follows: [n194(pf2[0]?.baseAmount), n194(pf2[0]?.amount)],
+      feb: [n194(paidFeb.amount), n194(paidFeb.baseAmount)],
+      flat: [
+        pf3[0]?.status,
+        n194(pf3[0]?.paidAmount),
+        n194(pf3[0]?.workedOut),
+        n194(pf3[0]?.baseAmount),
+        n194(pf3[0]?.amount),
+      ],
+      loss,
+      april: at194(pi3, '2024-04-01').status,
+      noBase,
+      negBase,
+      tMar: [n194(tMar.amount), tMar.expenseId ?? null, tMar.kind, n194(tMar.baseAmount)],
+      tApr: [
+        n194(tAprRow.amount),
+        n194(tAprRow.paid_amount),
+        n194(tAprRow.base_amount),
+        tAprRow.expense_id ?? null,
+      ],
+      tAprList: [
+        n194(at194(pt2, '2024-04-01').paidAmount),
+        n194(at194(pt2, '2024-04-01').workedOut),
+        n194(at194(pt2, '2024-04-01').baseAmount),
+      ],
+    }
+    const want = {
+      paid: [224000, 224000, 800000, 28, true],
+      row: [224000, 224000, 28, 'result', 800000],
+      marKept: ['paid', 224000, 800000],
+      q1Follows: [1500000, 45000],
+      feb: [168000, 600000],
+      flat: ['paid', 40000, 45000, 1500000, 40000],
+      loss: '22023 the amount paid must be more than zero',
+      april: 'skipped',
+      noBase: '22023 type the amount the percentage is calculated on',
+      negBase: '22023 the amount the percentage is calculated on must be zero or more',
+      tMar: [60000, null, 'withheld', 2000000],
+      tApr: [45000, 44000, 1500000, null],
+      tAprList: [44000, 45000, 1500000],
+    }
+    if (json194(got) !== json194(want)) throw new Error(json194(got))
+    return 'March paid 224,000 (28% of 800,000), kept on the period; +500,000 in March after → March unchanged, the unpaid Q1 of the flat tax follows (1,500,000 → 45,000); February declared 600,000 → 168,000; flat Q1 40,000 typed (45,000 worked out kept); April (a loss) refused 22023 then skipped; tender without a figure / a figure −5 refused 22023, 3% of 2,000,000 = 60,000 as a credit (no expense), April 44,000 typed on 1,500,000 (45,000 worked out kept)'
+  },
+)
+await step(
+  '0194 C: a change applies to the periods not yet paid; the periods paid keep theirs; Undo lets a period follow the figures again; a percentage back to a fixed amount; the taxes by kind in order',
+  async () => {
+    const { inc, flat, tender, lic, vat, paidMar } = t194
+    await as(staff.cashier)
+    await db.query(
+      `select set_tax($1, 'Income tax 0194', null, 'monthly', '2024-01-01', 15, null, null, null, 'profit', 30, 'result')`,
+      [inc.id],
+    )
+    const pi4 = await periods194(inc.id)
+    await db.query(`select unpay_tax($1, 'test 0194')`, [paidMar.id])
+    const pi5 = await periods194(inc.id)
+    await db.query(
+      `select set_tax($1, 'Flat tax 0194', 10000, 'quarterly', '2024-01-01', 15, null, null, null, 'turnover')`,
+      [flat.id],
+    )
+    const pf4 = await periods194(flat.id)
+    const ov = (await one(`select tax_overview(2024) as j`)).j
+    await asAdmin()
+    const of = (id) => ov.taxes.find((x) => x.id === id) ?? {}
+    const order = ['profit', 'turnover', 'fixed', 'withheld', 'other']
+    const ranks = ov.taxes.map((x) => order.indexOf(x.kind))
+    const got = {
+      jun: [n194(at194(pi4, '2024-06-01').amount), n194(at194(pi4, '2024-06-01').rate)],
+      marPaid: [n194(at194(pi4, '2024-03-01').paidAmount), n194(at194(pi4, '2024-03-01').rate)],
+      marUndone: [
+        at194(pi5, '2024-03-01').status,
+        n194(at194(pi5, '2024-03-01').baseAmount),
+        n194(at194(pi5, '2024-03-01').amount),
+        n194(at194(pi5, '2024-03-01').rate),
+      ],
+      q2: [pf4[1]?.rate ?? null, n194(pf4[1]?.amount)],
+      q1: [n194(pf4[0]?.rate), n194(pf4[0]?.workedOut), n194(pf4[0]?.paidAmount)],
+      inc: [n194(of(inc.id).rate), of(inc.id).rateBase],
+      tender: [n194(of(tender.id).rate), of(tender.id).rateBase],
+      flat: [of(flat.id).rate ?? null, n194(of(flat.id).amount)],
+      fixedOnes: [of(lic.id).rate ?? null, of(vat.id).rate ?? null],
+      ordered: ranks.every((k, i) => k >= 0 && (i === 0 || k >= ranks[i - 1])),
+    }
+    const want = {
+      jun: [30000, 30],
+      marPaid: [224000, 28],
+      marUndone: ['overdue', 1300000, 390000, 30],
+      q2: [null, 10000],
+      q1: [3, 45000, 40000],
+      inc: [30, 'result'],
+      tender: [3, 'typed'],
+      flat: [null, 10000],
+      fixedOnes: [null, null],
+      ordered: true,
+    }
+    if (json194(got) !== json194(want))
+      throw new Error(json194({ got, kinds: ov.taxes.map((x) => x.kind) }))
+    return `30% from now: June 100,000 → 30,000, March paid keeps 224,000 at 28%; March undone → follows the figures: 1,300,000 → 390,000; the flat tax back to a fixed 10,000: Q2 10,000, Q1 paid keeps 3% (45,000 worked out, 40,000 paid); tax_overview 2024: the rates and bases, ${ov.taxes.length} taxes in the order of the kinds`
+  },
+)
+await step(
+  '0194 D: a one-off tax as a percentage on Other expenses (15% of RWF 300,000 = 45,000, both numbers kept); refusals; the period sums equal the money summary; the taxes paid count what was paid',
+  async () => {
+    await as(staff.cashier)
+    const oneOff = (
+      await one(
+        `select add_expense('Withholding 15% on a supplier 0194', null, 'bank', 'RRA-WHT', '2024-05-20', null, 'tax', null, 15, 300000) as id`,
+      )
+    ).id
+    const list = (await one(`select expenses_list('2024-05-01', '2024-05-31') as j`)).j
+    const r = {
+      both: await refusal194(
+        staff.cashier,
+        `select add_expense('x 0194', 1000, 'bank', null, '2024-05-20', null, 'tax', null, 15, 300000)`,
+      ),
+      noBase: await refusal194(
+        staff.cashier,
+        `select add_expense('x 0194', null, 'bank', null, '2024-05-20', null, 'tax', null, 15, null)`,
+      ),
+      over: await refusal194(
+        staff.cashier,
+        `select add_expense('x 0194', null, 'bank', null, '2024-05-20', null, 'tax', null, 120, 300000)`,
+      ),
+    }
+    await asAdmin()
+    const sum = (await one(`select finance_summary('2024-02-01', '2024-04-30') as j`)).j
+    const figR = await fig194('result', '2024-02-01', '2024-04-30')
+    const figIn = await fig194('money_in', '2024-02-01', '2024-04-30')
+    const left = await one(`select count(*)::int as n from expense where label = 'x 0194'`)
+    t194.oneOff = oneOff
+    const row = list.find((e) => e.id === oneOff) ?? {}
+    const got = {
+      row: [n194(row.amount), n194(row.rate), n194(row.baseAmount), row.kind],
+      both: r.both,
+      noBase: r.noBase,
+      over: r.over,
+      saved: left.n,
+      sums: [figR, Number(sum.net), figIn, Number(sum.moneyIn), Number(sum.taxes)],
+    }
+    const want = {
+      row: [45000, 15, 300000, 'tax'],
+      both: '22023 give a fixed amount or a percentage, not both',
+      noBase: '22023 type the amount the percentage is calculated on',
+      over: '22023 the percentage must be more than 0 and at most 100',
+      saved: 0,
+      sums: [1250000, 1250000, 1500000, 1500000, 208000],
+    }
+    if (json194(got) !== json194(want)) throw new Error(json194(got))
+    return 'one-off 15% of 300,000 → 45,000 (rate and figure in the list); an amount and a percentage / no figure / 120% refused 22023; Feb–Apr: result 1,250,000 and money in 1,500,000 = the money summary; taxes paid 208,000 (168,000 + 40,000: the undone 224,000 cancelled, the tender credits no money out)'
+  },
+)
+await step(
+  '0194 E: the period that runs is worked out "so far" from its own figures, the next one not yet; no loop (tax_overview, finance_summary, the notices); tidy',
+  async () => {
+    await asAdmin()
+    const m = await one(
+      `select date_trunc('month', now() at time zone 'Africa/Kigali')::date::text as d,
+              (date_trunc('month', now() at time zone 'Africa/Kigali') + interval '1 month')::date::text as n,
+              ((date_trunc('month', now() at time zone 'Africa/Kigali') + interval '1 month')::date - 1)::text as e,
+              extract(year from now() at time zone 'Africa/Kigali')::int as y`,
+    )
+    await as(staff.cashier)
+    const run = (
+      await one(
+        `select set_tax(null, 'Running 0194', null, 'monthly', $1::date, null, null, null, null, 'other', 10, 'money_in') as j`,
+        [m.d],
+      )
+    ).j
+    const pr = await periods194(run.id, m.y)
+    const ovNow = (await one(`select tax_overview($1) as j`, [m.y])).j
+    const sumNow = (await one(`select finance_summary($1::date, $2::date) as j`, [m.d, m.e])).j
+    const alerts = (await one(`select tax_alert_check() as j`)).j
+    await asAdmin()
+    const figNow = await fig194('money_in', m.d, m.e)
+    const first = pr[0] ?? {}
+    const next = pr[1]
+    const runRow = ovNow.taxes.find((x) => x.id === run.id)
+    if (
+      first.periodStart !== m.d ||
+      first.running !== true ||
+      n194(first.baseAmount) !== figNow ||
+      n194(first.amount) !== Math.round((Math.max(figNow, 0) * 10) / 100)
+    )
+      throw new Error('running: ' + json194({ first, figNow }))
+    if (next && (next.amount != null || next.baseAmount != null || next.running))
+      throw new Error('not started: ' + json194(next))
+    if (!runRow || sumNow == null || alerts == null)
+      throw new Error('loop: ' + json194({ runRow: !!runRow, sumNow: !!sumNow, alerts }))
+    // tidy: the periods paid or skipped undone, the taxes removed, the money cancelled
+    const { kind, inc1, inc2, inc3, exp1, exp2, oneOff, inc, flat, tender, lic, vat } = t194
+    const { paidFeb, paidFlat, skipped, tMar, tApr } = t194
+    await as(staff.cashier)
+    for (const id of [paidFeb.id, paidFlat.id, skipped, tMar.id, tApr.id])
+      await db.query(`select unpay_tax($1, 'tidy 0194')`, [id])
+    for (const id of [inc.id, flat.id, tender.id, lic.id, vat.id, run.id])
+      await db.query(`select remove_tax($1)`, [id])
+    for (const id of [inc1, inc2, inc3]) await db.query(`select void_income($1, 'tidy 0194')`, [id])
+    for (const id of [exp1, exp2, oneOff])
+      await db.query(`select void_expense($1, 'tidy 0194')`, [id])
+    await db.query(
+      `select set_money_kind($1, 'in', 'Consultancy fees 0194', 'A training given by the clinic', false)`,
+      [kind],
+    )
+    const y = (await one(`select finance_summary('2024-01-01', '2024-12-31') as j`)).j
+    await asAdmin()
+    if (Number(y.moneyIn) !== 0 || Number(y.net) !== 0 || Number(y.taxes) !== 0)
+      throw new Error('tidy: ' + json194({ in: y.moneyIn, net: y.net, t: y.taxes }))
+    return `this month (${m.d}…): ${n194(first.baseAmount).toLocaleString('en')} in so far → ${n194(first.amount).toLocaleString('en')} at 10%, marked running${next ? '; next month: no amount yet' : ''}; tax_overview, finance_summary and the notices return (no loop); tidied: 2024 empty again. Key figures: 224,000; 45,000; 390,000; 208,000`
+  },
+)
+// @@t194-end
 finish()
 
 function finish() {
