@@ -26726,11 +26726,11 @@ await step(
       r.doseOffice !== 'nursing' ||
       r.again !== '22023/order_over' ||
       json193(r.typed) !== json193(['done', false, 'not_in_price_list', 0]) ||
-      json193(r.old) !== json193([1, 6, null, '1 g', 'oral']) ||
+      json193(r.old) !== json193([1, 6, 'TDS', '1 g', 'oral']) ||
       json193(r.oldAct) !== json193([1, 1, null])
     )
       throw new Error(json193(r))
-    return 'Injection 193 for Nurse A: 1 time, no route, no “times” in her notice; one Done → done, 1 line of 1,000 at Nursing linked to the time; a second Done 22023/order_over; “Wound check 193” written → done, not billed (not_in_price_list); create_nurse_order 2 × 3 times → one order of 6, given at once; an act of 2 times → one'
+    return 'Injection 193 for Nurse A: 1 time, no route, no “times” in her notice; one Done → done, 1 line of 1,000 at Nursing linked to the time; a second Done 22023/order_over; “Wound check 193” written → done, not billed (not_in_price_list); create_nurse_order 2 × 3 times TDS → one order of 6 given at once, “TDS” kept; an act of 2 times → one'
   },
 )
 await step(
@@ -26994,17 +26994,21 @@ await step(
           b.quantity,
           b.to_location_id === t193.main,
           b.nurse_order_dose_id === t193.meDose,
+          b.reason,
         ]),
       ],
-      line: line && [!!line.deleted_at, /undone: wrong patient 193/.test(line.manual_reason ?? '')],
+      // the reason stays on the order only: the bill line says “order undone”
+      line: line && [!!line.deleted_at, line.manual_reason],
       dose: [dose.gone, dose.undone_by === t127.doc, dose.undo_reason],
       u: [
         u.status,
-        (u.endReason ?? '').startsWith('undone:'),
+        u.endReason,
         u.undone?.length,
         u.units,
         u.mode,
         u.given,
+        u.removed,
+        u.creditTotal,
       ],
       toldHimself,
       twice,
@@ -27012,16 +27016,16 @@ await step(
     }
     if (
       json193(r.refused) !== json193({ other: '42501/', empty: '22023/', cashier: '42501/' }) ||
-      json193(r.back) !== json193([2, [[2, true, true]]]) ||
-      json193(r.line) !== json193([true, true]) ||
+      json193(r.back) !== json193([2, [[2, true, true, 'order undone']]]) ||
+      json193(r.line) !== json193([true, 'order undone']) ||
       json193(r.dose) !== json193([true, true, 'wrong patient 193']) ||
-      json193(r.u) !== json193(['cancelled', true, 1, 2, 'bill', 0]) ||
+      json193(r.u) !== json193(['cancelled', 'undone: wrong patient 193', 1, 2, 'bill', 0, 1, 0]) ||
       r.toldHimself !== 0 ||
       !/^22023\|nothing was given or done/.test(r.twice) ||
       json193(r.act) !== json193(['cancelled', 0, 'bill', 0])
     )
       throw new Error(json193(r))
-    return 'another doctor 42501, no reason 22023, the cashier 42501; the doctor’s Undo: 2 back in the main pharmacy (linked to the time), the line off the bill (“undone: wrong patient 193”), the time kept as undone by him, the order cancelled, nobody told; again → nothing to undo; his act: cancelled, off the bill, nothing to the stock'
+    return 'another doctor 42501, no reason 22023, the cashier 42501; the doctor’s Undo: 2 back in the main pharmacy (linked to the time, “order undone”), 1 line off the bill (“order undone”: the reason stays on the order), the time kept as undone by him, the order cancelled, nobody told; again → nothing to undo; his act: cancelled, off the bill, nothing to the stock'
   },
 )
 await step(
@@ -27068,7 +27072,7 @@ await step(
     const m = await as193(staff.manager, undoSql193, [o.id, 'wrong medicine 193'])
     const afterMgr = await stock193(t193.para)
     const cn = await one(
-      `select source_type, source_id, total::int as total from credit_note where id = $1`,
+      `select source_type, source_id, total::int as total, reason from credit_note where id = $1`,
       [m.creditNoteId],
     )
     const stillLive = (await lines193(o.id)).filter((l) => !l.deleted_at).length
@@ -27084,7 +27088,9 @@ await step(
       net,
       late: late.split('|')[0] + (/another day/.test(late) ? '' : ' ' + late),
       mgr: [m.mode, !!m.creditNoteId, m.status, afterMgr - beforeMgr],
-      cn: cn && [cn.source_type, cn.source_id === o.id, cn.total],
+      // the credit note's whole amount, the patient's part and the insurer's (a cash visit)
+      credit: [m.creditTotal, m.credit, m.creditInsurer, m.removed],
+      cn: cn && [cn.source_type, cn.source_id === o.id, cn.total, cn.reason],
       stillLive,
     }
     if (
@@ -27102,11 +27108,12 @@ await step(
       r.net !== 1 ||
       r.late !== '42501' ||
       json193(r.mgr) !== json193(['credit', true, 'cancelled', 1]) ||
-      json193(r.cn) !== json193(['nurse_order', true, 50]) ||
+      json193(r.credit) !== json193([50, 50, 0, 0]) ||
+      json193(r.cn) !== json193(['nurse_order', true, 50, 'order undone']) ||
       r.stillLive !== 1
     )
       throw new Error(json193(r))
-    return 'Nurse A undid her press: to do again, the doctor told once; given again: one live line, the new time’s stock only (net −1); two days later on a closed bill: Nurse A 42501 (another day), the manager’s Undo → credit note CN of 50 (source nurse_order), the line kept, 1 back in the stock, cancelled'
+    return 'Nurse A undid her press: to do again, the doctor told once; given again: one live line, the new time’s stock only (net −1); two days later on a closed bill: Nurse A 42501 (another day), the manager’s Undo → credit note CN of 50 (source nurse_order, “order undone”; creditTotal 50 = the patient’s 50 + the insurer’s 0), the line kept, 1 back in the stock, cancelled'
   },
 )
 await step(
@@ -27169,7 +27176,7 @@ await step(
   },
 )
 await step(
-  '0193 H: the stock reports: medicines given through orders (here and to take home) count as given here, never written off; undone times are left out',
+  '0193 H: the stock reports: medicines given through orders (here and to take home) count as given here, never written off; undone times are left out, in the sales report too (a line kept on a closed bill)',
   async () => {
     await as(staff.manager)
     const sold = (await one(`select report_stock_sold($1::date, $1::date) as j`, [t193.today])).j
@@ -27179,7 +27186,15 @@ await step(
     const offs = (
       await one(`select report_stock_write_offs($1::date, $1::date) as j`, [t193.today])
     ).j
+    const sales = (await one(`select stock_sales($1::date, $1::date) as j`, [t193.today])).j
     await asAdmin()
+    // the sales report (who sold or gave): the undone time of 0193 F stays on its closed bill
+    // (a credit note answers for it) but is not sold
+    const salesOf = (name) => {
+      const it = (sales?.items ?? []).find((x) => String(x.item).startsWith(name)) ?? {}
+      const ls = (sales?.lines ?? []).filter((x) => String(x.item).startsWith(name))
+      return [Number(it.units), Number(it.revenue), ls.length]
+    }
     const ours = [t193.para, t193.amox, t193.cotrim]
     const row = (id) => (sold ?? []).find((x) => x.itemId === id) ?? {}
     const mine = (moves ?? []).filter((m) => ours.includes(m.itemId))
@@ -27190,6 +27205,7 @@ await step(
       consumption: [...new Set(mine.filter((m) => m.type === 'consumption').map((m) => m.kind))],
       returns: [...new Set(mine.filter((m) => m.type === 'return').map((m) => m.kind))],
       writtenOff: (offs ?? []).filter((x) => ours.includes(x.itemId)).length,
+      sales: [salesOf('Paracetamol 193'), salesOf('Amoxicillin 193'), salesOf('Cotrim 193')],
     }
     // Paracetamol 193: 15 taken home (750) + 1 given free (the manager removed its charge); the
     // doctor's 2 and the nurse's 1 + 1 were undone
@@ -27199,10 +27215,16 @@ await step(
       json193(r.cotrim) !== json193([10, 1000]) ||
       json193(r.consumption) !== json193(['given_here']) ||
       json193(r.returns) !== json193(['returned']) ||
-      r.writtenOff !== 0
+      r.writtenOff !== 0 ||
+      json193(r.sales) !==
+        json193([
+          [15, 750, 1],
+          [10, 1500, 1],
+          [10, 1000, 1],
+        ])
     )
       throw new Error(json193(r))
-    return 'Sold & given, “given here”: Paracetamol 193 16 (750: the undone times left out), Amoxicillin 193 10 (1,500), Cotrim 193 10 (1,000); Movements: given here and returned; Write-offs: none of them'
+    return 'Sold & given, “given here”: Paracetamol 193 16 (750: the undone times left out), Amoxicillin 193 10 (1,500), Cotrim 193 10 (1,000); Movements: given here and returned; Write-offs: none of them; the sales report: Paracetamol 193 15 / 750 in one line (the line of the undone time on the closed bill left out), Amoxicillin 193 10 / 1,500, Cotrim 193 10 / 1,000'
   },
 )
 await step(
@@ -27245,6 +27267,202 @@ await step(
     )
       throw new Error(json193(r))
     return 'an order of 3 times (before 0193): Given 1/3, 2/3 (2 off the stock, two lines, each linked to its time); Undo by the doctor → 2 back, cancelled, both times kept as undone'
+  },
+)
+await step(
+  '0193 J: Undo after the visit is finished and when money must go back: the nurse’s Undo ends the order as not done; the cashier is told how much to give back (the typed reason stays on the order); an order already cancelled or not done stays so',
+  async () => {
+    // a visit whose bill was paid, then finished; the nurse finds she gave to the wrong bed
+    const v3 = await t127.ov(t127.doc)
+    const o = await order193(t127.doc, {
+      p_encounter_id: v3,
+      p_kind: 'drug',
+      p_item_id: t193.para,
+      p_quantity: 2,
+      p_dose: '1 g',
+      p_route: 'oral',
+      p_assigned_to: t127.nurseA,
+    })
+    await as193(t127.nurseA, `select give_nurse_order($1) as j`, [o.id])
+    await asAdmin()
+    await db.query(
+      `insert into payment (invoice_id, method, amount) select id, 'cash', 100 from invoice where encounter_id = $1`,
+      [v3],
+    )
+    await db.query(`update encounter set status = 'closed', closed_at = now() where id = $1`, [v3])
+    const s0 = await stock193(t193.para)
+    const u = await as193(t127.nurseA, undoSql193, [o.id, 'given to the wrong bed 193'])
+    const back = (await stock193(t193.para)) - s0
+    const row = await one(`select status, end_reason from nurse_order where id = $1`, [o.id])
+    const inv = await one(
+      `select status::text as status, invoice_balance(id)::int as balance from invoice where encounter_id = $1`,
+      [v3],
+    )
+    const refund = (
+      await db.query(
+        `select params, recipient_stations::text[] as st from notification where kind = 'refund_due' and link = $1`,
+        ['/app/visit?encounter=' + v3],
+      )
+    ).rows
+    const told = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'nurse_order_done' and recipient_user = $1
+           and params->>'orderId' = $2 and params->>'what' = 'undone'`,
+        [t127.doc, o.id],
+      )
+    ).n
+    const words = await one(
+      `select (select string_agg(coalesce(reason, ''), '|') from stock_movement where nurse_order_id = $1 and type = 'return') as stock,
+              (select string_agg(coalesce(manual_reason, ''), '|') from invoice_line where source_type = 'nurse_order' and source_id = $1) as bill`,
+      [o.id],
+    )
+    // an order of before 0193 (3 times), 1 given by Nurse A, then ended: Undo leaves its end as it was
+    const ended = async (stopper, reason) => {
+      await asAdmin()
+      const id = (
+        await one(
+          `insert into nurse_order (encounter_id, patient_id, kind, text, item_id, quantity, doses_planned, assigned_to, created_by)
+           values ($1, $2, 'drug', 'Old J 193', $3, 1, 3, $4, $5) returning id`,
+          [t193.v, t127.pid, t193.para, t127.nurseA, t127.doc],
+        )
+      ).id
+      await as193(t127.nurseA, `select give_nurse_order($1) as j`, [id])
+      await as193(stopper, `select stop_nurse_order($1, $2) as j`, [id, reason])
+      const cancelNotes = async () =>
+        (
+          await one(
+            `select count(*)::int as n from notification where kind = 'nurse_order_done' and recipient_user = $1
+               and params->>'orderId' = $2 and params->>'what' = 'cancelled'`,
+            [t127.nurseA, id],
+          )
+        ).n
+      const notes0 = await cancelNotes()
+      const before = await stock193(t193.para)
+      const x = await as193(t127.nurseA, undoSql193, [id, 'pressed twice 193'])
+      const after = await stock193(t193.para)
+      const o2 = await one(`select status, end_reason from nurse_order where id = $1`, [id])
+      return [
+        x.status,
+        o2.status,
+        o2.end_reason,
+        x.undone?.length,
+        after - before,
+        (await cancelNotes()) - notes0,
+      ]
+    }
+    const r = {
+      u: [u.status, u.units, u.mode, u.removed, Number(u.balance)],
+      back,
+      row: [row.status, row.end_reason],
+      inv: [inv.status, inv.balance],
+      refund: refund.map((n) => [
+        Number(n.params.amount),
+        n.params.name,
+        'reason' in n.params,
+        n.st.includes('cashier'),
+      ]),
+      told,
+      words: [words.stock, words.bill],
+      cancelled: await ended(t127.doc, 'no longer needed 193'),
+      notDone: await ended(t127.nurseA, 'patient refused 193'),
+    }
+    if (
+      json193(r.u) !== json193(['not_done', 2, 'bill', 1, -100]) ||
+      r.back !== 2 ||
+      json193(r.row) !== json193(['not_done', 'undone: given to the wrong bed 193']) ||
+      json193(r.inv) !== json193(['draft', -100]) ||
+      json193(r.refund) !== json193([[100, 'Steps Six 127', false, true]]) ||
+      r.told !== 1 ||
+      json193(r.words) !== json193(['order undone', 'order undone']) ||
+      json193(r.cancelled) !==
+        json193(['cancelled', 'cancelled', 'no longer needed 193', 1, 1, 0]) ||
+      json193(r.notDone) !== json193(['not_done', 'not_done', 'patient refused 193', 1, 1, 0])
+    )
+      throw new Error(json193(r))
+    return 'paid 100, visit finished, Nurse A’s Undo: 2 back, the line off the bill, the order not done (“undone: given to the wrong bed 193”), the doctor told; the cashier told “100 to give back to Steps Six 127” (no reason in the notice; the stock and the bill say “order undone”); an older order cancelled by the doctor / not done by the nurse, then undone by Nurse A: it stays cancelled / not done with its own reason, 1 back, nobody told again'
+  },
+)
+await step(
+  '0193 K: Undo on a closed bill of an insured patient: the credit note is the whole line (the patient’s part and the insurer’s), the insurer claim drops by its part, the nurse the order was for is told it is cancelled',
+  async () => {
+    await as(staff.manager)
+    t193.ins = (
+      await one(
+        `select upsert_payer(null, 'Insurer 193', 'private', 85, '{}'::jsonb, true, 'INS193', false, 'cash_covered') as id`,
+      )
+    ).id
+    const v4 = await t127.ov(t127.doc)
+    await as(staff.cashier)
+    await db.query(`select set_visit_payer($1, $2, 'INS-193-1')`, [v4, t193.ins])
+    await asAdmin()
+    const o = await order193(t127.doc, {
+      p_encounter_id: v4,
+      p_kind: 'drug',
+      p_item_id: t193.amox,
+      p_quantity: 2,
+      p_dose: '1 g',
+      p_route: 'oral',
+      p_home_quantity: 8,
+      p_home_dose: '1 capsule',
+      p_home_frequency: 'TDS',
+      p_home_days: 3,
+      p_assigned_to: t127.nurseA,
+    })
+    await as193(t127.nurseA, `select give_nurse_order($1) as j`, [o.id])
+    await asAdmin()
+    const line = await one(
+      `select (quantity * unit_price)::int as total, patient_share::int as patient, insurer_share::int as insurer
+         from invoice_line where source_type = 'nurse_order' and source_id = $1 and deleted_at is null`,
+      [o.id],
+    )
+    const invId = (await one(`select id from invoice where encounter_id = $1`, [v4])).id
+    await db.query(`select post_invoice_now($1)`, [invId])
+    const claim0 = await one(`select amount::int as amount from claim where invoice_id = $1`, [
+      invId,
+    ])
+    const before = await stock193(t193.amox)
+    const m = await as193(staff.manager, undoSql193, [o.id, 'wrong medicine 193'])
+    const after = await stock193(t193.amox)
+    const claim1 = await one(`select amount::int as amount from claim where invoice_id = $1`, [
+      invId,
+    ])
+    const cn = await one(
+      `select total::int as total, patient_amount::int as patient, insurer_amount::int as insurer from credit_note where id = $1`,
+      [m.creditNoteId],
+    )
+    const nurseTold = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'nurse_order_done' and recipient_user = $1
+           and params->>'orderId' = $2 and params->>'what' = 'cancelled'`,
+        [t127.nurseA, o.id],
+      )
+    ).n
+    const refunds = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'refund_due' and link = $1`,
+        ['/app/visit?encounter=' + v4],
+      )
+    ).n
+    const r = {
+      line: [line.total, line.patient, line.insurer],
+      claim: [claim0?.amount, claim1?.amount],
+      m: [m.mode, m.status, m.creditTotal, m.credit, m.creditInsurer, m.removed],
+      cn: [cn.total, cn.patient, cn.insurer],
+      back: after - before,
+      nurseTold,
+      refunds,
+    }
+    if (
+      json193(r.line) !== json193([1500, 225, 1275]) ||
+      json193(r.claim) !== json193([1275, 0]) ||
+      json193(r.m) !== json193(['credit', 'cancelled', 1500, 225, 1275, 0]) ||
+      json193(r.cn) !== json193([1500, 225, 1275]) ||
+      r.back !== 10 ||
+      r.nurseTold !== 1 ||
+      r.refunds !== 0
+    )
+      throw new Error(json193(r))
+    return 'Insurer 193 at 85 %: Amoxicillin 193 2 here + 8 home → one box 1,500 (patient 225, insurer 1,275); the bill posted, claim 1,275; the manager’s Undo → credit note 1,500 (225 + 1,275; creditTotal 1,500, not 225), the claim 0, 10 back in the stock, the order cancelled, Nurse A told; nothing to give back (the patient had not paid)'
   },
 )
 // @@t193-end

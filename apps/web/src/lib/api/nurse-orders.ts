@@ -3,6 +3,8 @@ import i18n from '@/i18n'
 import { supabase } from '@/lib/supabase'
 import { priceQuantity, type SaleMode } from '@/lib/pack-pricing'
 import { useSession } from '@/store/session'
+import type { Station } from '@/lib/api/visits'
+import { sampleDropOrderCharges, sampleOrderCharge } from './billing'
 import { apiError, isMissingFunction } from './errors'
 import { sampleStock } from './stock'
 
@@ -154,10 +156,17 @@ export interface GiveResult {
 }
 /** What Undo answers (0193). */
 export interface UndoResult {
+  /** Pieces back in the clinic's stock. */
   units?: number
+  /** 'bill': the lines came off the open bill; 'credit': the bill is closed. */
   mode?: 'bill' | 'credit'
   creditNoteId?: string | null
+  /** The credit note: the patient's part, its whole amount, and the insurer's part. */
   credit?: number
+  creditTotal?: number
+  creditInsurer?: number
+  /** Bill lines taken off the open bill. */
+  removed?: number
   balance?: number
 }
 
@@ -189,7 +198,8 @@ const kigaliNow = () => new Date(Date.now() + 2 * 3_600_000).toISOString().slice
 export const givenDoses = (o: Pick<NurseOrder, 'doses'>) => o.doses.filter((d) => d.given)
 /**
  * Who may undo what was given or done (0193, as undo_nurse_order): the person who recorded every
- * time, the same day; the manager, any day. Not on a cancelled order.
+ * time, the same day; the manager, any day. Not on a cancelled order, and never on a database
+ * without 0193 (its times carry no id there, and Undo would always be refused).
  */
 export function canUndoOrder(
   o: Pick<NurseOrder, 'status' | 'doses'>,
@@ -198,7 +208,7 @@ export function canUndoOrder(
 ): boolean {
   if (o.status === 'cancelled') return false
   const given = givenDoses(o)
-  if (!given.length) return false
+  if (!given.length || !given.every((d) => !!d.id)) return false
   if (isManager) return true
   const today = kigaliNow()
   return given.every((d) => !!myId && d.byId === myId && kigaliDay(d.recordedAt ?? d.at) === today)
@@ -278,6 +288,7 @@ const sampleOrders: NurseOrder[] = [
     saleMode: 'both',
     doses: [
       {
+        id: 'nd-s2-1',
         n: 1,
         given: true,
         at: ago(12),
@@ -680,8 +691,24 @@ export function useNurseOrderActions() {
               ? 1000 * o.quantity
               : null
         const now = new Date().toISOString()
+        const doseId = `nd-${Date.now()}`
+        const office: Station = u?.role === 'nurse' ? 'nursing' : 'consultation'
+        // the bill line it makes, linked to the order and the time (the bill's Undo)
+        if (billed != null)
+          sampleOrderCharge(o.encounterId, {
+            orderId: o.id,
+            doseId,
+            description: o.text,
+            itemId: o.kind === 'drug' ? o.itemId : null,
+            serviceId: o.kind === 'act' ? o.serviceId : null,
+            quantity: o.kind === 'drug' ? pieces : o.quantity,
+            total: billed,
+            office,
+            by: u?.name ?? null,
+            byId: u?.id ?? null,
+          })
         o.doses.push({
-          id: `nd-${Date.now()}`,
+          id: doseId,
           n: o.doses.length + 1,
           given: true,
           at: i.at ?? now,
@@ -693,7 +720,7 @@ export function useNurseOrderActions() {
           store: o.kind === 'drug' ? 'Main pharmacy' : null,
           quantity: o.kind === 'drug' ? here : null,
           homeQuantity: o.kind === 'drug' && isOnce(o) ? (o.homeQuantity ?? null) : null,
-          office: u?.role === 'nurse' ? 'nursing' : 'consultation',
+          office,
           billed,
           onBill: billed != null,
           batches:
@@ -809,18 +836,34 @@ export function useNurseOrderActions() {
         }
         o.doses = o.doses.filter((d) => !d.given)
         o.given = 0
-        if (undoEndsOrder(o, u?.id, manager)) {
+        const removed = sampleDropOrderCharges(
+          o.encounterId,
+          given.map((d) => d.id ?? ''),
+        )
+        // an order already over (cancelled or not done) stays so: only its times are undone
+        const over = o.status === 'cancelled' || o.status === 'not_done'
+        if (!over && undoEndsOrder(o, u?.id, manager)) {
           o.status = 'cancelled'
           o.endedAt = now
           o.endedBy = u?.name ?? null
           o.endReason = `undone: ${reason}`
-        } else {
+        } else if (!over) {
           o.status = 'open'
           o.endedAt = null
           o.endedBy = null
           o.endReason = null
         }
-        return { ...copy(o), units, mode: 'bill', creditNoteId: null, credit: 0, balance: 0 }
+        return {
+          ...copy(o),
+          units,
+          mode: 'bill',
+          creditNoteId: null,
+          credit: 0,
+          creditTotal: 0,
+          creditInsurer: 0,
+          removed,
+          balance: 0,
+        }
       }
       const { data, error } = await supabase.rpc('undo_nurse_order', {
         p_order_id: i.id,

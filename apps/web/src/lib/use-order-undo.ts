@@ -10,14 +10,15 @@ import {
   type NurseOrder,
 } from '@/lib/api/nurse-orders'
 import { undoBody, undoMessage } from '@/lib/order-words'
+import { useHanded } from '@/pages/stock/pharmacy/handed'
 
 const when = (iso: string) => `${formatDate(new Date(iso))} ${formatTime(new Date(iso))}`
 
 /**
  * Undo on an order of step 6 (0193), the same on the order and on its bill line: the question says
  * who gave it and when, what goes back to the stock, what leaves the bill (or the credit note when
- * the bill is closed) and what becomes of the order; the reason is typed in the box. Answers the
- * message to show, or null when the person went back.
+ * the bill is closed) and what becomes of the order; the reason is typed in the box. Its label
+ * leaves the nurse's Home strip. Answers the message to show, or null when the person went back.
  */
 export function useOrderUndo() {
   const { t } = useTranslation()
@@ -54,6 +55,8 @@ export function useOrderUndo() {
     })
     if (!r.ok) return null
     const res = await actions.undo.mutateAsync({ id: o.id, reason: r.value })
+    // its label leaves the nurse's Home strip: the medicine is back in the stock
+    useHanded.getState().dropSource(o.id)
     return undoMessage(t, o, res)
   }
   return { undo, pending: actions.undo.isPending }

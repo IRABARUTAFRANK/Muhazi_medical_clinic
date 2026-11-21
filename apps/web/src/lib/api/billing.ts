@@ -162,6 +162,62 @@ const recompute = (b: VisitBill) => {
   b.balance = b.patientShare - b.paid
 }
 
+/** Sample mode (0193): the bill line an order of step 6 makes when it is given or done. */
+export function sampleOrderCharge(
+  encounterId: string,
+  c: {
+    orderId: string
+    doseId: string
+    description: string
+    itemId: string | null
+    serviceId: string | null
+    quantity: number
+    total: number
+    office: Station
+    by: string | null
+    byId: string | null
+  },
+) {
+  const b = sampleBill(encounterId)
+  const unitPrice = c.quantity > 0 ? c.total / c.quantity : c.total
+  b.charges = [
+    ...b.charges,
+    {
+      id: `c-${Math.random().toString(36).slice(2, 8)}`,
+      description: c.description,
+      serviceId: c.serviceId,
+      itemId: c.itemId,
+      cashPrice: null,
+      quantity: c.quantity,
+      unitPrice,
+      listPrice: unitPrice,
+      discountPct: 0,
+      discountReason: null,
+      coveragePct: 0,
+      patientShare: c.total,
+      insurerShare: 0,
+      office: c.office,
+      enteredBy: c.by,
+      createdAt: new Date().toISOString(),
+      sourceType: 'nurse_order',
+      sourceId: c.orderId,
+      doseId: c.doseId,
+      performedBy: c.byId,
+    },
+  ]
+  recompute(b)
+}
+
+/** Sample mode (0193): Undo takes the lines of those times off the bill; answers how many. */
+export function sampleDropOrderCharges(encounterId: string, doseIds: readonly string[]): number {
+  const b = sampleBills.get(encounterId)
+  if (!b) return 0
+  const before = b.charges.length
+  b.charges = b.charges.filter((c) => !(c.doseId && doseIds.includes(c.doseId)))
+  recompute(b)
+  return before - b.charges.length
+}
+
 // ---------------------------------------------------------------- header + vitals
 interface BoardRow {
   encounter_id: string

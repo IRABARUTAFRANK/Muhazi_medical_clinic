@@ -149,10 +149,14 @@ export function NurseOrdersStep({
     servicePrice: service?.cashPrice ?? null,
     actCount,
   })
-  const blocked = f.kind === 'drug' && (summary.tone === 'short' || summary.tone === 'wholePacks')
-  const rest = f.where === 'both' ? restOfBox(here, pack?.size) : null
+  // a half or a decimal typed in a count is said at once, never turned into a bigger number
+  const notWhole = f.kind === 'drug' && (!Number.isInteger(here) || !Number.isInteger(home))
+  const blocked =
+    f.kind === 'drug' && (notWhole || summary.tone === 'short' || summary.tone === 'wholePacks')
+  const rest = f.where === 'both' && !notWhole ? restOfBox(here, pack?.size) : null
   // the take-home pieces in boxes ("1 box of 20"), when they make one or more
-  const homeBoxes = pack && home > 0 ? packsText(t, home, pack.size, pack.packUnit) : null
+  const homeBoxes =
+    pack && home > 0 && !notWhole ? packsText(t, home, pack.size, pack.packUnit) : null
 
   // the picker: the medicines the clinic has first, with how many and the price; the others
   // last, to prescribe for an outside pharmacy instead
@@ -213,9 +217,11 @@ export function NurseOrdersStep({
     setErr(null)
     if (f.kind === 'drug') {
       if (!item) return setErr(t('nurseOrders.errMedicine'))
-      if (!Number.isInteger(here) || !Number.isInteger(home))
-        return setErr(t('nurseOrders.errWhole'))
+      if (notWhole) return setErr(t('nurseOrders.errWhole'))
       if (here + home <= 0) return setErr(t('nurseOrders.errAmounts'))
+      // "Both": each part has its number (never a take-home part dropped without a word)
+      if (f.where === 'both' && !(here > 0)) return setErr(t('nurseOrders.errHereAmount'))
+      if (f.where === 'both' && !(home > 0)) return setErr(t('nurseOrders.errHomeAmount'))
       const days = f.homeDays.trim()
       if (home > 0 && days && !(Number.isInteger(Number(days)) && +days >= 1 && +days <= 365))
         return setErr(t('nurseOrders.errHomeDays'))
@@ -300,7 +306,8 @@ export function NurseOrdersStep({
     }
   }
 
-  const digits = (v: string) => v.replace(/[^\d]/g, '')
+  // numbers only; a dot or a comma is kept, so a half is refused in words instead of becoming 5
+  const amount = (v: string) => v.replace(/,/g, '.').replace(/[^\d.]/g, '')
   return (
     <div className="flex flex-col gap-3">
       <span className="flex flex-wrap items-center gap-2">
@@ -378,7 +385,7 @@ export function NurseOrdersStep({
                           label={t('nurseOrders.hereAmount', { unit })}
                           inputMode="numeric"
                           value={f.quantity}
-                          onChange={(e) => set({ quantity: digits(e.target.value) })}
+                          onChange={(e) => set({ quantity: amount(e.target.value) })}
                         />
                       </Hinted>
                       <Hinted hint={t('nurseOrders.doseHint')}>
@@ -417,7 +424,7 @@ export function NurseOrdersStep({
                             label={t('nurseOrders.homeAmount', { unit })}
                             inputMode="numeric"
                             value={f.homeQuantity}
-                            onChange={(e) => set({ homeQuantity: digits(e.target.value) })}
+                            onChange={(e) => set({ homeQuantity: amount(e.target.value) })}
                           />
                         </Hinted>
                       </div>
@@ -463,7 +470,7 @@ export function NurseOrdersStep({
                         label={t('nurseOrders.homeDays')}
                         inputMode="numeric"
                         value={f.homeDays}
-                        onChange={(e) => set({ homeDays: digits(e.target.value) })}
+                        onChange={(e) => set({ homeDays: amount(e.target.value) })}
                       />
                       <Field
                         label={t('nurseOrders.homeInstructions')}
@@ -526,14 +533,23 @@ export function NurseOrdersStep({
                 placeholder={t('nurseOrders.notesPh')}
               />
             </Hinted>
-            <OrderSummary
-              summary={summary}
-              kind={f.kind}
-              unit={unit}
-              act={actName}
-              actCount={actCount}
-              packUnit={pack?.packUnit ?? null}
-            />
+            {notWhole ? (
+              <p
+                role="alert"
+                className="border-red bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[13px] font-semibold"
+              >
+                {t('nurseOrders.errWhole')}
+              </p>
+            ) : (
+              <OrderSummary
+                summary={summary}
+                kind={f.kind}
+                unit={unit}
+                act={actName}
+                actCount={actCount}
+                packUnit={pack?.packUnit ?? null}
+              />
+            )}
             {err && (
               <p
                 role="alert"

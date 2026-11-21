@@ -13,11 +13,14 @@ import { supabase } from '@/lib/supabase'
  */
 
 export interface HandedGroup {
-  /** The visit (encounter id) or the counter sale (sale id). */
+  /** The visit (encounter id), the counter sale (sale id), or `order:` + the visit (0193). */
   key: string
-  kind: 'visit' | 'sale'
+  /** 'order': a medicine handed over through an order of step 6, on the nurse's Home (0193). */
+  kind: 'visit' | 'sale' | 'order'
   patient: { name: string; fileNumber: string }
   lines: DispenseLabel[]
+  /** What each line came from (0193: the order), so Undo can take its label away. */
+  sources?: (string | null)[]
   at: number
   /** Labels printed at least once. */
   printed: boolean
@@ -35,10 +38,17 @@ interface HandedState {
     g: Pick<HandedGroup, 'key' | 'kind' | 'patient'>,
     line: DispenseLabel,
     extra?: Partial<Pick<HandedGroup, 'toPay' | 'done'>>,
+    /** What the line came from (0193: the order), for dropSource. */
+    source?: string | null,
   ) => void
   update: (key: string, patch: Partial<Pick<HandedGroup, 'toPay' | 'done' | 'printed'>>) => void
   remove: (key: string) => void
+  /** Undo (0193): the labels of what came from this source go; a group left empty goes too. */
+  dropSource: (source: string) => void
 }
+
+/** The sources of a group's lines, one per line (null: not known). */
+const sourcesOf = (g: HandedGroup) => g.lines.map((_, i) => g.sources?.[i] ?? null)
 
 /** At most this many patients or buyers are kept for a reprint. */
 const KEEP = 12
@@ -52,15 +62,23 @@ export const useHanded = create<HandedState>()(
     (set) => ({
       groups: [],
       day: kigaliToday(),
-      add: (g, line, extra) =>
+      add: (g, line, extra, source) =>
         set((s) => {
           const groups = today(s)
           const old = groups.find((x) => x.key === g.key)
           const next: HandedGroup = old
-            ? { ...old, lines: [...old.lines, line], at: Date.now(), printed: false, ...extra }
+            ? {
+                ...old,
+                lines: [...old.lines, line],
+                sources: [...sourcesOf(old), source ?? null],
+                at: Date.now(),
+                printed: false,
+                ...extra,
+              }
             : {
                 ...g,
                 lines: [line],
+                sources: [source ?? null],
                 at: Date.now(),
                 printed: false,
                 toPay: null,
@@ -75,6 +93,21 @@ export const useHanded = create<HandedState>()(
       update: (key, patch) =>
         set((s) => ({ groups: s.groups.map((x) => (x.key === key ? { ...x, ...patch } : x)) })),
       remove: (key) => set((s) => ({ groups: s.groups.filter((x) => x.key !== key) })),
+      dropSource: (source) =>
+        set((s) => ({
+          groups: s.groups
+            .map((g) => {
+              const sources = sourcesOf(g)
+              if (!sources.includes(source)) return g
+              const keep = sources.map((x) => x !== source)
+              return {
+                ...g,
+                lines: g.lines.filter((_, i) => keep[i]),
+                sources: sources.filter((_, i) => keep[i]),
+              }
+            })
+            .filter((g) => g.lines.length > 0),
+        })),
     }),
     {
       name: 'mmc-handed',

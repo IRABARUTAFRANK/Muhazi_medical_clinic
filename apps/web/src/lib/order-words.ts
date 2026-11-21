@@ -21,6 +21,7 @@ export type OrderLike = Pick<NurseOrder, 'kind' | 'quantity' | 'status' | 'doses
       NurseOrder,
       | 'dose'
       | 'route'
+      | 'frequency'
       | 'unit'
       | 'service'
       | 'serviceId'
@@ -44,7 +45,7 @@ const unitOf = (t: TFn, o: Pick<OrderLike, 'unit'>) => o.unit || t('nurseOrders.
 const routeWord = (t: TFn, r: string) => t(`clinical.routes.${r}`, { defaultValue: r })
 const frequencyWord = (t: TFn, f: string) => t(`clinical.frequencies.${f}`, { defaultValue: f })
 
-/** "Given here: 2 cap · 1 g · By mouth (oral)". */
+/** "Given here: 2 cap · 1 g · By mouth (oral)" (and how often, sent by a screen of before 0193). */
 export function hereLine(t: TFn, o: OrderLike): string | null {
   const { here } = orderParts(o)
   if (o.kind !== 'drug' || here <= 0) return null
@@ -52,6 +53,7 @@ export function hereLine(t: TFn, o: OrderLike): string | null {
     t('nurseOrders.partHere', { count: here, unit: unitOf(t, o) }),
     o.dose,
     o.route ? routeWord(t, o.route) : null,
+    o.frequency ? frequencyWord(t, o.frequency) : null,
   ]
     .filter(Boolean)
     .join(' · ')
@@ -155,7 +157,11 @@ export function giveMessage(t: TFn, o: NurseOrder, res: GiveResult): string {
   return t('nurseOrders.givenOnBill', { what: o.text, amount })
 }
 
-/** What Undo will do, in sentences (the question's body). */
+/**
+ * What Undo will do, in sentences (the question's body), from what was really given or done: who
+ * did it (Given / Handed over / Done by), what goes back to the stock, and the bill only when a
+ * time is on it (a written act, an unpriced time or a line the manager removed is not).
+ */
 export function undoBody(
   t: TFn,
   o: NurseOrder,
@@ -171,26 +177,65 @@ export function undoBody(
     when?: string | null
   },
 ): string {
-  const units = o.doses
-    .filter((d) => d.given)
-    .reduce((s, d) => s + Number(d.quantity ?? 0) + Number(d.homeQuantity ?? 0), 0)
+  const given = o.doses.filter((d) => d.given)
+  const units = given.reduce((s, d) => s + Number(d.quantity ?? 0) + Number(d.homeQuantity ?? 0), 0)
+  // an older database says only charged
+  const onBill = given.some((d) => d.onBill ?? d.charged)
+  const stock = o.kind === 'drug' && units > 0
+  const byKey = {
+    give: 'nurseOrders.undoBy',
+    hand: 'nurseOrders.undoHandedBy',
+    done: 'nurseOrders.undoDoneBy',
+  }[orderAction(o)]
+  // an order already over (cancelled, or not done) stays so: only its times are undone
+  const over = o.status === 'cancelled' || o.status === 'not_done'
   return [
-    w.by ? t('nurseOrders.undoBy', { by: w.by, when: w.when ?? '' }) : null,
-    o.kind === 'drug' && units > 0
-      ? t('nurseOrders.undoBack', { count: units, unit: unitOf(t, o) })
-      : t('nurseOrders.undoBackAct'),
-    w.billClosed ? t('nurseOrders.undoCredit') : null,
-    w.endsOrder
-      ? t('nurseOrders.undoEnds')
-      : w.visitOver
-        ? t('nurseOrders.undoVisitOver')
-        : t('nurseOrders.undoReopens'),
+    w.by ? t(byKey, { by: w.by, when: w.when ?? '' }) : null,
+    stock
+      ? t(onBill ? 'nurseOrders.undoBack' : 'nurseOrders.undoBackStock', {
+          count: units,
+          unit: unitOf(t, o),
+        })
+      : t(onBill ? 'nurseOrders.undoBackAct' : 'nurseOrders.undoNotOnBill'),
+    w.billClosed && onBill ? t('nurseOrders.undoCredit') : null,
+    over
+      ? t('nurseOrders.undoStays')
+      : w.endsOrder
+        ? t('nurseOrders.undoEnds')
+        : w.visitOver
+          ? t('nurseOrders.undoVisitOver')
+          : t('nurseOrders.undoReopens'),
   ]
     .filter(Boolean)
     .join(' ')
 }
-/** The message after Undo. */
-export const undoMessage = (t: TFn, o: NurseOrder, res: UndoResult) =>
-  res.mode === 'credit' && Number(res.credit ?? 0) > 0
-    ? t('nurseOrders.undoneCredit', { what: o.text, amount: formatRwf(Number(res.credit)) })
-    : t('nurseOrders.undone', { what: o.text })
+/**
+ * The message after Undo: the credit note's whole amount when the bill was closed (and the
+ * patient's and insurer's parts when an insurer pays some), else what went back to the stock and
+ * what came off the bill.
+ */
+export function undoMessage(t: TFn, o: NurseOrder, res: UndoResult): string {
+  const total = Number(res.creditTotal ?? 0)
+  const insurer = Number(res.creditInsurer ?? 0)
+  if (res.creditNoteId && total > 0)
+    return insurer > 0
+      ? t('nurseOrders.undoneCreditSplit', {
+          what: o.text,
+          amount: formatRwf(total),
+          patient: formatRwf(Number(res.credit ?? 0)),
+          insurer: formatRwf(insurer),
+        })
+      : t('nurseOrders.undoneCredit', { what: o.text, amount: formatRwf(total) })
+  const back = Number(res.units ?? 0) > 0
+  const off = res.removed == null ? true : res.removed > 0
+  return t(
+    back && off
+      ? 'nurseOrders.undone'
+      : back
+        ? 'nurseOrders.undoneStock'
+        : off
+          ? 'nurseOrders.undoneBill'
+          : 'nurseOrders.undonePlain',
+    { what: o.text },
+  )
+}

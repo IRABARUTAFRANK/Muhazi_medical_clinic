@@ -618,7 +618,8 @@ function NurseOrdersSection({
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const addHanded = useHanded((s) => s.add)
-  const handedToday = useHanded((s) => s.groups.some((g) => g.kind === 'visit'))
+  // 0193: its own kind, so the pharmacy's hand-overs (a nurse may also keep the pharmacy) stay apart
+  const handedToday = useHanded((s) => s.groups.some((g) => g.kind === 'order'))
   if (!nursing && orders.length === 0 && !handedToday) return null
   return (
     <section className="flex flex-col gap-3">
@@ -634,7 +635,7 @@ function NurseOrdersSection({
         {error && <ErrorBox>{error}</ErrorBox>}
         {message && !error && <Flash onClose={() => setMessage(null)}>{message}</Flash>}
         {/* 0193: the labels of the medicines handed over to take home today (print, reprint) */}
-        <HandedStrip kind="visit" onBlocked={() => setError(t('report.popupBlocked'))} />
+        <HandedStrip kind="order" onBlocked={() => setError(t('report.popupBlocked'))} />
         {orders.length === 0 ? (
           <Empty>{t('nurseOrders.homeEmpty')}</Empty>
         ) : (
@@ -657,11 +658,13 @@ function NurseOrdersSection({
                       onHanded={(_, label) =>
                         addHanded(
                           {
-                            key: o.encounterId,
-                            kind: 'visit',
+                            key: `order:${o.encounterId}`,
+                            kind: 'order',
                             patient: { name: o.patient ?? '', fileNumber: o.fileNumber ?? '' },
                           },
                           label,
+                          undefined,
+                          o.id,
                         )
                       }
                     />

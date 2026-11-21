@@ -1,4 +1,4 @@
--- Muhazi Medical Clinic System — all migrations + seed, generated 2026-11-21T12:09:06.271Z
+-- Muhazi Medical Clinic System — all migrations + seed, generated 2026-11-21T12:22:11.274Z
 -- Paste into the Supabase SQL editor and run once on an empty project.
 
 -- ============================================================ 20261015180000_foundation.sql
@@ -86803,7 +86803,11 @@ grant execute on function save_definitive_diagnoses(uuid, uuid[], uuid[], text[]
 --     the old ones too (same transaction, same created_at).
 --   * A bill line made by an order is refused to a non-manager in plain words; the bill can read
 --     where a line comes from (visit_charge_sources).
---   * The stock reports count medicines given through orders as given here, never as written off.
+--   * The stock reports count medicines given through orders as given here, never as written off;
+--     an undone time is never sold (the sales report too, when the bill was closed).
+--   * An order already over (cancelled or not done) stays so when its times are undone; the
+--     reason of an undo stays on the order (hidden in the change log), not on the stock, the bill
+--     or the cashier's notice. A screen of before keeps the medicine's "how often".
 --   * The patient's safety summary lists medicines taken home from the clinic until their days are
 --     over; past visits show the take-home part.
 -- No existing function changes its arguments: new ones are create_order_here and undo_nurse_order.
@@ -87072,7 +87076,8 @@ $$;
 
 -- create_nurse_order (from 20270113090000_doctor_does_it): the same arguments, now one order
 -- carried out once (0193): a drug's total (each time × times) is given at once; an act is done
--- once. A screen opened before the update follows the same rule.
+-- once. A screen opened before the update follows the same rule; the medicine keeps the "how
+-- often" it sends (said beside the dose), so the nurse still sees it.
 create or replace function create_nurse_order(
   p_encounter_id uuid, p_kind text, p_text text default null, p_service_id uuid default null,
   p_item_id uuid default null, p_quantity numeric default 1, p_dose text default null,
@@ -87082,16 +87087,24 @@ create or replace function create_nurse_order(
 returns jsonb
 language plpgsql security definer set search_path = public
 as $$
+declare
+  v_j jsonb;
+  v_freq text := nullif(trim(coalesce(p_frequency, '')), '');
 begin
   if p_doses is null or p_doses < 1 or p_doses > 60 then
     raise exception 'the number of times is between 1 and 60' using errcode = '22023';
   end if;
-  return create_order_here(
+  v_j := create_order_here(
     p_encounter_id => p_encounter_id, p_kind => p_kind, p_item_id => p_item_id,
     p_service_id => p_service_id, p_text => p_text,
     p_quantity => case when p_kind = 'drug' then coalesce(p_quantity, 1) * coalesce(p_doses, 1)
                        else coalesce(p_quantity, 1) end,
     p_dose => p_dose, p_route => p_route, p_assigned_to => p_assigned_to, p_notes => p_notes);
+  if p_kind = 'drug' and v_freq is not null then
+    update nurse_order set frequency = v_freq where id = (v_j ->> 'id')::uuid;
+    v_j := nurse_order_json((v_j ->> 'id')::uuid);
+  end if;
+  return v_j;
 end
 $$;
 
@@ -87183,7 +87196,11 @@ $$;
 -- the lines leave the bill (a credit note when the bill is closed; the cashier is told when money
 -- goes back), the times are kept as undone (who, when, why). The doctor who wrote it or the
 -- manager: the order ends cancelled; the nurse who gave it: it is to do again (not done when the
--- visit is finished) and the doctor is told.
+-- visit is finished) and the doctor is told. An order already over (cancelled, or not done) stays
+-- as it is: only its times are undone. The reason typed is kept on the order only (the change log
+-- hides it); the stock and the bill line say "order undone", the credit note too, and the
+-- cashier's notice says only what came back and how much.
+-- Answers the credit note's whole amount (creditTotal) and the patient's and insurer's parts.
 create or replace function undo_nurse_order(p_order_id uuid, p_reason text)
 returns jsonb
 language plpgsql security definer set search_path = public
@@ -87206,6 +87223,8 @@ declare
   v_mode text := 'bill';
   v_name text;
   v_status text;
+  v_over boolean;
+  v_removed integer := 0;
 begin
   if auth.uid() is null or not has_perm('clinical.write') then
     raise exception 'not allowed' using errcode = '42501';
@@ -87245,7 +87264,7 @@ begin
                  then v_mv.from_location_id else main_pharmacy() end;
     insert into stock_movement (item_id, batch_id, to_location_id, quantity, type, reason, nurse_order_id,
                                 nurse_order_dose_id)
-    values (v_mv.item_id, v_mv.batch_id, v_to, v_mv.quantity, 'return', 'order undone: ' || v_reason, v_o.id,
+    values (v_mv.item_id, v_mv.batch_id, v_to, v_mv.quantity, 'return', 'order undone', v_o.id,
             v_mv.nurse_order_dose_id);
     v_back := v_back + v_mv.quantity;
   end loop;
@@ -87253,8 +87272,9 @@ begin
   select * into v_inv from invoice where encounter_id = v_o.encounter_id;
   if v_inv.id is null or v_inv.status = 'draft' then
     update invoice_line set deleted_at = now(),
-           manual_reason = coalesce(manual_reason || ' · ', '') || 'undone: ' || v_reason
+           manual_reason = coalesce(manual_reason || ' · ', '') || 'order undone'
     where nurse_order_dose_id = any (v_doses) and deleted_at is null;
+    get diagnostics v_removed = row_count;
     if v_inv.id is not null then
       perform recompute_invoice(v_inv.id);
     end if;
@@ -87272,7 +87292,7 @@ begin
       insert into credit_note (invoice_id, number, lines, total, reason, approver_id, patient_amount, insurer_amount,
                                source_type, source_id)
       values (v_inv.id, 'CN-' || v_year || '-' || lpad(next_number('credit_note', v_year)::text, 6, '0'),
-              v_lines, v_total, 'undone: ' || v_reason, auth.uid(), v_patient, v_insurer,
+              v_lines, v_total, 'order undone', auth.uid(), v_patient, v_insurer,
               'nurse_order', v_o.id)
       returning id into v_cn;
       if v_insurer > 0 then
@@ -87284,24 +87304,29 @@ begin
   -- the times: kept, as undone
   update nurse_order_dose set deleted_at = now(), undone_by = auth.uid(), undo_reason = v_reason
   where id = any (v_doses);
-  -- the order
-  if v_o.created_by = auth.uid() or is_manager() then
+  -- the order (one already over, cancelled or not done, stays as it is with its reason)
+  v_over := v_o.status in ('cancelled', 'not_done');
+  if v_over then
+    v_status := v_o.status;
+  elsif v_o.created_by = auth.uid() or is_manager() then
     v_status := 'cancelled';
   elsif exists (select 1 from encounter e where e.id = v_o.encounter_id and e.status = 'open' and e.deleted_at is null) then
     v_status := 'open';
   else
     v_status := 'not_done';
   end if;
-  if v_status = 'open' then
+  if v_over then
+    null;
+  elsif v_status = 'open' then
     update nurse_order set status = 'open', ended_at = null, ended_by = null, end_reason = null where id = v_o.id;
   else
     update nurse_order set status = v_status, ended_at = now(), ended_by = auth.uid(), end_reason = 'undone: ' || v_reason
     where id = v_o.id;
   end if;
   -- who is told: the doctor who wrote it (unless he undid it himself); the nurse it was for, when
-  -- the order is cancelled
+  -- the order is cancelled now
   perform nurse_order_tell(v_o.id, 'undone', v_reason);
-  if v_status = 'cancelled' and v_o.assigned_to is not null and v_o.assigned_to <> auth.uid()
+  if not v_over and v_status = 'cancelled' and v_o.assigned_to is not null and v_o.assigned_to <> auth.uid()
      and v_o.assigned_to is distinct from v_o.created_by then
     insert into notification (kind, params, link, recipient_user, created_by)
     values ('nurse_order_done',
@@ -87315,14 +87340,16 @@ begin
     -- money to give back: the cashier is told
     select p.surname || ' ' || p.given_names into v_name from patient p where p.id = v_o.patient_id;
     insert into notification (kind, params, link, recipient_stations, created_by)
-    values ('refund_due', jsonb_build_object('name', v_name, 'item', v_o.text, 'amount', -v_balance,
-                                             'reason', v_reason),
+    values ('refund_due', jsonb_build_object('name', v_name, 'item', v_o.text, 'amount', -v_balance),
             '/app/visit?encounter=' || v_o.encounter_id, array['cashier'::station], auth.uid());
   end if;
+  -- credit: the patient's part (as before); creditTotal: the credit note's whole amount
   return nurse_order_json(v_o.id)
     || jsonb_build_object('units', v_back, 'mode', v_mode, 'creditNoteId', v_cn,
-                          'credit', case when v_mode = 'credit' then v_patient else 0 end,
-                          'balance', v_balance, 'status', v_status);
+                          'credit', case when v_cn is not null then v_patient else 0 end,
+                          'creditTotal', case when v_cn is not null then v_total else 0 end,
+                          'creditInsurer', case when v_cn is not null then v_insurer else 0 end,
+                          'removed', v_removed, 'balance', v_balance, 'status', v_status);
 end
 $$;
 
@@ -87823,6 +87850,104 @@ begin
       and (v_admin or holds_store(auth.uid(), coalesce(m.from_location_id, m.to_location_id)))
   ), '[]'::jsonb);
 end
+$$;
+
+-- stock_sales (from 20270201090000_sales_by_person): a bill line of an order time that was undone
+-- is not sold (0193). On a closed bill the line stays (a credit note answers for it), so it is
+-- left out here, as the other stock reports do.
+create or replace function stock_sales(p_from date, p_to date)
+returns jsonb
+language sql stable security definer set search_path = public
+as $$
+  with sold as (
+    select l.item_id, (l.quantity * coalesce(l.pack_size, 1))::numeric as units, round(l.quantity * l.unit_price) as revenue
+    from invoice_line l
+    join invoice inv on inv.id = l.invoice_id and inv.status <> 'credited'
+    where l.deleted_at is null and l.item_id is not null
+      and (l.created_at at time zone 'Africa/Kigali')::date between p_from and p_to
+      -- 0193: not an undone order time
+      and not exists (select 1 from nurse_order_dose nd where nd.id = l.nurse_order_dose_id and nd.deleted_at is not null)
+    union all
+    select x.item_id, x.quantity, x.line_total
+    from counter_sale_line x join counter_sale s on s.id = x.sale_id
+    where x.deleted_at is null and s.deleted_at is null and s.status = 'handed_over'
+      and (s.handed_over_at at time zone 'Africa/Kigali')::date between p_from and p_to
+  ), per_item as (
+    select i.name_generic || coalesce(' ' || i.strength, '') as name,
+           sum(s.units) as units,
+           sum(s.revenue) as revenue,
+           round(sum(s.units) * coalesce((
+             select sum(coalesce(m.unit_cost, b.unit_cost) * m.quantity) / nullif(sum(m.quantity), 0)
+             from stock_movement m join batch b on b.id = m.batch_id
+             where m.item_id = i.id and m.type = 'receipt' and m.deleted_at is null and b.deleted_at is null), 0), 2) as cost
+    from sold s join item i on i.id = s.item_id
+    group by i.id, i.name_generic, i.strength
+  ),
+  -- 0174: every line, with who it was for and who sold or gave it
+  lines as (
+    select l.created_at as at, 'visit'::text as kind,
+           i.name_generic || coalesce(' ' || i.strength, '') as item,
+           (l.quantity * coalesce(l.pack_size, 1))::numeric as units,
+           round(l.quantity * l.unit_price) as amount,
+           trim(coalesce(pt.surname, '') || ' ' || coalesce(pt.given_names, '')) as who,
+           coalesce(l.performed_by, l.created_by) as by_id,
+           inv.number as ref
+    from invoice_line l
+    join invoice inv on inv.id = l.invoice_id and inv.status <> 'credited'
+    join item i on i.id = l.item_id
+    left join encounter e on e.id = inv.encounter_id
+    left join patient pt on pt.id = e.patient_id
+    where l.deleted_at is null and l.item_id is not null
+      and (l.created_at at time zone 'Africa/Kigali')::date between p_from and p_to
+      -- 0193: not an undone order time
+      and not exists (select 1 from nurse_order_dose nd where nd.id = l.nurse_order_dose_id and nd.deleted_at is not null)
+    union all
+    select s.handed_over_at, 'walkin', i.name_generic || coalesce(' ' || i.strength, ''),
+           x.quantity, x.line_total, s.buyer_name,
+           coalesce(s.handed_over_by, s.created_by), s.number
+    from counter_sale_line x
+    join counter_sale s on s.id = x.sale_id
+    join item i on i.id = x.item_id
+    where x.deleted_at is null and s.deleted_at is null and s.status = 'handed_over'
+      and (s.handed_over_at at time zone 'Africa/Kigali')::date between p_from and p_to
+  ),
+  named as (
+    select ln.*, pr.full_name as by_name from lines ln left join profiles pr on pr.id = ln.by_id
+  )
+  select jsonb_build_object(
+    'items', coalesce((select jsonb_agg(jsonb_build_object(
+        'item', x.name, 'units', x.units, 'revenue', x.revenue, 'cost', x.cost, 'margin', x.revenue - x.cost
+      ) order by x.revenue desc) from per_item x), '[]'::jsonb),
+    'revenue', (select coalesce(sum(revenue), 0) from per_item),
+    'cost', (select coalesce(sum(cost), 0) from per_item),
+    'margin', (select coalesce(sum(revenue - cost), 0) from per_item),
+    'counterRevenue', (select coalesce(sum(s.total), 0) from counter_sale s
+                       where s.deleted_at is null and s.status = 'handed_over'
+                         and (s.handed_over_at at time zone 'Africa/Kigali')::date between p_from and p_to),
+    'received', (select coalesce(sum(m.quantity * coalesce(m.unit_cost, b.unit_cost, 0)), 0)
+                 from stock_movement m left join batch b on b.id = m.batch_id
+                 where m.deleted_at is null and m.type = 'receipt' and (m.moved_at at time zone 'Africa/Kigali')::date between p_from and p_to),
+    'consumed', (select coalesce(sum(m.quantity * coalesce(b.unit_cost, 0)), 0) from stock_movement m left join batch b on b.id = m.batch_id
+                 where m.deleted_at is null and m.type = 'consumption' and (m.moved_at at time zone 'Africa/Kigali')::date between p_from and p_to),
+    -- everything held, in every store and on the way
+    'stockValue', (select coalesce(sum(s.quantity * coalesce(b.unit_cost, 0)), 0) from stock_on_hand s
+                   left join batch b on b.id = s.batch_id where s.quantity > 0),
+    -- 0174: who sold or gave, and every line (the latest first, at most 2,000)
+    'byPerson', coalesce((select jsonb_agg(jsonb_build_object(
+        'id', n.by_id, 'name', coalesce(n.by_name, '—'), 'lines', n.lines, 'units', n.units, 'amount', n.amount,
+        'given', n.given, 'sold', n.sold
+      ) order by n.amount desc, n.by_name)
+      from (select by_id, by_name, count(*)::int as lines, sum(units) as units, sum(amount) as amount,
+                   sum(amount) filter (where kind = 'visit') as given, sum(amount) filter (where kind = 'walkin') as sold
+            from named group by by_id, by_name) n), '[]'::jsonb),
+    'lines', coalesce((select jsonb_agg(jsonb_build_object(
+        'at', n.at, 'kind', n.kind, 'item', n.item, 'units', n.units, 'amount', n.amount,
+        'who', n.who, 'by', coalesce(n.by_name, '—'), 'ref', n.ref
+      ) order by n.at desc)
+      from (select * from named order by at desc limit 2000) n), '[]'::jsonb)
+  )
+  -- 0174: the desk is enough (the role permission stock.read as well)
+  where stock_admin() or has_perm('stock.read')
 $$;
 
 -- ---------------------------------------------------------------- rights
