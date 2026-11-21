@@ -26491,6 +26491,288 @@ await step('0192 H: the decisions are clinical in the change log', async () => {
   if (r.g !== 'clinical' || r.hidden !== true) throw new Error(json192(r))
   return 'the Clinical group of the history; hidden from a reader who is not a doctor'
 })
+/** The Diagnoses report's confirmed/not confirmed/not decided of one possible diagnosis of Dr 127. */
+const trio192 = async (name) => {
+  await as(staff.manager)
+  const list = (
+    await one(
+      `select report_diagnoses_staged(current_date - 1, current_date + 1, null, $1, 'differential') as j`,
+      [t127.doc],
+    )
+  ).j
+  await asAdmin()
+  const x = list.find((y) => y.diagnosis === name)
+  return x ? `${x.confirmed}/${x.notConfirmed}/${x.notDecided}` : 'none'
+}
+/** The change-log lines of a "not confirmed" mark written with the edit grant of a finished visit. */
+const graceLog192 = async (markId) =>
+  (
+    await db.query(
+      `select action::text as action, after ->> 'differential' as dd, after ? 'visit_edit_grant' as "grant"
+         from audit_event
+        where entity = 'diagnosis_not_confirmed' and entity_id = $1 and after ->> 'afterClose' = 'true'
+        order by action::text`,
+      [markId],
+    )
+  ).rows
+await step(
+  '0192 I: a confirmed one taken back — its definitive diagnosis removed with a reason: it reads not decided again (visit, file, report); it can then be saved not confirmed, and ticked again (a new linked definitive diagnosis)',
+  async () => {
+    const read = async () => {
+      await as(t127.doc)
+      const vc = (await one(`select visit_clinical($1) as j`, [t192.v])).j
+      await as(staff.manager)
+      const file = (await one(`select patient_file($1) as j`, [t127.pid])).j
+      await asAdmin()
+      return {
+        // what the screen reads (outcomeOf): a standing definitive one linked to it, else the mark
+        linked: vc.diagnoses
+          .filter((d) => d.differentialId === t192.mal && !d.removedAt)
+          .map((d) => d.id),
+        marked: !!vc.diagnoses.find((d) => d.id === t192.mal)?.notConfirmedAt,
+        fileLinked: file.conditions.filter((c) => c.differentialId === t192.mal).length,
+        fileNotConfirmed: file.conditions.find((c) => c.id === t192.mal)?.notConfirmed,
+        report: await trio192('Malaria 192'),
+      }
+    }
+    const r = {}
+    r.removed = await tryAs(t127.doc, `select remove_condition($1, 'the slide read again 192')`, [
+      t192.defMal,
+    ])
+    r.afterRemove = await read()
+    r.marked = await tryAs(t127.doc, save192, [t192.v, [], [t192.mal], []])
+    r.afterMark = await read()
+    await as(t127.doc)
+    r.ticked = (
+      await one(`select save_definitive_diagnoses($1, $2::uuid[], '{}', '{}') as j`, [
+        t192.v,
+        [t192.mal],
+      ])
+    ).j
+    await asAdmin()
+    r.afterTick = await read()
+    const fresh = r.ticked.definitive?.[0]
+    r.row = await one(
+      `select type::text as type, differential_id from condition where id = $1 and deleted_at is null`,
+      [fresh],
+    )
+    r.marks = await one(
+      `select count(*)::int as n, count(*) filter (where deleted_at is null)::int as standing
+         from diagnosis_not_confirmed where condition_id = $1`,
+      [t192.mal],
+    )
+    const same = (a, b) => json192(a) === json192(b)
+    if (
+      r.removed !== 'ok' ||
+      !same(r.afterRemove, {
+        linked: [],
+        marked: false,
+        fileLinked: 0,
+        fileNotConfirmed: false,
+        report: '0/0/1',
+      }) ||
+      r.marked !== 'ok' ||
+      !same(r.afterMark, {
+        linked: [],
+        marked: true,
+        fileLinked: 0,
+        fileNotConfirmed: true,
+        report: '0/1/0',
+      }) ||
+      r.ticked.definitive?.length !== 1 ||
+      fresh === t192.defMal ||
+      r.ticked.notConfirmed?.length !== 0 ||
+      !same(r.afterTick, {
+        linked: [fresh],
+        marked: false,
+        fileLinked: 1,
+        fileNotConfirmed: false,
+        report: '1/0/0',
+      }) ||
+      r.row?.type !== 'secondary' ||
+      r.row?.differential_id !== t192.mal ||
+      r.marks?.n !== 1 ||
+      r.marks?.standing !== 0
+    )
+      throw new Error(json192(r))
+    return 'Malaria 192 confirmed, its definitive diagnosis removed with a reason: not decided again (visit, file, report 0/0/1); saved not confirmed (0/1/0); ticked again: a new definitive diagnosis linked to it (secondary), the mark taken back (1/0/0)'
+  },
+)
+await step(
+  '0192 J: a finished visit, inside the edit window — a “not confirmed” one ticked: the mark taken back is written in the change log with the grant, beside the new definitive diagnosis; on an open visit no grant line',
+  async () => {
+    await asAdmin()
+    const mark = await one(
+      `select id from diagnosis_not_confirmed where condition_id = $1 and deleted_at is null`,
+      [t192.y],
+    )
+    const r = { mark: !!mark }
+    r.saved = await tryAs(t127.doc, save192, [t192.v3, [t192.y], [], []])
+    const copy = await one(
+      `select id from condition where differential_id = $1 and deleted_at is null`,
+      [t192.y],
+    )
+    r.standing = (
+      await one(
+        `select count(*)::int as n from diagnosis_not_confirmed where condition_id = $1 and deleted_at is null`,
+        [t192.y],
+      )
+    ).n
+    r.log = mark ? await graceLog192(mark.id) : []
+    r.logDx = copy
+      ? (
+          await one(
+            `select count(*)::int as n from audit_event
+              where entity = 'condition' and entity_id = $1 and after ->> 'afterClose' = 'true'`,
+            [copy.id],
+          )
+        ).n
+      : 0
+    // 0192 C took back the mark of Viral fever 192 on the open visit: no grant there
+    const viral = await one(`select id from diagnosis_not_confirmed where condition_id = $1`, [
+      t192.viral,
+    ])
+    r.openLog = (await graceLog192(viral?.id)).length
+    if (
+      !r.mark ||
+      r.saved !== 'ok' ||
+      !copy ||
+      r.standing !== 0 ||
+      json192(r.log) !==
+        json192([
+          { action: 'create', dd: t192.y, grant: true },
+          { action: 'delete', dd: t192.y, grant: true },
+        ]) ||
+      r.logDx !== 1 ||
+      r.openLog !== 0
+    )
+      throw new Error(json192(r))
+    return 'Pharyngitis 192 (not confirmed after the visit was finished) ticked inside the window: confirmed; the change log has the mark written and taken back, both with the grant, and the new definitive diagnosis; the open visit’s take-back has no grant line'
+  },
+)
+await step(
+  '0192 K: a “not confirmed” possible diagnosis made definitive by editing it (update_condition) — its mark is taken back (on a finished visit in the change log with the grant); set back to possible it reads not decided; an edit that keeps it possible keeps the mark',
+  async () => {
+    const r = {}
+    t192.v8 = await t127.ov(t127.doc)
+    await as(t127.doc)
+    t192.chol = await dx192(t192.v8, 'Cholera 192')
+    t192.dys = await dx192(t192.v8, 'Dysentery 192')
+    await db.query(`select save_definitive_diagnoses($1, '{}', $2::uuid[], '{}')`, [
+      t192.v8,
+      [t192.chol, t192.dys],
+    ])
+    await asAdmin()
+    // Cholera 192: the box "possible" cleared; Dysentery 192: only its words made more precise
+    r.toDefinitive = await tryAs(
+      t127.doc,
+      `select update_condition($1, null, null, null, false, 'the stool test came back 192')`,
+      [t192.chol],
+    )
+    r.renamed = await tryAs(
+      t127.doc,
+      `select update_condition($1, 'Amoebic dysentery 192', null, null, null, 'more precise 192')`,
+      [t192.dys],
+    )
+    const marksOf = async (id) =>
+      (
+        await db.query(
+          `select deleted_at is not null as gone, updated_by from diagnosis_not_confirmed
+            where condition_id = $1 order by created_at`,
+          [id],
+        )
+      ).rows
+    r.chol = await marksOf(t192.chol)
+    r.dys = await marksOf(t192.dys)
+    r.cholRow = await one(
+      `select stage::text as stage, type::text as type from condition where id = $1`,
+      [t192.chol],
+    )
+    r.cholUpdates = (
+      await one(
+        `select count(*)::int as n from audit_event a join diagnosis_not_confirmed n on n.id = a.entity_id
+          where a.entity = 'diagnosis_not_confirmed' and a.action = 'update' and n.condition_id = $1`,
+        [t192.chol],
+      )
+    ).n
+    r.cholGrace = (
+      await graceLog192(
+        (await one(`select id from diagnosis_not_confirmed where condition_id = $1`, [t192.chol]))
+          ?.id,
+      )
+    ).length
+    // set back to possible: nobody decided it since
+    r.back = await tryAs(
+      t127.doc,
+      `select update_condition($1, null, null, null, true, 'not sure after all 192')`,
+      [t192.chol],
+    )
+    await as(t127.doc)
+    const vc = (await one(`select visit_clinical($1) as j`, [t192.v8])).j
+    await asAdmin()
+    const ch = vc.diagnoses.find((d) => d.id === t192.chol)
+    r.cholBack = { stage: ch?.stage, marked: !!ch?.notConfirmedAt }
+    r.dysMarked = !!vc.diagnoses.find((d) => d.id === t192.dys)?.notConfirmedAt
+    r.cholMarks = (
+      await one(`select count(*)::int as n from diagnosis_not_confirmed where condition_id = $1`, [
+        t192.chol,
+      ])
+    ).n
+    r.repChol = await trio192('Cholera 192')
+    r.repDys = await trio192('Amoebic dysentery 192')
+    // a finished visit inside Dr 127's edit window (0192 E): written, saved unticked, made definitive
+    await as(t127.doc)
+    t192.lar = await dx192(t192.v3, 'Laryngitis 192')
+    await db.query(`select save_definitive_diagnoses($1, '{}', $2::uuid[], '{}')`, [
+      t192.v3,
+      [t192.lar],
+    ])
+    await db.query(
+      `select update_condition($1, null, null, null, false, 'the swab came back 192')`,
+      [t192.lar],
+    )
+    await asAdmin()
+    const lar = await one(
+      `select id, deleted_at is not null as gone from diagnosis_not_confirmed where condition_id = $1`,
+      [t192.lar],
+    )
+    r.larGone = lar?.gone
+    r.larLog = lar ? await graceLog192(lar.id) : []
+    r.fnHidden = (
+      await one(
+        `select f is not null and not has_function_privilege('authenticated', f, 'execute')
+                and not has_function_privilege('anon', f, 'execute') as ok
+           from (select to_regprocedure('condition_stage_clears_not_confirmed()')::oid as f) x`,
+      )
+    ).ok
+    if (
+      r.toDefinitive !== 'ok' ||
+      r.renamed !== 'ok' ||
+      json192(r.chol) !== json192([{ gone: true, updated_by: t127.doc }]) ||
+      json192(r.dys) !== json192([{ gone: false, updated_by: null }]) ||
+      r.cholRow?.stage !== 'definitive' ||
+      r.cholRow?.type !== 'primary' ||
+      r.cholUpdates !== 1 ||
+      r.cholGrace !== 0 ||
+      r.back !== 'ok' ||
+      r.cholBack.stage !== 'differential' ||
+      r.cholBack.marked !== false ||
+      r.dysMarked !== true ||
+      r.cholMarks !== 1 ||
+      r.repChol !== '0/0/1' ||
+      r.repDys !== '0/1/0' ||
+      r.larGone !== true ||
+      json192(r.larLog) !==
+        json192([
+          { action: 'create', dd: t192.lar, grant: true },
+          { action: 'delete', dd: t192.lar, grant: true },
+        ]) ||
+      r.fnHidden !== true
+    )
+      throw new Error(json192(r))
+    return 'Cholera 192 (not confirmed) made definitive by an edit: its mark taken back by Dr. Steps 127; set back to possible: not decided (report 0/0/1, no new mark); Dysentery 192 renamed: still not confirmed (0/1/0); on the finished visit Laryngitis 192 the take-back is in the change log with the grant; nobody calls the trigger function'
+  },
+)
 // @@t192-end
 // @@t193-begin
 // ---------------------------------------------------------------- 0193 step 6 orders: an act done once, a medicine given at once, to take home, Undo

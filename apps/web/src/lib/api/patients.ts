@@ -2091,6 +2091,9 @@ export function useClinicalActions(encounterId: string) {
           editedBy: sampleUser()?.name ?? null,
           editReason: i.reason.trim(),
         })
+        // 0192: made definitive by this edit: a "not confirmed" of before is taken back (as the
+        // database), so set back to possible later it reads "Not decided"
+        if (!i.provisional) sampleNotConfirmed.delete(i.id)
         sampleSettlePrimary()
         return
       }

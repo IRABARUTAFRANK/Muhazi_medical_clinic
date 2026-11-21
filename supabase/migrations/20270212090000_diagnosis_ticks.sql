@@ -29,8 +29,10 @@
 --     instead", or "already confirmed" when it is. An HIV line (B20–B24) hidden from him is never
 --     named in that refusal.
 --   * A "not confirmed" one ticked later is confirmed and its mark is taken back (soft delete: the
---     change log keeps both). A confirmed one is taken back by removing its definitive diagnosis
---     with a reason, as before: it reads "Not decided" again.
+--     change log keeps both, with the edit grant on a finished visit). One made definitive by editing
+--     it (update_condition) loses its mark too: set back to possible later, it reads "Not decided".
+--     A confirmed one is taken back by removing its definitive diagnosis with a reason, as before:
+--     it reads "Not decided" again.
 --   * visit_clinical, patient_file and the Diagnoses report (report_diagnoses_staged) say the state;
 --     the report counts Confirmed, Not confirmed and Not decided beside the cases.
 
@@ -64,6 +66,7 @@ declare
   v_c condition%rowtype;
   v_id uuid;
   v_type condition_type;
+  v_mark uuid;
 begin
   if not has_perm('clinical.write') then
     raise exception 'not allowed' using errcode = '42501';
@@ -90,13 +93,51 @@ begin
   returning id into v_id;
   -- 0192: ticked now (in step 5, or an older screen's Confirm): a standing "not confirmed" of this
   -- possible diagnosis is taken back (the change log keeps who saved it and who took it back)
-  update diagnosis_not_confirmed set deleted_at = now() where condition_id = p_id and deleted_at is null;
+  update diagnosis_not_confirmed set deleted_at = now() where condition_id = p_id and deleted_at is null
+  returning id into v_mark;
   perform note_visit_edit(v_c.encounter_id, 'create', 'condition', v_id,
                           jsonb_build_object('text', v_c.text, 'icd10', v_c.icd10_code, 'type', v_type,
                                              'stage', 'definitive', 'differential', p_id));
+  -- a finished visit edited with the e-mailed code: the "not confirmed" it overturns is logged too
+  if v_mark is not null then
+    perform note_visit_edit(v_c.encounter_id, 'delete', 'diagnosis_not_confirmed', v_mark,
+                            jsonb_build_object('differential', p_id));
+  end if;
   return v_id;
 end
 $$;
+
+-- ---------------------------------------------------------------- a possible diagnosis made definitive by an edit
+-- update_condition (the box "possible" cleared), or any writer, moves a possible diagnosis out of
+-- step 3: its standing "not confirmed" is taken back, as when it is ticked (his last act made it
+-- definitive), and logged with the edit grant on a finished visit. Set back to possible later, it
+-- reads "Not decided". An edit that keeps it possible keeps the mark.
+create or replace function condition_stage_clears_not_confirmed()
+returns trigger
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_mark uuid;
+begin
+  update diagnosis_not_confirmed set deleted_at = now()
+  where condition_id = new.id and deleted_at is null
+  returning id into v_mark;
+  if v_mark is not null then
+    perform note_visit_edit(new.encounter_id, 'delete', 'diagnosis_not_confirmed', v_mark,
+                            jsonb_build_object('differential', new.id));
+  end if;
+  return null;
+end
+$$;
+drop trigger if exists trg_condition_stage_clears_not_confirmed on condition;
+create trigger trg_condition_stage_clears_not_confirmed after update on condition
+  for each row when (old.stage = 'differential' and new.stage is distinct from old.stage)
+  execute function condition_stage_clears_not_confirmed();
+-- a mark left standing on a diagnosis that is no longer a possible one (before this trigger): taken
+-- back (nothing to do on a database where none stands)
+update diagnosis_not_confirmed n set deleted_at = now()
+from condition c
+where c.id = n.condition_id and n.deleted_at is null and c.stage <> 'differential';
 
 -- ---------------------------------------------------------------- step 5 in one save
 -- p_confirm: the possible diagnoses ticked (in the order sent: the first is the main diagnosis when
@@ -608,3 +649,4 @@ $$;
 -- ---------------------------------------------------------------- rights
 revoke all on function save_definitive_diagnoses(uuid, uuid[], uuid[], text[]) from public, anon;
 grant execute on function save_definitive_diagnoses(uuid, uuid[], uuid[], text[]) to authenticated;
+revoke all on function condition_stage_clears_not_confirmed() from public, anon, authenticated;
