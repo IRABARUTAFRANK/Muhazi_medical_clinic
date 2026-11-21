@@ -332,7 +332,7 @@ export function NurseOrderRow({
       )}
       {!once && open && (
         <ol className="m-0 flex flex-col gap-1 pl-5 text-[13px]">
-          {o.doses.map((d) => (
+          {o.doses.map((d, i) => (
             <li key={d.id ?? d.n} className={d.given ? 'text-ink' : 'text-red'}>
               {d.given ? (
                 <CheckCircle2 size={12} aria-hidden="true" className="mr-1 inline align-[-1px]" />
@@ -340,7 +340,8 @@ export function NurseOrderRow({
                 <CircleSlash size={12} aria-hidden="true" className="mr-1 inline align-[-1px]" />
               )}
               {[
-                t(d.given ? 'nurseOrders.doseGiven' : 'nurseOrders.doseNotGiven', { n: d.n }),
+                // the times standing, counted 1, 2, 3 (an undone time leaves a gap in its number)
+                t(d.given ? 'nurseOrders.doseGiven' : 'nurseOrders.doseNotGiven', { n: i + 1 }),
                 when(d.at),
                 d.by,
                 d.store ? t('clinical.fromStore', { store: d.store }) : null,

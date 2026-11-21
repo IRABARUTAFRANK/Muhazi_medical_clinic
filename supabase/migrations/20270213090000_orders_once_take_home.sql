@@ -37,6 +37,8 @@
 --     where a line comes from (visit_charge_sources).
 --   * The stock reports count medicines given through orders as given here, never as written off;
 --     an undone time is never sold (the sales report too, when the bill was closed).
+--   * An older order of several times still takes Given and Not given after an Undo: each time is
+--     numbered after the highest one standing (give_nurse_order, skip_nurse_dose).
 --   * An order already over (cancelled or not done) stays so when its times are undone; the
 --     reason of an undo stays on the order (hidden in the change log), not on the stock, the bill
 --     or the cashier's notice. A screen of before keeps the medicine's "how often".
@@ -370,7 +372,9 @@ begin
   if v_at > now() + interval '5 minutes' or v_at < now() - interval '24 hours' then
     raise exception 'the time given is not possible' using errcode = '22023', hint = 'bad_time';
   end if;
-  v_n := (select count(*) from nurse_order_dose where order_id = v_o.id and deleted_at is null) + 1;
+  -- the next number after the highest time standing: an Undo leaves gaps (time 1 undone, time 2
+  -- not given still standing), so a count would give a number already taken
+  v_n := coalesce((select max(n) from nurse_order_dose where order_id = v_o.id and deleted_at is null), 0) + 1;
   v_office := order_office();
   if v_o.kind = 'drug' then
     v_total := v_o.quantity + coalesce(v_o.home_quantity, 0);
@@ -419,6 +423,29 @@ begin
   from invoice_line l where l.nurse_order_dose_id = v_dose and l.deleted_at is null;
   return nurse_order_json(v_o.id)
     || jsonb_build_object('charged', v_why is null, 'notBilled', v_why, 'doseId', v_dose, 'billed', v_billed);
+end
+$$;
+
+-- skip_nurse_dose (from 20270107090000_six_steps): one time not given on an older order of several
+-- times, numbered after the highest time standing, as give_nurse_order (0193: after an Undo).
+create or replace function skip_nurse_dose(p_order_id uuid, p_reason text)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_o nurse_order%rowtype;
+  v_n integer;
+begin
+  v_o := nurse_order_for_work(p_order_id);
+  if length(trim(coalesce(p_reason, ''))) < 3 then
+    raise exception 'say why' using errcode = '22023';
+  end if;
+  v_n := coalesce((select max(n) from nurse_order_dose where order_id = v_o.id and deleted_at is null), 0) + 1;
+  insert into nurse_order_dose (order_id, n, given, note)
+  values (v_o.id, v_n, false, trim(p_reason));
+  perform nurse_order_tell(v_o.id, 'not_given', trim(p_reason));
+  perform nurse_order_close_if_complete(v_o.id);
+  return nurse_order_json(v_o.id);
 end
 $$;
 

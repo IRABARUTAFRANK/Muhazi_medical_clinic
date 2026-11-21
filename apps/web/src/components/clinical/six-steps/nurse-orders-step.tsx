@@ -22,6 +22,7 @@ import {
   type NurseOrderKind,
 } from '@/lib/api/nurse-orders'
 import { restOfBox, summarizeOrder, summaryWords } from '@/lib/order-summary'
+import { orderAction } from '@/lib/order-words'
 import { useConfirm } from '@/lib/confirm'
 import { packsText } from '@/pages/stock/stock-util'
 
@@ -136,6 +137,8 @@ export function NurseOrdersStep({
   const showHome = f.where !== 'here'
   const here = showHere ? Number(f.quantity || 0) : 0
   const home = showHome ? Number(f.homeQuantity || 0) : 0
+  // the button the nurse will press: Given / Handed over (all to take home) / Done
+  const action = orderAction({ kind: f.kind, quantity: here, homeQuantity: home })
   const actCount = Number(f.actQuantity || 0)
   const actName = service ? treatmentName(service, i18n.language) : f.text.trim()
   const summary = summarizeOrder({
@@ -253,12 +256,26 @@ export function NurseOrdersStep({
             : t(nurse ? 'nurseOrders.sendToOne' : 'nurseOrders.sendToAll', {
                 name: nurse?.name ?? '',
               }),
-          `${t(f.kind === 'drug' ? 'nurseOrders.summaryGive' : 'nurseOrders.summaryDone')} ${summaryWords(
-            t,
-            summary,
-            { kind: f.kind, unit, act: actName, actCount, packUnit: pack?.packUnit ?? null },
-          )}`,
-          t(f.kind === 'drug' ? 'nurseOrders.sendOnce' : 'nurseOrders.sendOnceAct'),
+          `${t(
+            {
+              give: 'nurseOrders.summaryGive',
+              hand: 'nurseOrders.summaryHand',
+              done: 'nurseOrders.summaryDone',
+            }[action],
+          )} ${summaryWords(t, summary, {
+            kind: f.kind,
+            unit,
+            act: actName,
+            actCount,
+            packUnit: pack?.packUnit ?? null,
+          })}`,
+          t(
+            {
+              give: 'nurseOrders.sendOnce',
+              hand: 'nurseOrders.sendOnceHand',
+              done: 'nurseOrders.sendOnceAct',
+            }[action],
+          ),
         ].join(' '),
         confirmLabel: t(self ? 'nurseOrders.keepYes' : 'nurseOrders.sendYes'),
       }))
@@ -544,6 +561,7 @@ export function NurseOrdersStep({
               <OrderSummary
                 summary={summary}
                 kind={f.kind}
+                hand={action === 'hand'}
                 unit={unit}
                 act={actName}
                 actCount={actCount}

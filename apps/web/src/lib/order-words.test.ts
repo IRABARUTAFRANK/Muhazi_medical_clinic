@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { canUndoOrder, type NurseOrder, type NurseOrderDose } from './api/nurse-orders'
-import { hereLine, undoBody, undoMessage } from './order-words'
+import { giveMessage, hereLine, orderAction, undoBody, undoMessage } from './order-words'
 
 /** The words do not matter here: the key and its values are returned. */
 const t = (key: string, v?: Record<string, unknown>) =>
@@ -107,6 +107,17 @@ describe('Undo of an order of step 6 (0193)', () => {
     expect(canUndoOrder(order({ status: 'cancelled' }), 'u-mgr', true)).toBe(false)
     expect(canUndoOrder(order({}), 'u-a', false)).toBe(true)
     expect(canUndoOrder(order({}), 'u-b', false)).toBe(false)
+  })
+  it('after the press, says what was done: given, handed over, or both', () => {
+    const res = { charged: true, notBilled: null, billed: 1500 }
+    const msg = (p: Partial<NurseOrder>) => giveMessage(t, order(p), res)
+    expect(msg({})).toMatch(/^nurseOrders\.givenOnBill\(/)
+    expect(msg({ homeQuantity: 8 })).toMatch(/^nurseOrders\.givenHandedOnBill\(/)
+    expect(msg({ quantity: 0, homeQuantity: 10 })).toMatch(/^nurseOrders\.handedOnBill\(/)
+    expect(msg({ kind: 'act', quantity: 1 })).toMatch(/^nurseOrders\.doneOnBill\(/)
+    // the button the send question names: all to take home is “Handed over”
+    expect(orderAction({ kind: 'drug', quantity: 0, homeQuantity: 10 })).toBe('hand')
+    expect(orderAction({ kind: 'drug', quantity: 2, homeQuantity: 8 })).toBe('give')
   })
   it('keeps the “how often” a screen of before 0193 sent', () => {
     expect(hereLine(t, order({ dose: '1 g', frequency: 'TDS' }))).toContain(

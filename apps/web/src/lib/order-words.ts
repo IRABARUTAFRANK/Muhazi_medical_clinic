@@ -152,8 +152,13 @@ export function giveMessage(t: TFn, o: NurseOrder, res: GiveResult): string {
   const amount = formatRwf(Number(res.billed))
   const action = orderAction(o)
   if (action === 'done') return t('nurseOrders.doneOnBill', { what: o.text, amount })
-  if (orderParts(o).home > 0 && isOnce(o))
-    return t('nurseOrders.handedOnBill', { what: o.text, amount })
+  const { here, home } = orderParts(o)
+  // some given here and the rest handed over to take home: both are said
+  if (home > 0 && isOnce(o))
+    return t(here > 0 ? 'nurseOrders.givenHandedOnBill' : 'nurseOrders.handedOnBill', {
+      what: o.text,
+      amount,
+    })
   return t('nurseOrders.givenOnBill', { what: o.text, amount })
 }
 

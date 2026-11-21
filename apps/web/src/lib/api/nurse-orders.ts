@@ -417,6 +417,8 @@ const sampleOpen = (id: string) => {
   if (o.status !== 'open') throw sampleRefuse('22023', 'this order is already over', 'order_over')
   return o
 }
+/** The next time's number: after the highest one standing (an Undo leaves gaps), as the database. */
+const sampleNextTime = (o: NurseOrder) => Math.max(0, ...o.doses.map((d) => d.n)) + 1
 const sampleClose = (o: NurseOrder) => {
   if (orderDone(o) >= o.dosesPlanned) {
     o.status = o.given > 0 ? 'done' : 'not_done'
@@ -709,7 +711,7 @@ export function useNurseOrderActions() {
           })
         o.doses.push({
           id: doseId,
-          n: o.doses.length + 1,
+          n: sampleNextTime(o),
           given: true,
           at: i.at ?? now,
           recordedAt: now,
@@ -759,7 +761,7 @@ export function useNurseOrderActions() {
         const o = sampleOpen(i.id)
         if (i.reason.trim().length < 3) throw sampleRefuse('22023', 'say why')
         o.doses.push({
-          n: o.doses.length + 1,
+          n: sampleNextTime(o),
           given: false,
           at: new Date().toISOString(),
           by: useSession.getState().user?.name ?? null,

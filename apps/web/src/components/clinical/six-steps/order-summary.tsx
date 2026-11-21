@@ -20,6 +20,7 @@ const TONE: Record<Summary['tone'], string> = {
 export function OrderSummary({
   summary: s,
   kind,
+  hand = false,
   unit,
   act,
   actCount,
@@ -27,6 +28,8 @@ export function OrderSummary({
 }: {
   summary: Summary
   kind: 'act' | 'drug'
+  /** A medicine all to take home: its button is “Handed over”. */
+  hand?: boolean
   /** The medicine's piece (tab, cap…). */
   unit: string
   /** The act's name. */
@@ -49,7 +52,13 @@ export function OrderSummary({
       <Icon size={16} aria-hidden="true" className="mt-0.5 flex-none" />
       <span className="min-w-0">
         <b className="font-semibold">
-          {t(kind === 'drug' ? 'nurseOrders.summaryGive' : 'nurseOrders.summaryDone')}
+          {t(
+            kind === 'act'
+              ? 'nurseOrders.summaryDone'
+              : hand
+                ? 'nurseOrders.summaryHand'
+                : 'nurseOrders.summaryGive',
+          )}
         </b>{' '}
         {summaryWords(t, s, { kind, unit, act, actCount, packUnit })}
       </span>

@@ -27747,6 +27747,116 @@ await step(
     return 'Insurer 193 at 85 %: Amoxicillin 193 2 here + 8 home → one box 1,500 (patient 225, insurer 1,275); the bill posted, claim 1,275; the manager’s Undo → credit note 1,500 (225 + 1,275; creditTotal 1,500, not 225), the claim 0, 10 back in the stock, the order cancelled, Nurse A told; nothing to give back (the patient had not paid)'
   },
 )
+// the steps above (0193 seed to K) re-run no older migration: give_nurse_order and
+// skip_nurse_dose are still the ones of 0193 here
+await step(
+  '0193 L: an order written before 0193 (3 times), Given then Not given, and the nurse’s Undo: Given and Not given again both work, each time with its own number (never a “duplicate” error) — the nurse, then the doctor; Not given first too; another nurse is refused; a finished order takes nothing more',
+  async () => {
+    const v = await t127.ov(t127.doc)
+    const giveSql = `select give_nurse_order($1)`
+    const skipSql = `select skip_nurse_dose($1, $2)`
+    /** An order of before 0193 for Nurse A: time 1 given, time 2 not given, then her Undo. */
+    const old = async (text) => {
+      await asAdmin()
+      const id = (
+        await one(
+          `insert into nurse_order (encounter_id, patient_id, kind, text, item_id, quantity, doses_planned, assigned_to, created_by)
+           values ($1, $2, 'drug', $3, $4, 1, 3, $5, $6) returning id`,
+          [v, t127.pid, text, t193.para, t127.nurseA, t127.doc],
+        )
+      ).id
+      await as193(t127.nurseA, `select give_nurse_order($1) as j`, [id])
+      await as193(t127.nurseA, `select skip_nurse_dose($1, $2) as j`, [id, 'patient asleep 193'])
+      const u = await as193(t127.nurseA, undoSql193, [id, 'wrong patient 193'])
+      return { id, u: [u.status, u.given, u.notGiven, u.units, u.undone?.length] }
+    }
+    /** The order's state, its live time numbers and its undone ones. */
+    const nums = async (id) => {
+      await asAdmin()
+      const r = await one(
+        `select (select status from nurse_order where id = $1) as status,
+                coalesce(array_agg(n order by n) filter (where deleted_at is null), '{}') as live,
+                coalesce(array_agg(n order by n) filter (where deleted_at is not null), '{}') as undone,
+                count(*) filter (where deleted_at is null and given)::int as given,
+                count(*) filter (where deleted_at is null and not given)::int as not_given
+           from nurse_order_dose where order_id = $1`,
+        [id],
+      )
+      return [r.status, r.live, r.undone, r.given, r.not_given]
+    }
+    /** The live bill lines: the number of the time each is linked to, and the desk. */
+    const billed = async (id) =>
+      (
+        await db.query(
+          `select d.n, l.office::text as office from invoice_line l
+             join nurse_order_dose d on d.id = l.nurse_order_dose_id
+            where l.source_type = 'nurse_order' and l.source_id = $1 and l.deleted_at is null
+            order by d.n`,
+          [id],
+        )
+      ).rows.map((x) => [x.n, x.office === 'nursing' ? 'nursing' : 'doctor'])
+    const start = await stock193(t193.para)
+    // A: Given again by Nurse A (another nurse refused), then Not given by the doctor
+    const a = await old('Old L 193')
+    const aOther = await msg193(t127.nurseB, giveSql, [a.id])
+    const aGive = await msg193(t127.nurseA, giveSql, [a.id])
+    const aMid = await nums(a.id)
+    const aSkip = await msg193(t127.doc, skipSql, [a.id, 'vomited 193'])
+    const aEnd = await nums(a.id)
+    const aOver = await msg193(t127.nurseA, giveSql, [a.id])
+    // B: Not given first by Nurse A, then Given by the doctor
+    const b = await old('Old L2 193')
+    const bSkip = await msg193(t127.nurseA, skipSql, [b.id, 'refused 193'])
+    const bMid = await nums(b.id)
+    const bGive = await msg193(t127.doc, giveSql, [b.id])
+    const bEnd = await nums(b.id)
+    const bOver = await msg193(t127.doc, skipSql, [b.id, 'one more 193'])
+    const net = start - (await stock193(t193.para))
+    const code = (m) => m.split('|')[0]
+    // skip_nurse_dose, redefined by 0193, keeps its rights: a signed-in person, never anon
+    const rights = await one(
+      `select has_function_privilege('anon', 'skip_nurse_dose(uuid, text)', 'execute') as anon_x,
+              has_function_privilege('authenticated', 'skip_nurse_dose(uuid, text)', 'execute') as auth_x`,
+    )
+    const r = {
+      rights: [rights.anon_x, rights.auth_x],
+      undo: [a.u, b.u],
+      a: [code(aOther), aGive, aMid, aSkip, aEnd, code(aOver), await billed(a.id)],
+      b: [bSkip, bMid, bGive, bEnd, code(bOver), await billed(b.id)],
+      net,
+    }
+    if (
+      json193(r.rights) !== json193([false, true]) ||
+      json193(r.undo) !==
+        json193([
+          ['open', 0, 1, 1, 1],
+          ['open', 0, 1, 1, 1],
+        ]) ||
+      json193(r.a) !==
+        json193([
+          '42501',
+          'ok',
+          ['open', [2, 3], [1], 1, 1],
+          'ok',
+          ['done', [2, 3, 4], [1], 1, 2],
+          '22023',
+          [[3, 'nursing']],
+        ]) ||
+      json193(r.b) !==
+        json193([
+          'ok',
+          ['open', [2, 3], [1], 0, 2],
+          'ok',
+          ['done', [2, 3, 4], [1], 1, 2],
+          '22023',
+          [[4, 'doctor']],
+        ]) ||
+      r.net !== 2
+    )
+      throw new Error(json193(r))
+    return 'two orders of 3 times (before 0193): time 1 given, time 2 not given, Nurse A’s Undo → to do again (time 1 undone, 1 back). A: Nurse B 42501; Nurse A’s Given → time 3; the doctor’s Not given → time 4, done (1 given, 2 not); one live line, time 3, at Nursing. B: Nurse A’s Not given → time 3; the doctor’s Given → time 4 on his desk, done. Live numbers 2, 3, 4 (1 undone), no duplicate; a finished order 22023; net 2 off the stock; skip_nurse_dose for a signed-in person, not anon'
+  },
+)
 // @@t193-end
 // @@t194-begin
 // ---------------------------------------------------------------- 0194: a tax is a fixed amount or a percentage
