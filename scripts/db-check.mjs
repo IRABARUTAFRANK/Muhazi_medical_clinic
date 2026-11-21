@@ -28000,6 +28000,418 @@ await step(
     return `this month (${m.d}…): ${n194(first.baseAmount).toLocaleString('en')} in so far → ${n194(first.amount).toLocaleString('en')} at 10%, marked running${next ? '; next month: no amount yet' : ''}; tax_overview, finance_summary and the notices return (no loop); tidied: 2024 empty again. Key figures: 224,000; 45,000; 390,000; 208,000`
   },
 )
+// review fixes (0194 F, G): money_figure against the money summary for every kind of money and
+// the Kigali day edges; a pay with only the amount typed works nothing out; a loss paid keeps
+// its figure; the notices leave out a period with nothing to pay
+const f194 = {}
+await step(
+  "0194 F: the figure of a period is the money summary's own for every kind of money: patient payments (a cancelled and a removed one left out), refunds, other money in, salaries, the clinic's RSSB share, PAYE and RSSB handed over, other expenses (a tax left out), stock bought (its own cost or its batch's); a payment at 23:30 and one at 00:10 Kigali time fall on their own day",
+  async () => {
+    await asAdmin()
+    const inv = (await one(`select id from invoice limit 1`)).id
+    const item = (await one(`select id from item limit 1`)).id
+    const loc = (await one(`select id from stock_location limit 1`)).id
+    // patient payments (Kigali time is UTC+2): [amount, paid at, cancelled or removed]
+    const payments = [
+      [300000, '2024-07-31 23:30+02', null],
+      [70000, '2024-08-01 00:10+02', null],
+      [50000, '2024-07-01 00:00+02', null],
+      [40000, '2024-06-30 23:59+02', null],
+      [1000000, '2024-07-15 10:00+02', 'voided'],
+      [2000000, '2024-07-16 10:00+02', 'removed'],
+    ]
+    f194.payments = []
+    for (const [amount, at, gone] of payments)
+      f194.payments.push(
+        (
+          await one(
+            `insert into payment (invoice_id, method, amount, cashier_id, paid_at, voided_at, voided_by, void_reason, deleted_at)
+             values ($1, 'cash', $2, $3, $4, $5, $6, $7, $8) returning id`,
+            [
+              inv,
+              amount,
+              staff.cashier,
+              at,
+              gone === 'voided' ? '2024-07-15 10:05+02' : null,
+              gone === 'voided' ? staff.cashier : null,
+              gone === 'voided' ? 'test 0194 F' : null,
+              gone === 'removed' ? '2024-07-16 10:05+02' : null,
+            ],
+          )
+        ).id,
+      )
+    // refunds: [amount, refunded at, removed]
+    f194.refunds = []
+    for (const [amount, at, gone] of [
+      [20000, '2024-07-20 12:00+02', false],
+      [5000, '2024-08-01 00:05+02', false],
+      [9000, '2024-07-21 12:00+02', true],
+    ])
+      f194.refunds.push(
+        (
+          await one(
+            `insert into refund (invoice_id, amount, method, reason, cashier_id, refunded_at, deleted_at)
+             values ($1, $2, 'cash', 'test 0194 F', $3, $4, $5) returning id`,
+            [inv, amount, staff.cashier, at, gone ? '2024-07-21 12:05+02' : null],
+          )
+        ).id,
+      )
+    // the salary, the clinic's RSSB share, PAYE and RSSB handed over (written by the system)
+    f194.system = []
+    for (const [kind, code, label, amount, on] of [
+      ['salary', null, 'Salary 0194 F', 120000, '2024-07-25'],
+      ['other', 'statutory', "The clinic's RSSB share 0194 F", 15000, '2024-07-31'],
+      ['other', 'remittance', 'PAYE and RSSB handed over 0194 F', 25000, '2024-07-31'],
+    ])
+      f194.system.push(
+        (
+          await one(
+            `insert into expense (kind, kind_id, label, amount, method, paid_on)
+             values ($1, (select id from money_kind where code = $2), $3, $4, 'bank', $5) returning id`,
+            [kind, code, label, amount, on],
+          )
+        ).id,
+      )
+    // stock bought: 10 × 2,000 at 23:00 on 31 July, 4 × the batch's 500, 1 × 3,000 at 00:30 on
+    // 1 August, 7 × 1,000 removed
+    f194.batch = (
+      await one(
+        `insert into batch (item_id, batch_no, expiry, unit_cost) values ($1, 'B-0194F', '2027-12-31', 500) returning id`,
+        [item],
+      )
+    ).id
+    f194.stock = []
+    for (const [batch, qty, cost, at, gone] of [
+      [null, 10, 2000, '2024-07-31 23:00+02', false],
+      [f194.batch, 4, null, '2024-07-02 09:00+02', false],
+      [null, 1, 3000, '2024-08-01 00:30+02', false],
+      [null, 7, 1000, '2024-07-03 09:00+02', true],
+    ])
+      f194.stock.push(
+        (
+          await one(
+            `insert into stock_movement (item_id, batch_id, to_location_id, quantity, type, unit_cost, reason, moved_at, deleted_at)
+             values ($1, $2, $3, $4, 'receipt', $5, 'test 0194 F', $6, $7) returning id`,
+            [item, batch, loc, qty, cost, at, gone ? '2024-07-03 09:05+02' : null],
+          )
+        ).id,
+      )
+    // the accountant's own: other money in (one cancelled), other expenses (one cancelled, a tax)
+    await as(staff.cashier)
+    f194.kind = (
+      await one(`select set_money_kind(null, 'in', 'Rent received 0194 F', 'A room let') as id`)
+    ).id
+    f194.incomes = []
+    for (const [amount, on] of [
+      [100000, '2024-07-05'],
+      [60000, '2024-07-06'],
+    ])
+      f194.incomes.push(
+        (
+          await one(`select add_income($1, $2, 'cash', null, $3::date, null, null) as id`, [
+            f194.kind,
+            amount,
+            on,
+          ])
+        ).id,
+      )
+    await db.query(`select void_income($1, 'typed twice 0194 F')`, [f194.incomes[1]])
+    f194.expenses = []
+    for (const [label, amount, on, kind] of [
+      ['Cleaning 0194 F', 10000, '2024-07-10', 'other'],
+      ['Typed twice 0194 F', 5000, '2024-07-11', 'other'],
+      ['A one-off tax 0194 F', 99000, '2024-07-12', 'tax'],
+    ])
+      f194.expenses.push(
+        (
+          await one(`select add_expense($1, $2, 'cash', null, $3::date, null, $4, null) as id`, [
+            label,
+            amount,
+            on,
+            kind,
+          ])
+        ).id,
+      )
+    await db.query(`select void_expense($1, 'typed twice 0194 F')`, [f194.expenses[1]])
+    const sum = async (from, to) =>
+      (await one(`select finance_summary($1::date, $2::date) as j`, [from, to])).j
+    const sJul = await sum('2024-07-01', '2024-07-31')
+    const sAug = await sum('2024-08-01', '2024-08-31')
+    const sJun = await sum('2024-06-01', '2024-06-30')
+    const sBoth = await sum('2024-07-01', '2024-08-31')
+    // a monthly income tax (28% of the result) and a quarterly flat tax (3% of the money in)
+    f194.res = (
+      await one(
+        `select set_tax(null, 'Income tax 0194 F', null, 'monthly', '2024-06-01', 15, null, null, null, 'profit', 28, 'result') as j`,
+      )
+    ).j
+    f194.qtr = (
+      await one(
+        `select set_tax(null, 'Flat tax 0194 F', null, 'quarterly', '2024-07-01', 15, null, null, null, 'turnover', 3, 'money_in') as j`,
+      )
+    ).j
+    const pr = await periods194(f194.res.id)
+    const pq = await periods194(f194.qtr.id)
+    await asAdmin()
+    const fig = async (base, from, to) => await fig194(base, from, to)
+    const got = {
+      july: [
+        Number(sJul.revenue),
+        Number(sJul.refunds),
+        Number(sJul.otherIncome),
+        Number(sJul.salaries),
+        Number(sJul.statutory),
+        Number(sJul.remittances),
+        Number(sJul.otherExpenses),
+        Number(sJul.stockBought),
+        Number(sJul.taxes),
+      ],
+      figures: {
+        jul: [
+          await fig('money_in', '2024-07-01', '2024-07-31'),
+          Number(sJul.moneyIn),
+          await fig('result', '2024-07-01', '2024-07-31'),
+          Number(sJul.net),
+        ],
+        aug: [
+          await fig('money_in', '2024-08-01', '2024-08-31'),
+          Number(sAug.moneyIn),
+          await fig('result', '2024-08-01', '2024-08-31'),
+          Number(sAug.net),
+        ],
+        jun: [
+          await fig('money_in', '2024-06-01', '2024-06-30'),
+          Number(sJun.moneyIn),
+          await fig('result', '2024-06-01', '2024-06-30'),
+          Number(sJun.net),
+        ],
+        both: [
+          await fig('money_in', '2024-07-01', '2024-08-31'),
+          Number(sBoth.moneyIn),
+          await fig('result', '2024-07-01', '2024-08-31'),
+          Number(sBoth.net),
+        ],
+      },
+      res: ['2024-06-01', '2024-07-01', '2024-08-01'].map((d) => [
+        n194(at194(pr, d).baseAmount),
+        n194(at194(pr, d).amount),
+      ]),
+      qtr: [n194(at194(pq, '2024-07-01').baseAmount), n194(at194(pq, '2024-07-01').amount)],
+    }
+    const want = {
+      july: [350000, 20000, 100000, 120000, 15000, 25000, 10000, 22000, 99000],
+      figures: {
+        jul: [430000, 430000, 238000, 238000],
+        aug: [65000, 65000, 62000, 62000],
+        jun: [40000, 40000, 40000, 40000],
+        both: [495000, 495000, 300000, 300000],
+      },
+      res: [
+        [40000, 11200],
+        [238000, 66640],
+        [62000, 17360],
+      ],
+      qtr: [495000, 14850],
+    }
+    if (json194(got) !== json194(want)) throw new Error(json194(got))
+    return "July: payments 350,000 (300,000 at 23:30 on the 31st, 50,000 at 00:00 on the 1st; a cancelled 1,000,000 and a removed 2,000,000 left out), refunds 20,000, other money in 100,000 (a cancelled 60,000 left out), salary 120,000, the clinic's RSSB share 15,000, PAYE and RSSB handed over 25,000, other expenses 10,000 (a cancelled 5,000 and a 99,000 tax left out), stock 22,000 (10 × 2,000 + 4 × the batch's 500; a removed 7,000 left out) → money in 430,000, result 238,000 = the money summary; August (00:10 and 00:05 on the 1st) 65,000 / 62,000; June (23:59 on the 30th) 40,000; July–August 495,000 / 300,000; income tax 28%: June 11,200, July 66,640, August 17,360; flat tax 3% of Q3 495,000 → 14,850"
+  },
+)
+await step(
+  '0194 G: paid with only the amount typed (a tender, a period paid before it starts) → nothing worked out, never "Worked out: RWF 0"; a loss paid all the same keeps its figure below zero and 0 worked out; the daily notices leave out a period with nothing to pay and still give one with an amount',
+  async () => {
+    await asAdmin()
+    const m = await one(
+      `select (date_trunc('month', now() at time zone 'Africa/Kigali') + interval '1 month')::date::text as ahead,
+              (date_trunc('month', now() at time zone 'Africa/Kigali') + interval '2 months')::date::text as ahead2,
+              (date_trunc('month', now() at time zone 'Africa/Kigali') - interval '2 months')::date::text as p,
+              (date_trunc('month', now() at time zone 'Africa/Kigali') - interval '1 month')::date::text as q,
+              (date_trunc('month', now() at time zone 'Africa/Kigali') - interval '1 day')::date::text as qe,
+              (date_trunc('month', now() at time zone 'Africa/Kigali') - interval '1 month' - interval '1 day')::date::text as pe`,
+    )
+    const { res } = f194
+    await as(staff.cashier)
+    // a tender (3% of an amount typed when paying) paid with only the amount on the certificate
+    f194.tender = (
+      await one(
+        `select set_tax(null, 'Tender 0194 G', null, 'monthly', '2024-01-01', null, null, null, null, 'withheld', 3, 'typed') as j`,
+      )
+    ).j
+    const tJul = (
+      await one(`select pay_tax($1, '2024-07-01', '2024-07-20', 45000, 'bank', 'TENDER-7') as j`, [
+        f194.tender.id,
+      ])
+    ).j
+    const pt = await periods194(f194.tender.id)
+    // the income tax paid before the period starts, with only the amount; without it refused
+    const ahead = (
+      await one(`select pay_tax($1, $2::date, null, 10000, 'bank', 'RRA-AHEAD') as j`, [
+        res.id,
+        m.ahead,
+      ])
+    ).j
+    const aheadNone = await refusal194(staff.cashier, `select pay_tax($1, $2::date)`, [
+      res.id,
+      m.ahead2,
+    ])
+    // September makes a loss (−40,000): 0 to pay, still listed; paid all the same (20,000)
+    await as(staff.cashier)
+    f194.lossExp = (
+      await one(
+        `select add_expense('A loss 0194 G', 40000, 'cash', null, '2024-09-10', null, 'other', null) as id`,
+      )
+    ).id
+    const sepOpen = at194(await periods194(res.id), '2024-09-01')
+    const sep = (
+      await one(`select pay_tax($1, '2024-09-01', '2024-10-10', 20000, 'bank', 'RRA-SEP') as j`, [
+        res.id,
+      ])
+    ).j
+    const sepPaid = at194(await periods194(res.id), '2024-09-01')
+    await asAdmin()
+    const rows = (
+      await db.query(
+        `select id, amount, paid_amount, rate, base_amount from tax_period where id = any($1::uuid[])`,
+        [[tJul.id, ahead.id, sep.id]],
+      )
+    ).rows
+    const row = (id) => {
+      const r = rows.find((x) => x.id === id) ?? {}
+      return [n194(r.amount), n194(r.paid_amount), n194(r.rate), n194(r.base_amount)]
+    }
+    // the notices: an income tax from two months ago; that month made a loss, last month did not
+    await as(staff.cashier)
+    f194.note = (
+      await one(
+        `select set_tax(null, 'Notice test 0194 G', null, 'monthly', $1::date, null, null, null, null, 'profit', 28, 'result') as j`,
+        [m.p],
+      )
+    ).j
+    await asAdmin()
+    const figP = await fig194('result', m.p, m.pe)
+    const figQ = await fig194('result', m.q, m.qe)
+    await as(staff.cashier)
+    f194.noteExp = (
+      await one(
+        `select add_expense('A loss 0194 G notices', $1, 'cash', null, $2::date, null, 'other', null) as id`,
+        [Math.max(figP, 0) + 10000, m.p],
+      )
+    ).id
+    f194.noteInc = (
+      await one(`select add_income($1, $2, 'cash', null, $3::date, null, null) as id`, [
+        f194.kind,
+        Math.max(-figQ, 0) + 100000,
+        m.q,
+      ])
+    ).id
+    const pp = [
+      ...(await periods194(f194.note.id, Number(m.p.slice(0, 4)))),
+      ...(m.q.slice(0, 4) !== m.p.slice(0, 4)
+        ? await periods194(f194.note.id, Number(m.q.slice(0, 4)))
+        : []),
+    ]
+    const alerts = (await one(`select tax_alert_check() as j`)).j
+    await asAdmin()
+    const notices = (
+      await db.query(
+        `select params ->> 'key' as key, (params ->> 'amount')::numeric as amount from notification
+          where kind in ('tax_due', 'tax_overdue') and params ->> 'taxId' = $1`,
+        [f194.note.id],
+      )
+    ).rows
+    const pRow = at194(pp, m.p)
+    const qRow = at194(pp, m.q)
+    const onP = notices.filter((x) => x.key.includes(`:${m.p}`)).length
+    const onQ = notices.filter((x) => x.key.includes(`:${m.q}`))
+    const zero = notices.filter((x) => Number(x.amount) === 0).length
+    const got = {
+      tJul: [n194(tJul.amount), tJul.workedOut ?? null, tJul.baseAmount ?? null],
+      tJulRow: row(tJul.id),
+      tJulList: [
+        at194(pt, '2024-07-01').status,
+        n194(at194(pt, '2024-07-01').amount),
+        n194(at194(pt, '2024-07-01').paidAmount),
+        at194(pt, '2024-07-01').workedOut ?? null,
+        at194(pt, '2024-07-01').baseAmount ?? null,
+      ],
+      ahead: [n194(ahead.amount), ahead.workedOut ?? null, ahead.baseAmount ?? null],
+      aheadRow: row(ahead.id),
+      aheadNone,
+      sepOpen: [sepOpen.status, n194(sepOpen.baseAmount), n194(sepOpen.amount)],
+      sep: [n194(sep.amount), n194(sep.workedOut), n194(sep.baseAmount)],
+      sepRow: row(sep.id),
+      sepPaid: [
+        sepPaid.status,
+        n194(sepPaid.paidAmount),
+        n194(sepPaid.workedOut),
+        n194(sepPaid.baseAmount),
+      ],
+      pRow: [pRow.status, n194(pRow.amount), n194(pRow.baseAmount) < 0],
+      qPaysSomething: n194(qRow.amount) > 0,
+      onP,
+      onQ: [onQ.length, onQ.every((x) => Number(x.amount) === n194(qRow.amount))],
+      zero,
+    }
+    const want = {
+      tJul: [45000, null, null],
+      tJulRow: [null, 45000, 3, null],
+      tJulList: ['paid', 45000, 45000, null, null],
+      ahead: [10000, null, null],
+      aheadRow: [null, 10000, 28, null],
+      aheadNone: '22023 type the amount the percentage is calculated on',
+      sepOpen: ['overdue', -40000, 0],
+      sep: [20000, 0, -40000],
+      sepRow: [0, 20000, 28, -40000],
+      sepPaid: ['paid', 20000, 0, -40000],
+      pRow: ['overdue', 0, true],
+      qPaysSomething: true,
+      onP: 0,
+      onQ: [2, true],
+      zero: 0,
+    }
+    if (json194(got) !== json194(want))
+      throw new Error(json194({ got, figP, figQ, alerts, notices }))
+    // tidy: the periods paid undone, the taxes removed, the money cancelled or removed
+    await as(staff.cashier)
+    for (const id of [tJul.id, ahead.id, sep.id])
+      await db.query(`select unpay_tax($1, 'tidy 0194 G')`, [id])
+    for (const t of [f194.res, f194.qtr, f194.tender, f194.note])
+      await db.query(`select remove_tax($1)`, [t.id])
+    for (const id of [f194.incomes[0], f194.noteInc])
+      await db.query(`select void_income($1, 'tidy 0194 G')`, [id])
+    for (const id of [f194.expenses[0], f194.expenses[2], f194.lossExp, f194.noteExp])
+      await db.query(`select void_expense($1, 'tidy 0194 G')`, [id])
+    await db.query(`select set_money_kind($1, 'in', 'Rent received 0194 F', 'A room let', false)`, [
+      f194.kind,
+    ])
+    await asAdmin()
+    await db.query(
+      `update payment set deleted_at = now() where id = any($1::uuid[]) and deleted_at is null`,
+      [f194.payments],
+    )
+    await db.query(
+      `update refund set deleted_at = now() where id = any($1::uuid[]) and deleted_at is null`,
+      [f194.refunds],
+    )
+    await db.query(
+      `update expense set voided_at = now(), void_reason = 'tidy 0194 G' where id = any($1::uuid[])`,
+      [f194.system],
+    )
+    await db.query(
+      `update stock_movement set deleted_at = now() where id = any($1::uuid[]) and deleted_at is null`,
+      [f194.stock],
+    )
+    await db.query(`delete from notification where params ->> 'taxId' = any($1::text[])`, [
+      [f194.res.id, f194.qtr.id, f194.tender.id, f194.note.id],
+    ])
+    await as(staff.cashier)
+    const y = (await one(`select finance_summary('2024-01-01', '2024-12-31') as j`)).j
+    await asAdmin()
+    if (Number(y.moneyIn) !== 0 || Number(y.net) !== 0 || Number(y.taxes) !== 0)
+      throw new Error('tidy: ' + json194({ in: y.moneyIn, net: y.net, t: y.taxes }))
+    return `tender paid 45,000 with no figure → nothing worked out (amount empty, no "Worked out" line); the income tax paid before ${m.ahead} with only 10,000 → nothing worked out, without an amount refused 22023; September a loss: open → overdue, 0 to pay, figure −40,000; paid 20,000 → kept −40,000 and 0 worked out; notices: ${m.p} (a loss, 0) none, ${m.q} (${n194(qRow.amount).toLocaleString('en')}) 2, none of RWF 0; tidied: 2024 empty again`
+  },
+)
 // @@t194-end
 finish()
 

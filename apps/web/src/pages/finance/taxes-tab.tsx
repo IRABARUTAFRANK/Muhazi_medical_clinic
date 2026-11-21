@@ -20,6 +20,7 @@ import {
   cleanPercent,
   defaultRateBase,
   intervalWords,
+  lossWords,
   rateWorkWords,
   taxHowOf,
   taxHowWords,
@@ -368,11 +369,19 @@ function TaxPanel({
             <table className="w-full border-collapse text-[13px]">
               <thead className="bg-surface">
                 <tr className="border-border border-b">
-                  <th className={tableHead}>{t('accounts.salaries.cols.period')}</th>
-                  <th className={tableHead}>{t('accounts.salaries.cols.dueOn')}</th>
-                  <th className={cn(tableHead, 'text-right')}>{t('accounts.taxes.cols.amount')}</th>
-                  <th className={tableHead}>{t('accounts.salaries.cols.status')}</th>
-                  <th className={tableHead}></th>
+                  {/* the headings may wrap too: the table fits the panel in every language */}
+                  <th className={cn(tableHead, 'whitespace-normal')}>
+                    {t('accounts.salaries.cols.period')}
+                  </th>
+                  <th className={cn(tableHead, 'whitespace-normal')}>
+                    {t('accounts.salaries.cols.dueOn')}
+                  </th>
+                  <th className={cn(tableHead, 'text-right whitespace-normal')}>
+                    {t('accounts.taxes.cols.amount')}
+                  </th>
+                  <th className={cn(tableHead, 'whitespace-normal')}>
+                    {t('accounts.salaries.cols.status')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -392,12 +401,13 @@ function TaxPanel({
                         : ''
                   const here = paying?.periodStart === x.periodStart
                   const amount = x.paidAmount ?? x.amount
-                  // 0194: how a percentage period was (or is being) worked out
+                  // 0194: how a percentage period was (or is being) worked out; a loss (open
+                  // or settled) says so, never "28% of RWF -50,000"
                   const work =
                     x.rate == null
                       ? []
-                      : x.baseAmount != null && x.baseAmount < 0 && !x.id
-                        ? [t('accounts.taxes.loss')]
+                      : x.baseAmount != null && x.baseAmount < 0
+                        ? [lossWords(t, x)]
                         : [
                             // no figure yet (not started, or typed when paying): the amount is "—"
                             x.baseAmount != null
@@ -415,13 +425,20 @@ function TaxPanel({
                           ].filter((w): w is string => !!w)
                   return (
                     <tr key={x.periodStart} className={cn(tableRow, here && 'bg-yellow-bg')}>
-                      <td className={cn(tableFirstCell, 'whitespace-nowrap')}>
-                        {formatDate(new Date(x.periodStart))} – {formatDate(new Date(x.periodEnd))}
+                      {/* the period may break between its two dates, so the table fits the
+                          panel (Mark paid, Skip and Undo sit under the status) */}
+                      <td className={cn(tableFirstCell, 'min-w-0')}>
+                        <span className="whitespace-nowrap">
+                          {formatDate(new Date(x.periodStart))} –
+                        </span>{' '}
+                        <span className="whitespace-nowrap">
+                          {formatDate(new Date(x.periodEnd))}
+                        </span>
                       </td>
                       <td className={cn(tableCell, 'whitespace-nowrap')}>
                         {formatDate(new Date(x.dueOn))}
                       </td>
-                      <td className={cn(tableCell, 'text-right tabular-nums')}>
+                      <td className={cn(tableCell, 'min-w-[8rem] text-right tabular-nums')}>
                         <span className="whitespace-nowrap">
                           {amount == null ? '—' : formatRwf(amount)}
                         </span>
@@ -436,33 +453,28 @@ function TaxPanel({
                           {t(`accounts.status.${x.status}`)}
                         </Badge>
                         {detail && <span className="text-ink-3 block text-[12px]">{detail}</span>}
-                      </td>
-                      <td className={cn(tableCell, 'text-right whitespace-nowrap')}>
-                        {x.status === 'due' || x.status === 'overdue' ? (
-                          <>
-                            <Button
-                              size="sm"
-                              variant={here ? 'tint-grey' : 'primary'}
-                              onClick={() => setPaying(here ? null : x)}
-                            >
-                              <CalendarCheck size={14} aria-hidden="true" />
-                              {t('accounts.salaries.markPaid')}
+                        <span className="mt-1 flex flex-wrap gap-1">
+                          {x.status === 'due' || x.status === 'overdue' ? (
+                            <>
+                              <Button
+                                size="sm"
+                                variant={here ? 'tint-grey' : 'primary'}
+                                onClick={() => setPaying(here ? null : x)}
+                              >
+                                <CalendarCheck size={14} aria-hidden="true" />
+                                {t('accounts.salaries.markPaid')}
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => void skip(x)}>
+                                {t('accounts.salaries.skip')}
+                              </Button>
+                            </>
+                          ) : (
+                            <Button size="sm" variant="tint-grey" onClick={() => void undo(x)}>
+                              <Undo2 size={14} aria-hidden="true" />
+                              {t('accounts.salaries.undo')}
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="ml-1"
-                              onClick={() => void skip(x)}
-                            >
-                              {t('accounts.salaries.skip')}
-                            </Button>
-                          </>
-                        ) : (
-                          <Button size="sm" variant="tint-grey" onClick={() => void undo(x)}>
-                            <Undo2 size={14} aria-hidden="true" />
-                            {t('accounts.salaries.undo')}
-                          </Button>
-                        )}
+                          )}
+                        </span>
                       </td>
                     </tr>
                   )
@@ -744,7 +756,10 @@ function TaxPayForm({
   const rate = tax.rate
   const pct = rate != null
   const figure = period.baseAmount
-  const [base, setBase] = useState(figure == null ? '' : String(figure))
+  // a loss: the box starts empty and the loss is said under it (the box takes digits only, so a
+  // figure typed is never below zero)
+  const loss = pct && figure != null && figure < 0
+  const [base, setBase] = useState(figure == null || loss ? '' : String(figure))
   const [paidOn, setPaidOn] = useState(kigaliToday())
   const [amount, setAmount] = useState(period.amount == null ? '' : String(period.amount))
   const [amountTyped, setAmountTyped] = useState(false)
@@ -761,10 +776,12 @@ function TaxPayForm({
     ? null
     : figure == null || tax.rateBase === 'typed'
       ? t('accounts.taxes.baseToType')
-      : base !== String(figure)
-        ? t('accounts.taxes.baseChanged', { amount: formatRwf(figure) })
-        : t('accounts.taxes.baseFromFigures') +
-          (period.running ? ` · ${t('accounts.taxes.soFar')}` : '')
+      : loss
+        ? t('accounts.taxes.baseLoss', { amount: formatRwf(-(figure ?? 0)) })
+        : base !== String(figure)
+          ? t('accounts.taxes.baseChanged', { amount: formatRwf(figure) })
+          : t('accounts.taxes.baseFromFigures') +
+            (period.running ? ` · ${t('accounts.taxes.soFar')}` : '')
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     const a = Number(amount)
@@ -823,15 +840,18 @@ function TaxPayForm({
               {baseHint && <span className="text-ink-3 text-[12px]">{baseHint}</span>}
             </div>
           )}
+          {pct && loss && base === '' && (
+            <p className="text-ink m-0 self-center text-[14px] font-semibold sm:col-span-2">
+              {t('accounts.taxes.payLoss')}
+            </p>
+          )}
           {pct && baseNum != null && Number.isFinite(baseNum) && (
             <p className="text-ink m-0 self-center text-[14px] font-semibold sm:col-span-2">
-              {baseNum < 0
-                ? t('accounts.taxes.payLoss')
-                : t('accounts.taxes.payWork', {
-                    rate,
-                    base: formatRwf(baseNum),
-                    amount: formatRwf(calc ?? 0),
-                  })}
+              {t('accounts.taxes.payWork', {
+                rate,
+                base: formatRwf(baseNum),
+                amount: formatRwf(calc ?? 0),
+              })}
             </p>
           )}
           <Field

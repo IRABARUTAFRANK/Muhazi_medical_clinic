@@ -25,7 +25,14 @@ import {
   type PaymentRow,
   type RefundRow,
 } from '@/lib/api/reports-finance'
-import { AGENCIES, TAX_KINDS, intervalWords, rateWorkWords, taxHowWords } from '@/lib/api/accounts'
+import {
+  AGENCIES,
+  TAX_KINDS,
+  intervalWords,
+  lossWords,
+  rateWorkWords,
+  taxHowWords,
+} from '@/lib/api/accounts'
 import {
   EXPENSE_KINDS,
   SALARY_STATUSES,
@@ -1513,9 +1520,11 @@ const taxes: ReportDef<TaxRow> = {
       value: (r) =>
         r.rate == null
           ? null
-          : r.baseAmount != null
-            ? rateWorkWords(t, r.rate, r.baseAmount)
-            : taxHowWords(t, { amount: null, rate: r.rate, rateBase: r.rateBase }),
+          : r.baseAmount != null && r.baseAmount < 0
+            ? lossWords(t, r)
+            : r.baseAmount != null
+              ? rateWorkWords(t, r.rate, r.baseAmount)
+              : taxHowWords(t, { amount: null, rate: r.rate, rateBase: r.rateBase }),
     },
     {
       key: 'status',

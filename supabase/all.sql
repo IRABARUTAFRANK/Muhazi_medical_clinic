@@ -1,4 +1,4 @@
--- Muhazi Medical Clinic System — all migrations + seed, generated 2026-11-21T12:22:11.274Z
+-- Muhazi Medical Clinic System — all migrations + seed, generated 2026-11-21T12:57:09.280Z
 -- Paste into the Supabase SQL editor and run once on an empty project.
 
 -- ============================================================ 20261015180000_foundation.sql
@@ -87981,7 +87981,10 @@ grant execute on function
 --     own figures (money_figure: the same sums as the Money tab), "so far" while it runs; a loss
 --     gives 0. When a period is paid, the percentage, the figure used and the amount worked out
 --     stay on it (tax_period.rate, rate_base, base_amount, amount); later entries never change
---     it, Undo lets it follow the figures again.
+--     it, Undo lets it follow the figures again. Paid with only the amount typed (no figure: a
+--     tender, or a period paid before it starts), nothing is worked out: amount stays empty. A
+--     loss keeps its figure (below zero) and 0 worked out.
+--   * The daily notices leave out a period with nothing to pay (a loss: 0 worked out).
 --   * A one-off tax on Other expenses can be a percentage of an amount typed there:
 --     add_expense works the amount out and keeps both numbers (expense.rate, base_amount).
 --   * The salary deductions already were a percentage or a fixed amount per share (0186); their
@@ -88275,7 +88278,8 @@ begin
     if v_base is null and p_amount is null then
       raise exception 'type the amount the percentage is calculated on' using errcode = '22023';
     end if;
-    v_calc := round(greatest(v_base, 0) * v_t.rate / 100);
+    -- no figure (only the amount paid typed): nothing worked out (greatest(null, 0) would say 0)
+    v_calc := case when v_base is not null then round(greatest(v_base, 0) * v_t.rate / 100) end;
   else
     v_calc := v_t.amount;
   end if;
@@ -88468,6 +88472,56 @@ end
 $$;
 revoke all on function tax_overview(integer) from public, anon;
 grant execute on function tax_overview(integer) to authenticated;
+
+-- ---------------------------------------------------------------- the notices
+-- tax_alert_check (20270208090000_taxes): + a period with nothing to pay (0 worked out: a
+-- percentage period that made a loss, or a fixed amount of 0) gives no notice; the accountant
+-- skips it. A period with no amount yet (typed when paying) still gives one.
+create or replace function tax_alert_check()
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_today date := (now() at time zone 'Africa/Kigali')::date;
+  v_day text := to_char((now() at time zone 'Africa/Kigali')::date, 'YYYY-MM-DD');
+  v_due integer := 0;
+  v_over integer := 0;
+  v_created integer := 0;
+  r record;
+begin
+  if not finance_right() then
+    return jsonb_build_object('due', 0, 'overdue', 0, 'created', 0);
+  end if;
+  perform pg_advisory_xact_lock(hashtext('mmc.tax_alert_check'));
+  for r in
+    select t.id, t.name, (e ->> 'periodStart')::date as period_start, (e ->> 'dueOn')::date as due_on,
+           (e ->> 'amount')::numeric as amount, e ->> 'status' as status
+    from tax t
+    cross join lateral jsonb_array_elements(tax_periods(t.id, extract(year from v_today)::int)
+                                            || tax_periods(t.id, extract(year from v_today)::int - 1)) e
+    where t.deleted_at is null and e ->> 'status' in ('due', 'overdue')
+      and (e ->> 'dueOn')::date <= v_today + 3
+      and coalesce((e ->> 'amount')::numeric, -1) <> 0
+  loop
+    if r.status = 'overdue' then
+      v_over := v_over + 1;
+      v_created := v_created + finance_notice('tax_overdue', 'tax-overdue:' || r.id || ':' || r.period_start || ':' || v_day,
+        jsonb_build_object('name', r.name, 'taxId', r.id, 'dueOn', r.due_on, 'amount', r.amount,
+                           'days', v_today - r.due_on),
+        '/app/finance?tab=taxes&year=' || extract(year from r.period_start)::int, true);
+    else
+      v_due := v_due + 1;
+      v_created := v_created + finance_notice('tax_due', 'tax-due:' || r.id || ':' || r.period_start,
+        jsonb_build_object('name', r.name, 'taxId', r.id, 'dueOn', r.due_on, 'amount', r.amount,
+                           'days', r.due_on - v_today),
+        '/app/finance?tab=taxes&year=' || extract(year from r.period_start)::int, false);
+    end if;
+  end loop;
+  return jsonb_build_object('due', v_due, 'overdue', v_over, 'created', v_created);
+end
+$$;
+revoke all on function tax_alert_check() from public, anon;
+grant execute on function tax_alert_check() to authenticated;
 
 
 -- ============================================================ seed.sql

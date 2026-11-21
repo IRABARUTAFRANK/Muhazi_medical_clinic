@@ -270,6 +270,15 @@ export const cleanPercent = (s: string) => {
 /** 0194: the amount a percentage gives on a figure (a loss gives 0). */
 export const workedOut = (base: number, rate: number) =>
   Math.round((Math.max(base, 0) * rate) / 100)
+/** 0194: a percentage period whose figure is a loss (below zero): "A loss: nothing to pay" while
+ *  it is open; once paid, "A loss of RWF 50,000: the percentage gives RWF 0". */
+export const lossWords = (t: Words, p: { status: string; baseAmount: number | null }) =>
+  p.status === 'due' || p.status === 'overdue'
+    ? t('accounts.taxes.loss')
+    : t('accounts.taxes.lossPaid', {
+        amount: formatRwf(Math.abs(p.baseAmount ?? 0)),
+        zero: formatRwf(0),
+      })
 /** 0194: "RWF 60,000", "28% of the result before tax" or "Typed when paying". */
 export const taxHowWords = (
   t: Words,
@@ -390,13 +399,15 @@ const num = (v: unknown) => (v == null || v === '' ? 0 : Number(v))
 const numOrNull = (v: unknown) => (v == null || v === '' ? null : Number(v))
 
 /* ---------------------------------------------------------------- sample mode */
+/** A calendar day n months on (the day kept, or the month's last). Worked in UTC: a local
+ *  midnight read back with toISOString() was a day early east of Greenwich (Kigali). */
 const addMonths = (iso: string, n: number) => {
-  const d = new Date(iso + 'T00:00:00')
-  const day = d.getDate()
-  d.setDate(1)
-  d.setMonth(d.getMonth() + n)
-  const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
-  d.setDate(Math.min(day, last))
+  const d = new Date(iso + 'T00:00:00Z')
+  const day = d.getUTCDate()
+  d.setUTCDate(1)
+  d.setUTCMonth(d.getUTCMonth() + n)
+  const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate()
+  d.setUTCDate(Math.min(day, last))
   return d.toISOString().slice(0, 10)
 }
 /** Rwanda 2025: PAYE by bands, pension 6% + 6%, maternity 0.3% + 0.3%, Mutuelle 0.5% of the net. */
@@ -611,9 +622,7 @@ const samplePeriods = (
     const isPaid = n < paid
     out.push({
       periodStart: start,
-      periodEnd: new Date(new Date(end + 'T00:00:00').getTime() - 86_400_000)
-        .toISOString()
-        .slice(0, 10),
+      periodEnd: new Date(Date.parse(end + 'T00:00:00Z') - 86_400_000).toISOString().slice(0, 10),
       dueOn: next,
       amount,
       status: isPaid ? 'paid' : next < today ? 'overdue' : 'due',
@@ -694,7 +703,8 @@ const isoDay = (y: number, m: number, d: number) =>
  * 0194: a tax's periods in sample mode, every `months` months from 1 January, due on the pay day
  * of the month after (or the day after the period). A percentage is worked out from `base(k)`:
  * paid when `paid(k)` says so (the figure kept), "so far" for the period holding today, nothing
- * before a period starts; an amount typed when paying shows no figure until paid.
+ * before a period starts; an amount typed when paying shows no figure until paid. `declared(k)`:
+ * the amount paid when it is not the amount worked out (a loss paid all the same).
  */
 const sampleRatePeriods = (
   year: number,
@@ -704,6 +714,7 @@ const sampleRatePeriods = (
   rateBase: RateBase,
   base: (k: number) => number,
   paid: (k: number) => 'paid' | 'skipped' | null,
+  declared: (k: number) => number | null = () => null,
 ): TaxPeriod[] => {
   const today = kigaliToday()
   const out: TaxPeriod[] = []
@@ -718,16 +729,17 @@ const sampleRatePeriods = (
     const calc = figure == null ? null : workedOut(figure, rate)
     if (settled === 'paid') {
       const kept = workedOut(base(k), rate)
+      const paidAs = declared(k) ?? kept
       const on = dueOn < today ? dueOn : today
       out.push({
         periodStart: start,
         periodEnd: end,
         dueOn,
-        amount: kept,
+        amount: paidAs,
         status: 'paid',
         id: `tp-${year}-${k}`,
         paidOn: on,
-        paidAmount: kept,
+        paidAmount: paidAs,
         method: 'bank',
         reference: `RRA-${year}-${k + 1}`,
         note: null,
@@ -798,8 +810,13 @@ const fixedPeriods = (periods: SalaryPeriod[]): TaxPeriod[] =>
   }))
 const sampleTaxOverview = (year: number): TaxOverview => {
   const thisYear = Number(kigaliToday().slice(0, 4))
-  // the income tax: 28% of each quarter's result before tax (the first two quarters paid)
-  const citBases = [2_900_000, 3_100_000, 2_750_000, 1_950_000]
+  // the income tax: 28% of each quarter's result before tax (the first two quarters paid). The
+  // years before: the second quarter made a loss and RWF 50,000 was declared and paid all the
+  // same; the last quarter made a loss and is still open (nothing to pay: to skip)
+  const before = year < thisYear
+  const citBases = before
+    ? [2_400_000, -400_000, 2_600_000, -150_000]
+    : [2_900_000, 3_100_000, 2_750_000, 1_950_000]
   const taxes: Tax[] = [
     sampleTax({
       id: 'tx-cit',
@@ -823,7 +840,8 @@ const sampleTaxOverview = (year: number): TaxOverview => {
         28,
         'result',
         (k) => citBases[k] ?? 0,
-        (k) => (k < 2 || year < thisYear ? 'paid' : null),
+        (k) => (before ? (k === 3 ? null : 'paid') : k < 2 ? 'paid' : null),
+        (k) => (before && k === 1 ? 50_000 : null),
       ),
     }),
     {
