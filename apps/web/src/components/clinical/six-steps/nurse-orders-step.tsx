@@ -22,7 +22,7 @@ import {
   type NurseOrderKind,
 } from '@/lib/api/nurse-orders'
 import { restOfBox, summarizeOrder, summaryWords } from '@/lib/order-summary'
-import { orderAction } from '@/lib/order-words'
+import { BUTTON_WORD, orderAction } from '@/lib/order-words'
 import { useConfirm } from '@/lib/confirm'
 import { packsText } from '@/pages/stock/stock-util'
 
@@ -252,7 +252,7 @@ export function NurseOrdersStep({
         title: t('nurseOrders.sendQ', { what, name: patientName }),
         body: [
           self
-            ? t('nurseOrders.sendToMe')
+            ? t('nurseOrders.sendToMe', { button: t(BUTTON_WORD[action]) })
             : t(nurse ? 'nurseOrders.sendToOne' : 'nurseOrders.sendToAll', {
                 name: nurse?.name ?? '',
               }),
@@ -315,6 +315,7 @@ export function NurseOrdersStep({
           {
             what,
             name: nurse?.name ?? '',
+            button: t(BUTTON_WORD[action]),
           },
         ),
       )
@@ -436,7 +437,11 @@ export function NurseOrdersStep({
                     </legend>
                     <div className="flex flex-wrap items-end gap-3">
                       <div className="min-w-[12rem] flex-[1_1_14rem]">
-                        <Hinted hint={t('nurseOrders.homeAmountHint')}>
+                        <Hinted
+                          hint={t('nurseOrders.homeAmountHint', {
+                            button: t(BUTTON_WORD[f.where === 'home' ? 'hand' : 'give']),
+                          })}
+                        >
                           <Field
                             label={t('nurseOrders.homeAmount', { unit })}
                             inputMode="numeric"

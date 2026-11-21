@@ -98,13 +98,15 @@ export function stateWord(t: TFn, o: OrderLike): string {
   return t(`nurseOrders.status.${o.status}`)
 }
 
+/** The word on the button of one press, by action (also named in the doctor's send words). */
+export const BUTTON_WORD = {
+  give: 'nurseOrders.give1',
+  hand: 'nurseOrders.handOver',
+  done: 'nurseOrders.done1',
+} as const
+
 /** The button of one press. */
-export const giveButton = (t: TFn, o: NurseOrder) =>
-  t(
-    { give: 'nurseOrders.give1', hand: 'nurseOrders.handOver', done: 'nurseOrders.done1' }[
-      orderAction(o)
-    ],
-  )
+export const giveButton = (t: TFn, o: NurseOrder) => t(BUTTON_WORD[orderAction(o)])
 /** The question before it. */
 export const giveTitle = (t: TFn, o: NurseOrder, name: string) =>
   t(
