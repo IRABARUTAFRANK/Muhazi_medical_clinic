@@ -26011,7 +26011,7 @@ await step('0192: the migration runs again on a database that already has it', a
   return 'no error; the table and save_definitive_diagnoses are there; a signed-in person may run it, anon not; nobody reads or writes the table directly'
 })
 await step(
-  '0192 A: one save in step 5 — two of three possible diagnoses ticked, one unticked, one other written: the ticked are linked (the first sent is primary), the other is unlinked, the unticked one is not confirmed under the doctor’s name; the possible diagnoses themselves are untouched',
+  '0192 A: one save in step 5 — two of three possible diagnoses ticked (sent in the other order than written), one unticked, one other written: the ticked are linked (the first sent is primary, not the first written), the other is unlinked, the unticked one is not confirmed under the doctor’s name; the possible diagnoses themselves are untouched',
   async () => {
     t192.v = await t127.ov(t127.doc)
     await as(t127.doc)
@@ -26021,7 +26021,8 @@ await step(
     const res = (
       await one(`select save_definitive_diagnoses($1, $2::uuid[], $3::uuid[], $4::text[]) as j`, [
         t192.v,
-        [t192.mal, t192.typh],
+        // Typhoid sent first although Malaria was written first: the order sent decides the main one
+        [t192.typh, t192.mal],
         [t192.viral],
         ['Urinary infection 192'],
       ])
@@ -26060,11 +26061,14 @@ await step(
     }
     if (
       res.definitive?.length !== 3 ||
+      res.definitive[0] !== r.typh?.id ||
+      res.definitive[1] !== r.mal?.id ||
+      res.definitive[2] !== r.uti?.id ||
       json192(res.notConfirmed) !== json192([t192.viral]) ||
-      r.mal?.type !== 'primary' ||
-      r.mal?.differential_id !== t192.mal ||
-      r.typh?.type !== 'secondary' ||
+      r.typh?.type !== 'primary' ||
       r.typh?.differential_id !== t192.typh ||
+      r.mal?.type !== 'secondary' ||
+      r.mal?.differential_id !== t192.mal ||
       r.uti?.type !== 'secondary' ||
       r.uti?.differential_id != null ||
       marks.length !== 1 ||
@@ -26078,7 +26082,7 @@ await step(
       r.versions.some((x) => x !== 1)
     )
       throw new Error(json192(r))
-    return `3 definitive (Malaria 192 primary and linked, Typhoid 192 secondary and linked, Urinary infection 192 secondary, no link); Viral fever 192 not confirmed by ${r.viral.notConfirmedBy}; the possible ones still at version 1`
+    return `3 definitive in the order sent (Typhoid 192 sent first: primary and linked; Malaria 192, written first: secondary and linked; Urinary infection 192 secondary, no link); Viral fever 192 not confirmed by ${r.viral.notConfirmedBy}; the possible ones still at version 1`
   },
 )
 await step(
@@ -26226,7 +26230,11 @@ await step('0192 D: refusals, and one refusal saves nothing', async () => {
   // a possible diagnosis of another visit; the same one in both lists; typed again; confirmed ones
   r.otherVisit = await tryAs(t127.doc, save192, [t192.v6, [t192.p], [], []])
   r.both = await tryAs(t127.doc, save192, [t192.v6, [t192.otitis], [t192.otitis], []])
+  // typed again: Malaria 192 is confirmed already (nothing to tick); Otitis 192 is not decided
   r.typed = await tryAs(t127.doc, save192, [t192.v, [], [], [' malaria  192']])
+  r.typedHint = await hintAs(t127.doc, save192, [t192.v, [], [], [' malaria  192']])
+  r.typedOpen = await tryAs(t127.doc, save192, [t192.v6, [], [], [' OTITIS   192 ']])
+  r.typedOpenCode = await codeAs(t127.doc, save192, [t192.v6, [], [], [' OTITIS   192 ']])
   r.untickConfirmed = await hintAs(t127.doc, save192, [t192.v, [], [t192.mal], []])
   r.confirmTwice = await hintAs(t127.doc, save192, [t192.v, [t192.mal], [], []])
   // a good tick beside a bad one: refused before writing, or while writing — nothing is kept
@@ -26263,12 +26271,26 @@ await step('0192 D: refusals, and one refusal saves nothing', async () => {
     `select allowed from staff_permission where profile_id = $1 and permission = 'sensitive.read'`,
     [t127.doc],
   )
-  await db.query(
-    `insert into staff_permission (profile_id, permission, allowed) values ($1, 'sensitive.read', false)
-     on conflict (profile_id, permission) do update set allowed = false`,
-    [t127.doc],
-  )
+  const allow192 = (on) =>
+    db.query(
+      `insert into staff_permission (profile_id, permission, allowed) values ($1, 'sensitive.read', $2)
+       on conflict (profile_id, permission) do update set allowed = $2`,
+      [t127.doc, on],
+    )
+  // with the right, he sees the HIV line: its words typed are refused (tick it instead)
+  await allow192(true)
+  r.hivTypedRight = await tryAs(t127.doc, save192, [t192.v7, [], [], ['hiv disease 192']])
+  await allow192(false)
   r.hiv = await hintAs(t127.doc, save192, [t192.v7, [], [hiv], []])
+  // without the right, the HIV line is hidden: its words typed are not refused as "in the list"
+  // (neither named nor in his way); the 'x' beside it is refused while writing, so nothing is kept
+  r.hivTyped = await tryAs(t127.doc, save192, [t192.v7, [], [], ['HIV disease 192', 'x']])
+  r.hivDefinitive = (
+    await one(
+      `select count(*)::int as n from condition where encounter_id = $1 and stage = 'definitive'`,
+      [t192.v7],
+    )
+  ).n
   if (had)
     await db.query(
       `update staff_permission set allowed = $2 where profile_id = $1 and permission = 'sensitive.read'`,
@@ -26283,7 +26305,13 @@ await step('0192 D: refusals, and one refusal saves nothing', async () => {
   if (
     !/diagnosis not found/.test(r.otherVisit) ||
     !/confirmed or not confirmed, not both/.test(r.both) ||
-    !/tick it instead/.test(r.typed) ||
+    !/already confirmed/.test(r.typed) ||
+    r.typedHint !== '22023/already_confirmed' ||
+    !/tick it instead/.test(r.typedOpen) ||
+    r.typedOpenCode !== '22023' ||
+    !/tick it instead/.test(r.hivTypedRight) ||
+    !/needs a description/.test(r.hivTyped) ||
+    r.hivDefinitive !== 0 ||
     r.untickConfirmed !== '22023/already_confirmed' ||
     r.confirmTwice !== '22023/already_confirmed' ||
     !/diagnosis not found/.test(r.badId) ||
@@ -26297,7 +26325,7 @@ await step('0192 D: refusals, and one refusal saves nothing', async () => {
     r.hiv !== '42501/not_permitted'
   )
     throw new Error(json192(r))
-  return `another visit's, both lists (22023), typed again (22023), a confirmed one unticked or ticked again (${r.untickConfirmed}); a good tick beside a bad one saves nothing; nurse ${r.nurse}, a colleague ${r.colleague}, a finished visit refused, HIV without the right ${r.hiv}`
+  return `another visit's, both lists (22023); typed again: a confirmed one “already confirmed” (${r.typedHint}), a not decided one “tick it instead” (${r.typedOpenCode}); a confirmed one unticked or ticked again (${r.untickConfirmed}); a good tick beside a bad one saves nothing; nurse ${r.nurse}, a colleague ${r.colleague}, a finished visit refused; HIV without the right ${r.hiv}, and its hidden words typed are not refused as “in the list” (with the right they are)`
 })
 await step(
   '0192 E: a finished visit, inside the edit window — the save is taken and written in the change log with the grant',

@@ -11201,11 +11201,13 @@
     "pick": {
       "title": "Which possible diagnoses are confirmed? Tick one or more.",
       "none": "No possible diagnosis was written in step 3.",
+      "alsoWritten": "Already written in step 5 as a definitive diagnosis. Ticking it writes it a second time; leaving it unticked saves it as not confirmed.",
       "other": "Another diagnosis, not in the list",
       "otherAlone": "The definitive diagnosis",
       "addLine": "Add another",
       "removeLine": "Remove this line",
       "inList": "{{dx}} is in the list above: tick it instead.",
+      "inListConfirmed": "{{dx}} is in the list above and already confirmed: nothing to write.",
       "save": "Save the diagnosis",
       "q": "Save the diagnosis of {{name}}?",
       "sumConfirmed": "Confirmed: {{list}}",
@@ -11216,7 +11218,8 @@
       "sumNoMain": "No definitive diagnosis: to finish the visit, write one or say why none was found.",
       "sumReplacesNoDx": "It replaces “{{reason}}”.",
       "saved": "Diagnosis saved.",
-      "needsUpdate": "Saved: the confirmed and the other diagnoses. “Not confirmed” is saved once the database is updated.",
+      "needsUpdate": "Saved: the confirmed and the other diagnoses. “Not confirmed” is not saved: it needs the latest database update. After the update, save step 5 again.",
+      "needsUpdateNothing": "“Not confirmed” is not saved: it needs the latest database update. After the update, save step 5 again.",
       "nothing": "Tick a possible diagnosis or write one to save."
     },
     "goConfirm": "Tick the confirmed ones (step 5)",

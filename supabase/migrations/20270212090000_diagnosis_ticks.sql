@@ -25,6 +25,9 @@
 --       Not decided    nobody saved step 5 for it yet (an open visit, one written after the save,
 --                      and every possible diagnosis of before 0192). Nothing is filled in for old
 --                      visits: the system never decides it, and never by the words.
+--   * A typed diagnosis with the words of a possible one the doctor can see is refused: "tick it
+--     instead", or "already confirmed" when it is. An HIV line (B20–B24) hidden from him is never
+--     named in that refusal.
 --   * A "not confirmed" one ticked later is confirmed and its mark is taken back (soft delete: the
 --     change log keeps both). A confirmed one is taken back by removing its definitive diagnosis
 --     with a reason, as before: it reads "Not decided" again.
@@ -172,11 +175,22 @@ begin
   if exists (select 1 from condition x where x.differential_id = any (v_confirm || v_not) and x.deleted_at is null) then
     raise exception 'this diagnosis is already confirmed' using errcode = '22023', hint = 'already_confirmed';
   end if;
-  -- the words of a possible diagnosis of the visit are ticked, not typed again
+  -- the words of a possible diagnosis of the visit are ticked, not typed again. Only the lines the
+  -- doctor sees count: an HIV one (B20–B24) is hidden from someone without the right, so it is
+  -- neither named to him nor in his way. A line not decided or not confirmed: tick it instead;
+  -- a line already confirmed: it is confirmed already (nothing to tick).
   if exists (select 1 from condition c cross join unnest(v_other) o(t)
              where c.encounter_id = p_encounter_id and c.deleted_at is null and c.stage = 'differential'
-               and lower(trim(regexp_replace(c.text, '\s+', ' ', 'g'))) = lower(o.t)) then
+               and (coalesce(c.icd10_code, '') !~ '^B2[0-4]' or has_perm('sensitive.read'))
+               and lower(trim(regexp_replace(c.text, '\s+', ' ', 'g'))) = lower(o.t)
+               and not exists (select 1 from condition x where x.differential_id = c.id and x.deleted_at is null)) then
     raise exception 'this diagnosis is in the list of possible diagnoses: tick it instead' using errcode = '22023';
+  end if;
+  if exists (select 1 from condition c cross join unnest(v_other) o(t)
+             where c.encounter_id = p_encounter_id and c.deleted_at is null and c.stage = 'differential'
+               and (coalesce(c.icd10_code, '') !~ '^B2[0-4]' or has_perm('sensitive.read'))
+               and lower(trim(regexp_replace(c.text, '\s+', ' ', 'g'))) = lower(o.t)) then
+    raise exception 'this diagnosis is already confirmed' using errcode = '22023', hint = 'already_confirmed';
   end if;
 
   -- the unticked ones: "not confirmed", by this doctor, now (one already marked stays as it is)

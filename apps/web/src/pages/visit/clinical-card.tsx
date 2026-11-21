@@ -780,7 +780,16 @@ export function ClinicalCard({
     onError(null)
     try {
       const r = await actions.saveDefinitive.mutateAsync(i)
-      onDone(t(r.partial ? 'sixSteps.pick.needsUpdate' : 'sixSteps.pick.saved'))
+      // a database before 0192: "not confirmed" is not kept; say so, and what was saved
+      onDone(
+        t(
+          !r.partial
+            ? 'sixSteps.pick.saved'
+            : r.savedSome
+              ? 'sixSteps.pick.needsUpdate'
+              : 'sixSteps.pick.needsUpdateNothing',
+        ),
+      )
       return true
     } catch (e) {
       setLocalError(e instanceof Error ? e.message : String(e))

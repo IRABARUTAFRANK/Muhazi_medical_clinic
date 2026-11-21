@@ -11201,11 +11201,13 @@
     "pick": {
       "title": "Quels diagnostics possibles sont confirmés ? Cochez-en un ou plusieurs.",
       "none": "Aucun diagnostic possible n’a été noté à l’étape 3.",
+      "alsoWritten": "Déjà écrit à l’étape 5 comme diagnostic définitif. Le cocher l’écrit une deuxième fois ; le laisser décoché l’enregistre comme non confirmé.",
       "other": "Un autre diagnostic, absent de la liste",
       "otherAlone": "Le diagnostic définitif",
       "addLine": "Ajouter un autre",
       "removeLine": "Retirer cette ligne",
       "inList": "{{dx}} est dans la liste ci-dessus : cochez-le plutôt.",
+      "inListConfirmed": "{{dx}} est dans la liste ci-dessus et déjà confirmé : rien à écrire.",
       "save": "Enregistrer le diagnostic",
       "q": "Enregistrer le diagnostic de {{name}} ?",
       "sumConfirmed": "Confirmés : {{list}}",
@@ -11216,7 +11218,8 @@
       "sumNoMain": "Aucun diagnostic définitif : pour terminer la visite, écrivez-en un ou dites pourquoi aucun n’a été trouvé.",
       "sumReplacesNoDx": "Il remplace « {{reason}} ».",
       "saved": "Diagnostic enregistré.",
-      "needsUpdate": "Enregistré : les diagnostics confirmés et les autres. « Non confirmé » sera enregistré quand la base de données sera mise à jour.",
+      "needsUpdate": "Enregistré : les diagnostics confirmés et les autres. « Non confirmé » n’est pas enregistré : il faut la dernière mise à jour de la base de données. Après la mise à jour, enregistrez de nouveau l’étape 5.",
+      "needsUpdateNothing": "« Non confirmé » n’est pas enregistré : il faut la dernière mise à jour de la base de données. Après la mise à jour, enregistrez de nouveau l’étape 5.",
       "nothing": "Cochez un diagnostic possible ou écrivez-en un pour enregistrer."
     },
     "goConfirm": "Cocher les confirmés (étape 5)",

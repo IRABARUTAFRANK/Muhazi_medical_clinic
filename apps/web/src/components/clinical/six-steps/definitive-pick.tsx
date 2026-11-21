@@ -29,11 +29,16 @@ interface Line {
 let lineKey = 0
 const newLine = (added = false): Line => ({ key: ++lineKey, text: '', added })
 
-/** One possible diagnosis with its tick box, what was decided, by whom and when. */
+/**
+ * One possible diagnosis with its tick box, what was decided, by whom and when. writtenByHand:
+ * the same words already stand as a definitive diagnosis not linked to it (written in step 5
+ * before 0192): a note says what ticking it or leaving it does; nothing is decided from it.
+ */
 function PickRow({
   d,
   outcome,
   confirmedBy,
+  writtenByHand,
   checked,
   disabled,
   onToggle,
@@ -41,6 +46,7 @@ function PickRow({
   d: Diagnosis
   outcome: DxOutcome
   confirmedBy: Diagnosis | undefined
+  writtenByHand: boolean
   checked: boolean
   disabled: boolean
   onToggle: (on: boolean) => void
@@ -79,6 +85,11 @@ function PickRow({
           <span className="min-w-0 flex-[1_1_12rem]">
             <span className="block text-[15px] font-semibold">{d.text}</span>
             {meta && <span className="text-ink-3 block text-xs">{meta}</span>}
+            {writtenByHand && (
+              <span className="text-amber block text-xs font-semibold">
+                {t('sixSteps.pick.alsoWritten')}
+              </span>
+            )}
           </span>
           <Badge tone={OUTCOME_TONE[outcome]} dot={false} className="flex-none">
             {t(`dxOutcome.${outcome}`)}
@@ -95,7 +106,8 @@ function PickRow({
  * written: the confirmed ones, the ones left unticked ("not confirmed", under his name), the
  * others, and the main diagnosis. A confirmed one stays ticked (taken back by removing its
  * definitive diagnosis); a "not confirmed" one may be ticked later. Nothing is decided from the
- * words: a typed diagnosis that is in the list above is refused ("tick it instead").
+ * words: a typed diagnosis that is in the list above is refused ("tick it instead", or "it is
+ * confirmed already"), and the same words written by hand before only bring a note.
  */
 export function DefinitivePick({
   differentials,
@@ -125,15 +137,29 @@ export function DefinitivePick({
   const confirm = useConfirm()
   const [ticked, setTicked] = useState<ReadonlySet<string>>(() => new Set())
   const [lines, setLines] = useState<Line[]>(() => [newLine()])
-  const rows = differentials.map((d) => ({
-    d,
-    outcome: outcomeOf(d, definitive),
-    link: confirmedLink(d, definitive),
-  }))
-  /** The possible diagnosis a typed line repeats (trimmed, any case): tick it instead. */
+  const rows = differentials.map((d) => {
+    const outcome = outcomeOf(d, definitive)
+    return {
+      d,
+      outcome,
+      link: confirmedLink(d, definitive),
+      // the same words stand as a definitive diagnosis that is not linked to it: only a note
+      writtenByHand:
+        outcome !== 'confirmed' &&
+        definitive.some(
+          (x) => !x.removedAt && x.differentialId !== d.id && dxKey(x.text) === dxKey(d.text),
+        ),
+    }
+  })
+  /**
+   * The possible diagnosis a typed line repeats (trimmed, any case): one not confirmed yet is
+   * ticked instead; one confirmed already needs nothing (as the database answers).
+   */
   const clashOf = (text: string) => {
     const k = dxKey(text)
-    return k ? differentials.find((d) => dxKey(d.text) === k) : undefined
+    if (!k) return undefined
+    const same = rows.filter((r) => dxKey(r.d.text) === k)
+    return same.find((r) => r.outcome !== 'confirmed') ?? same[0]
   }
   const typed = lines.map((l) => dxWords(l.text)).filter(Boolean)
   const clash = lines.some((l) => !!clashOf(l.text))
@@ -239,6 +265,7 @@ export function DefinitivePick({
                 d={r.d}
                 outcome={r.outcome}
                 confirmedBy={r.link}
+                writtenByHand={r.writtenByHand}
                 checked={ticked.has(r.d.id)}
                 disabled={saving}
                 onToggle={(on) => toggle(r.d.id, on)}
@@ -279,7 +306,12 @@ export function DefinitivePick({
               {same && (
                 <Reveal block="nearest">
                   <p role="alert" className="text-red m-0 text-[13px] font-semibold">
-                    {t('sixSteps.pick.inList', { dx: same.text })}
+                    {t(
+                      same.outcome === 'confirmed'
+                        ? 'sixSteps.pick.inListConfirmed'
+                        : 'sixSteps.pick.inList',
+                      { dx: same.d.text },
+                    )}
                   </p>
                 </Reveal>
               )}

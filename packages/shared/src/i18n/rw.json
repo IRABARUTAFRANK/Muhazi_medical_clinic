@@ -11210,11 +11210,13 @@
     "pick": {
       "title": "Ni izihe ndwara zishoboka zemejwe? Hitamo imwe cyangwa nyinshi.",
       "none": "Nta ndwara ishoboka yanditswe mu ntambwe ya 3.",
+      "alsoWritten": "Yamaze kwandikwa mu ntambwe ya 5 nk’indwara yemejwe. Kuyihitamo biyandika ubwa kabiri; kutayihitamo biyibika nk’itemejwe.",
       "other": "Indi ndwara itari ku rutonde",
       "otherAlone": "Indwara yemejwe",
       "addLine": "Ongeraho indi",
       "removeLine": "Kuraho uyu murongo",
       "inList": "{{dx}} iri ku rutonde ruri hejuru: yihitemo aho kuyandika.",
+      "inListConfirmed": "{{dx}} iri ku rutonde ruri hejuru kandi yamaze kwemezwa: nta cyo kwandika.",
       "save": "Bika indwara yemejwe",
       "q": "Kubika indwara yemejwe ya {{name}}?",
       "sumConfirmed": "Zemejwe: {{list}}",
@@ -11225,7 +11227,8 @@
       "sumNoMain": "Nta ndwara yemejwe: kugira ngo urangize kwivuza, andika imwe cyangwa uvuge impamvu nta ndwara yabonetse.",
       "sumReplacesNoDx": "Isimbura “{{reason}}”.",
       "saved": "Indwara yemejwe yabitswe.",
-      "needsUpdate": "Byabitswe: indwara zemejwe n’izindi zanditswe. “Ntiyemejwe” izabikwa sisitemu imaze kuvugururwa.",
+      "needsUpdate": "Byabitswe: indwara zemejwe n’izindi zanditswe. “Ntiyemejwe” ntiyabitswe: bisaba ivugurura rishya rya sisitemu. Nyuma y’ivugurura, ongera ubike intambwe ya 5.",
+      "needsUpdateNothing": "“Ntiyemejwe” ntiyabitswe: bisaba ivugurura rishya rya sisitemu. Nyuma y’ivugurura, ongera ubike intambwe ya 5.",
       "nothing": "Hitamo indwara ishoboka cyangwa wandike imwe kugira ngo ubike."
     },
     "goConfirm": "Hitamo izemejwe (intambwe ya 5)",

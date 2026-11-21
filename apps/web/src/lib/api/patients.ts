@@ -901,9 +901,14 @@ export interface DefinitiveSave {
   notConfirmed: string[]
   other: string[]
 }
-/** partial: a database before 0192 saved the ticks and the typed ones, not the "not confirmed". */
+/**
+ * partial: a database before 0192 saved the ticks and the typed ones, not the "not confirmed"
+ * (nothing keeps them: step 5 is saved again after the update). savedSome: a tick or a typed
+ * diagnosis was written.
+ */
 export interface DefinitiveSaved {
   partial: boolean
+  savedSome: boolean
 }
 export type DiagnosisStage = 'differential' | 'definitive'
 /** The step of a diagnosis (0127), read from the provisional mark before 0127. */
@@ -1872,6 +1877,7 @@ export function useClinicalActions(encounterId: string) {
   const saveDefinitive = useMutation({
     mutationFn: async (input: DefinitiveSave): Promise<DefinitiveSaved> => {
       const i = cleanDefinitiveSave(input)
+      const savedSome = i.confirm.length + i.other.length > 0
       if (!supabase) {
         const user = sampleUser()
         // 0126: the record is the doctor's
@@ -1900,15 +1906,21 @@ export function useClinicalActions(encounterId: string) {
             message: 'this diagnosis is already confirmed',
             hint: 'already_confirmed',
           })
-        const listed = new Set(
-          c.diagnoses
-            .filter((x) => !x.removedAt && stageOf(x) === 'differential')
-            .map((x) => dxKey(x.text)),
-        )
-        if (i.other.some((t) => listed.has(dxKey(t))))
+        // typed words of a possible diagnosis: tick it instead; of a confirmed one: confirmed already
+        const listed = c.diagnoses.filter((x) => !x.removedAt && stageOf(x) === 'differential')
+        const isConfirmed = (id: string) =>
+          c.diagnoses.some((x) => x.differentialId === id && !x.removedAt)
+        const matching = listed.filter((x) => i.other.some((t) => dxKey(t) === dxKey(x.text)))
+        if (matching.some((x) => !isConfirmed(x.id)))
           throw apiError({
             code: '22023',
             message: 'this diagnosis is in the list of possible diagnoses: tick it instead',
+          })
+        if (matching.length)
+          throw apiError({
+            code: '22023',
+            message: 'this diagnosis is already confirmed',
+            hint: 'already_confirmed',
           })
         if (i.other.some((t) => t.length < 2))
           throw apiError({ code: '22023', message: 'the diagnosis needs a description' })
@@ -1939,7 +1951,7 @@ export function useClinicalActions(encounterId: string) {
         for (const text of i.other) add(text, null, null)
         if (c.diagnoses.some((x) => !x.removedAt && x.type === 'primary'))
           sampleNoDx.delete(encounterId)
-        return { partial: false }
+        return { partial: false, savedSome }
       }
       const res = await supabase.rpc('save_definitive_diagnoses', {
         p_encounter_id: encounterId,
@@ -1947,10 +1959,11 @@ export function useClinicalActions(encounterId: string) {
         p_not_confirmed: i.notConfirmed,
         p_other: i.other,
       })
-      if (!res.error) return { partial: false }
+      if (!res.error) return { partial: false, savedSome }
       if (!isMissingFunction(res.error)) throw apiError(res.error)
       // a database before 0192: one call per tick, then the typed ones (not all or nothing; the
-      // refresh shows what was saved); "not confirmed" waits for the update
+      // refresh shows what was saved). "Not confirmed" is not kept anywhere: the screen says to
+      // save step 5 again once the database is updated
       for (const id of i.confirm) await call('confirm_differential', { p_id: id, p_type: null })
       for (const text of i.other)
         await call('add_visit_diagnosis', {
@@ -1961,7 +1974,7 @@ export function useClinicalActions(encounterId: string) {
           p_stage: 'definitive',
           p_also_differential: false,
         })
-      return { partial: i.notConfirmed.length > 0 }
+      return { partial: i.notConfirmed.length > 0, savedSome }
     },
     onSettled: refresh,
   })
