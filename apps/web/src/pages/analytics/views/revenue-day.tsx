@@ -86,6 +86,7 @@ export function RevenueDayDrawer({ day, onClose }: { day: string; onClose: () =>
               cols={[
                 {
                   key: 'at',
+                  tight: true,
                   label: t('report.cols.time'),
                   cell: (r) => timeOf(r.at),
                   sort: (r) => r.at,

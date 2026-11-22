@@ -235,7 +235,7 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
             {/* WAITING FOR ME: sent to me by name first, then my desks' queue */}
             <section className="flex flex-col gap-3">
               <SectionTitle icon={UserRoundCheck}>{t('my.section')}</SectionTitle>
-              <div className="pc:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] grid grid-cols-1 gap-4">
+              <div className="pc:grid-cols-[minmax(0,1.4fr)_minmax(min(20rem,45%),1fr)] grid grid-cols-1 gap-4">
                 <WaitingForMePanel
                   summary={my}
                   rowAction={nurse ? 'call' : 'open'}
@@ -248,7 +248,7 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
             {/* MY WORK in the period, then what is addressed to me */}
             <section className="flex flex-col gap-3">
               <SectionTitle icon={ListTodo}>{t('my.work', { period: periodWord })}</SectionTitle>
-              <div className="pc:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] grid grid-cols-1 gap-4">
+              <div className="pc:grid-cols-[minmax(0,1.4fr)_minmax(min(20rem,45%),1fr)] grid grid-cols-1 gap-4">
                 <MyWorkPanel
                   summary={my}
                   periodWord={periodWord}
@@ -267,12 +267,15 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
             </section>
 
             {/* THE TOOLS OF MY DESK */}
-            <section className="flex flex-col gap-3">
+            <section className="@container flex flex-col gap-3">
               <SectionTitle icon={Wrench}>{t('my.tools')}</SectionTitle>
+              {/* the nurse's three panels sit side by side only when the section itself is
+                  1024 px wide (each keeps about 330 px); before that two in a row and the beds
+                  under them on the whole width (the bed cards need the room) */}
               <div
                 className={cn(
                   'grid grid-cols-1 gap-4',
-                  nurse ? 'pc:grid-cols-3' : 'pc:grid-cols-2',
+                  nurse ? 'pc:grid-cols-2 @5xl:grid-cols-3' : 'pc:grid-cols-2',
                 )}
               >
                 {nurse ? (
@@ -283,10 +286,19 @@ export function DeskDashboard({ user, role }: { user: StaffUser; role: DeskRole 
                       <>
                         <BedsPanel
                           userRole={user.role}
-                          className={has(TREATING_DESKS) ? undefined : 'pc:col-span-2'}
+                          className={
+                            has(TREATING_DESKS)
+                              ? 'pc:order-last pc:col-span-2 @5xl:order-none @5xl:col-span-1'
+                              : 'pc:col-span-2'
+                          }
                           canAct={can('clinical.write')}
                         />
-                        <TasksPanel canAct={can('clinical.write')} />
+                        <TasksPanel
+                          canAct={can('clinical.write')}
+                          className={
+                            has(TREATING_DESKS) ? undefined : 'pc:col-span-2 @5xl:col-span-1'
+                          }
+                        />
                       </>
                     )}
                     {!nursing && !has(TREATING_DESKS) && (

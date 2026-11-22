@@ -55,8 +55,8 @@ export function OpenBillsPanel({
                   {/* the name keeps 10 rem: in a narrow column the amount and the button go
                       under it instead of cutting the name to a few letters */}
                   <span className="min-w-[min(10rem,100%)] flex-1">
-                    <span className="block truncate font-semibold">{b.name}</span>
-                    <span className="text-ink-3 block truncate text-[13px]">
+                    <span className="block font-semibold break-words">{b.name}</span>
+                    <span className="text-ink-3 block text-[13px] break-words">
                       {b.file}
                       {b.station
                         ? ` · ${t('home.atStation', { station: t(`register.stations.${b.station}`, { defaultValue: b.station }) })}`

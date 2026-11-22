@@ -769,17 +769,24 @@ export function StaffPage({ user }: { user: StaffUser }) {
                         return (
                           <Row
                             key={e.id}
+                            // avatar | the name with the tags beside it, the details under them across the whole
+                            // row, then the buttons. On a phone the tags and the buttons take the full width
+                            // under the avatar (the name line is taken apart: max-sm:contents).
                             className={cn(
-                              'flex-wrap gap-x-4 gap-y-2 py-3',
+                              'grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 py-3',
                               !e.active && 'opacity-60',
                               ((editing !== 'new' && editing?.id === e.id) ||
                                 resetFor?.id === e.id) &&
                                 'bg-primary-tint/50',
                             )}
                           >
-                            <Avatar name={e.fullName} size="md" />
-                            <span className="min-w-[min(200px,100%)] flex-1">
-                              <span className="block font-semibold">
+                            <Avatar
+                              name={e.fullName}
+                              size="md"
+                              className="col-start-1 row-span-2 row-start-1"
+                            />
+                            <span className="items-center gap-x-4 gap-y-2 max-sm:contents sm:col-start-2 sm:row-start-1 sm:flex sm:flex-wrap">
+                              <span className="col-start-2 row-start-1 block min-w-[min(180px,100%)] flex-1 font-semibold">
                                 {/* the name opens the employee's file: details and documents */}
                                 <button
                                   type="button"
@@ -796,7 +803,48 @@ export function StaffPage({ user }: { user: StaffUser }) {
                                   </span>
                                 )}
                               </span>
-                              <span className="text-ink-3 text-xs tabular-nums">
+                              <span className="col-span-2 row-start-3 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+                                <Chip>{employeeRole(e, t)}</Chip>
+                                {/* 0126: sees patient records (the role, or marked by the manager) */}
+                                {(e.role === 'doctor' || e.isDoctor) && (
+                                  <Badge
+                                    tone="green"
+                                    dot={false}
+                                    icon={<Stethoscope size={12} aria-hidden="true" />}
+                                  >
+                                    {t('doctorMark.badge')}
+                                  </Badge>
+                                )}
+                                {positionIn(e, g.key) !== 'member' && (
+                                  <Badge
+                                    tone={positionIn(e, g.key) === 'head' ? 'blue' : 'grey'}
+                                    dot={false}
+                                  >
+                                    {t(`staff.positions.${positionIn(e, g.key)}`)}
+                                  </Badge>
+                                )}
+                                {e.departments.length > 1 && (
+                                  <span className="text-violet text-xs font-semibold">
+                                    {t('staff.alsoIn', {
+                                      names: e.departments
+                                        .filter((m) => m.departmentId !== g.key)
+                                        .map((m) => m.departmentName)
+                                        .join(', '),
+                                    })}
+                                  </span>
+                                )}
+                                {e.active && e.tempPin && <TempPin pin={e.tempPin} />}
+                                {!e.active ? (
+                                  <Badge tone="red">{t('staff.deactivated')}</Badge>
+                                ) : e.mustChangePin ? (
+                                  <Badge tone="yellow">{t('staff.pinPending')}</Badge>
+                                ) : (
+                                  <Badge tone="green">{t('staff.active')}</Badge>
+                                )}
+                              </span>
+                            </span>
+                            <span className="col-start-2 row-start-2 min-w-0">
+                              <span className="text-ink-3 block text-xs break-words tabular-nums">
                                 {[
                                   e.staffId,
                                   registrationText(e) &&
@@ -818,44 +866,7 @@ export function StaffPage({ user }: { user: StaffUser }) {
                                 </span>
                               )}
                             </span>
-                            <Chip>{employeeRole(e, t)}</Chip>
-                            {/* 0126: sees patient records (the role, or marked by the manager) */}
-                            {(e.role === 'doctor' || e.isDoctor) && (
-                              <Badge
-                                tone="green"
-                                dot={false}
-                                icon={<Stethoscope size={12} aria-hidden="true" />}
-                              >
-                                {t('doctorMark.badge')}
-                              </Badge>
-                            )}
-                            {positionIn(e, g.key) !== 'member' && (
-                              <Badge
-                                tone={positionIn(e, g.key) === 'head' ? 'blue' : 'grey'}
-                                dot={false}
-                              >
-                                {t(`staff.positions.${positionIn(e, g.key)}`)}
-                              </Badge>
-                            )}
-                            {e.departments.length > 1 && (
-                              <span className="text-violet text-xs font-semibold">
-                                {t('staff.alsoIn', {
-                                  names: e.departments
-                                    .filter((m) => m.departmentId !== g.key)
-                                    .map((m) => m.departmentName)
-                                    .join(', '),
-                                })}
-                              </span>
-                            )}
-                            {e.active && e.tempPin && <TempPin pin={e.tempPin} />}
-                            {!e.active ? (
-                              <Badge tone="red">{t('staff.deactivated')}</Badge>
-                            ) : e.mustChangePin ? (
-                              <Badge tone="yellow">{t('staff.pinPending')}</Badge>
-                            ) : (
-                              <Badge tone="green">{t('staff.active')}</Badge>
-                            )}
-                            <span className="flex flex-wrap gap-2">
+                            <span className="col-span-2 row-start-4 flex flex-wrap gap-2 sm:col-span-1 sm:col-start-2 sm:row-start-3">
                               <Button size="sm" onClick={() => openEdit(e)} disabled={!e.active}>
                                 <Pencil size={15} aria-hidden="true" />
                                 {t('staff.edit')}
@@ -1796,7 +1807,7 @@ function EmployeeForm({
           return (
             <div
               key={i}
-              className="border-border grid grid-cols-1 items-end gap-3 rounded-md border p-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto]"
+              className="border-border grid grid-cols-1 items-end gap-3 rounded-md border p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
             >
               <Select
                 label={i === 0 ? t('staff.form.mainDepartment') : t('staff.form.department')}
@@ -2040,7 +2051,7 @@ function EmployeeForm({
         </p>
       )}
       {!inPanel && (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button type="submit" variant="primary">
             <ShieldCheck size={16} aria-hidden="true" />
             {isNew ? t('staff.form.create') : t('staff.form.saveChanges')}
@@ -2081,7 +2092,7 @@ function TempPin({ pin }: { pin: string }) {
   const [shown, setShown] = useState(false)
   const [copied, setCopied] = useState(false)
   return (
-    <span className="border-amber/40 bg-amber-bg text-ink inline-flex items-center gap-1.5 rounded-md border py-0.5 pr-1 pl-3 text-[14px]">
+    <span className="border-amber/40 bg-amber-bg text-ink inline-flex max-w-full flex-wrap items-center gap-x-1.5 rounded-md border py-0.5 pr-1 pl-3 text-[14px]">
       <KeyRound size={13} aria-hidden="true" className="text-amber" />
       <span className="text-ink-2 font-semibold">{t('staff.tempPin')}</span>
       <b className="tracking-[.2em] tabular-nums">{shown ? pin : '••••••'}</b>
@@ -2615,7 +2626,7 @@ function DepartmentForm({
               </p>
             ))}
           </fieldset>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button type="submit" variant="primary" loading={saving}>
               <Check size={16} aria-hidden="true" />
               {t('staff.dept.save')}

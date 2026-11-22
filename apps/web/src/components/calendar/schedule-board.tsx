@@ -104,7 +104,9 @@ export function ScheduleBoard({
         {rows.map(({ doc, i, avail }) => (
           <div key={doc.p.id} className={cn(card, 'gap-0 p-3')}>
             <DoctorHead doc={doc} i={i} now={now} variant={variant} action={action} t={t} />
-            <div className="mt-2.5 grid grid-cols-7 gap-1">
+            {/* on a 360 px phone the seven days take half of the card's padding on each side:
+                the longest "not working" word (rw, 9 px) then fits its cell */}
+            <div className="-mx-1.5 mt-2.5 grid grid-cols-7 gap-0.5 min-[400px]:mx-0 min-[400px]:gap-1">
               {days.map((d, k) => {
                 const today = sameDay(d, now)
                 return (
@@ -137,7 +139,7 @@ export function ScheduleBoard({
       </div>
 
       {/* Tablets and PCs: the week as a table. */}
-      <div className="border-border hidden max-h-[55vh] overflow-auto overscroll-contain rounded-md border sm:block">
+      <div className="border-border @container hidden max-h-[55vh] overflow-auto overscroll-contain rounded-md border sm:block">
         <table className="w-full min-w-[600px] border-collapse text-[12px] md:text-[13px]">
           <thead>
             <tr className="bg-surface">
@@ -241,11 +243,13 @@ function DoctorHead({
         <span className="mt-1 flex flex-wrap items-center gap-1.5">
           <span
             className={cn(
-              'inline-flex h-5 items-center gap-1 rounded border px-1.5 text-[11px] font-medium',
+              'inline-flex min-h-5 items-center gap-1 rounded border px-1.5 py-px text-[11px] leading-tight font-medium whitespace-nowrap',
               on ? 'border-green/30 bg-green-bg text-green' : 'border-border bg-hover text-ink-3',
             )}
           >
-            <span className={cn('size-1.5 rounded-full', on ? 'bg-green-dot' : 'bg-ink-3')} />
+            <span
+              className={cn('size-1.5 flex-none rounded-full', on ? 'bg-green-dot' : 'bg-ink-3')}
+            />
             {on ? t('calendar.board.inNow') : t('calendar.board.notNow')}
           </span>
           {variant === 'staff' && VisIcon && doc.visibility && (
@@ -287,7 +291,7 @@ function DayCell({
   const spans = off ? [] : spansFor(p.hours, d)
   const base = cn(
     'flex flex-col items-center justify-center gap-0.5 rounded border text-center',
-    compact ? 'min-h-[44px] px-0.5 py-1' : 'min-h-[52px] px-1 py-1',
+    compact ? 'min-h-[44px] min-w-0 py-1' : 'min-h-[52px] px-1 py-1',
     today && compact && 'ring-primary/40 ring-2',
   )
   if (off)
@@ -303,7 +307,7 @@ function DayCell({
         className={cn(
           base,
           'bg-surface text-ink-3 border-border border-dashed font-semibold',
-          compact ? 'text-[9px]' : 'text-[11px]',
+          compact ? 'text-[9px] tracking-tighter min-[400px]:tracking-normal' : 'text-[11px]',
         )}
       >
         {t('calendar.board.off')}
@@ -323,8 +327,8 @@ function DayCell({
             shortSpan(s)
           ) : (
             <>
-              <span className="lg:hidden">{shortSpan(s)}</span>
-              <span className="hidden lg:inline">
+              <span className="@[52rem]:hidden">{shortSpan(s)}</span>
+              <span className="hidden @[52rem]:inline">
                 {s[0]}–{s[1]}
               </span>
             </>

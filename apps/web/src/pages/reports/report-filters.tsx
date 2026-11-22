@@ -47,7 +47,7 @@ export function ReportFilters({
         </div>
       )}
       {rest.length > 0 && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 @md:grid-cols-2 @[44rem]:grid-cols-3">
           {rest.map((f) => {
             const opts = options[f.key] ?? f.options ?? []
             const hint = f.hint ? (
@@ -107,7 +107,7 @@ export function ReportFilters({
             return (
               <fieldset
                 key={f.key}
-                className="m-0 flex min-w-0 flex-col gap-1 border-0 p-0 sm:col-span-2 xl:col-span-3"
+                className="m-0 flex min-w-0 flex-col gap-1 border-0 p-0 @md:col-span-2 @[44rem]:col-span-3"
               >
                 <legend className={cn(labelClass, 'mb-1')}>{t(f.label)}</legend>
                 <div className="flex flex-wrap gap-1.5">
@@ -162,13 +162,13 @@ function Pill({
       aria-pressed={on}
       onClick={onClick}
       className={cn(
-        'focus-visible:ring-primary/20 inline-flex min-h-[max(2rem,var(--tap,0px))] items-center gap-1 rounded-full border px-3 text-[13px] font-medium transition-colors duration-120 outline-none focus-visible:ring-2',
+        'focus-visible:ring-primary/20 inline-flex min-h-[max(2rem,var(--tap,0px))] max-w-full items-center gap-1 rounded-full border px-3 py-1 text-left text-[13px] leading-tight font-medium transition-colors duration-120 outline-none focus-visible:ring-2',
         on
           ? 'border-primary/40 bg-primary-tint text-primary'
           : 'border-border bg-card text-ink-2 hover:bg-hover',
       )}
     >
-      {on && <Check size={14} aria-hidden="true" />}
+      {on && <Check size={14} aria-hidden="true" className="flex-none" />}
       {children}
     </button>
   )

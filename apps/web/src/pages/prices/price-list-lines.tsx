@@ -325,7 +325,7 @@ export function LinesPanel({
                       {canAdopt && editable && l.clinic.length === 0 && !l.removed && (
                         <button
                           type="button"
-                          className="border-primary/40 text-primary hover:bg-primary-tint inline-flex h-6 items-center gap-1 rounded border border-dashed bg-transparent px-2 text-[12px] font-semibold"
+                          className="border-primary/40 text-primary hover:bg-primary-tint inline-flex min-h-6 items-center gap-1 rounded border border-dashed bg-transparent px-2 py-0.5 text-left text-[12px] leading-tight font-semibold"
                           title={t('prices.lists.adoptHint')}
                           onClick={() => void adopt([l.code], l.name)}
                         >

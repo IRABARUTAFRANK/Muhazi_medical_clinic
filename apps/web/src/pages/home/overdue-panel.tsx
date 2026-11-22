@@ -142,14 +142,14 @@ export function OverduePanel({
                     <button
                       type="button"
                       onClick={() => onSelect(a.id)}
-                      className="text-primary block max-w-full truncate text-left font-semibold underline-offset-2 hover:underline"
+                      className="text-primary block max-w-full text-left font-semibold break-words underline-offset-2 hover:underline"
                     >
                       {a.name}
                     </button>
                   ) : (
-                    <span className="block truncate font-semibold">{a.name}</span>
+                    <span className="block font-semibold break-words">{a.name}</span>
                   )}
-                  <span className="text-ink-3 block truncate text-[13px]">
+                  <span className="text-ink-3 block text-[13px] break-words">
                     {[a.doctor, a.reason, a.phone].filter(Boolean).join(' · ')}
                   </span>
                 </span>

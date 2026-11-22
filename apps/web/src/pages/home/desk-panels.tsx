@@ -205,19 +205,19 @@ export function AppointmentsPanel({
                         <button
                           type="button"
                           onClick={() => onSelect(a.id)}
-                          className="text-primary block max-w-full truncate text-left font-semibold underline-offset-2 hover:underline"
+                          className="text-primary block max-w-full text-left font-semibold break-words underline-offset-2 hover:underline"
                         >
                           {a.name}
                         </button>
                       ) : (
-                        <span className="block truncate font-semibold">{a.name}</span>
+                        <span className="block font-semibold break-words">{a.name}</span>
                       )}
                       {open && !a.patientId && (
                         <span className="text-amber block text-[12px] font-semibold">
                           {t('patientFields.arrival.noFileYet')}
                         </span>
                       )}
-                      <span className="text-ink-3 block truncate text-[13px]">
+                      <span className="text-ink-3 block text-[13px] break-words">
                         {[a.doctor, a.reason, a.phone].filter(Boolean).join(' · ')}
                       </span>
                     </span>
@@ -232,7 +232,7 @@ export function AppointmentsPanel({
                     {/* Arrived needs only "Start visits" (appointment_arrived asks for nothing
                         else that the manager switches); No-show and Cancel answer the booking */}
                     {(canAct || (canArrive ?? canAct)) && open && (
-                      <span className="flex gap-1">
+                      <span className="flex flex-wrap gap-1">
                         {isToday && (canArrive ?? canAct) && (
                           <Button
                             size="sm"
@@ -389,7 +389,15 @@ export function AppointmentsPanel({
 /* ---------------------------------------------------------------- tasks */
 
 /** What doctors asked the nurses to do, with times; "Done" ticks it off (recorded with you). */
-export function TasksPanel({ i = 2, canAct = true }: { i?: number; canAct?: boolean }) {
+export function TasksPanel({
+  i = 2,
+  canAct = true,
+  className,
+}: {
+  i?: number
+  canAct?: boolean
+  className?: string
+}) {
   const { t } = useTranslation()
   const { data: open = [] } = useOpenTasks()
   // a notice points to one task (?focus=task:<id>): it comes first and is outlined
@@ -415,6 +423,7 @@ export function TasksPanel({ i = 2, canAct = true }: { i?: number; canAct?: bool
       id={FOCUS_PANEL.task}
       icon={ListTodo}
       tint="amber"
+      className={className}
       title={t('desk.nurse.tasks')}
       right={t('ops.tasks.count', { count: tasks.length, overdue })}
     >
@@ -436,8 +445,8 @@ export function TasksPanel({ i = 2, canAct = true }: { i?: number; canAct?: bool
                     {x.dueAt ? formatTime(new Date(x.dueAt)) : '—'}
                   </Pill>
                   <span className="min-w-[140px] flex-1">
-                    <span className="block truncate font-semibold">{x.title}</span>
-                    <span className="text-ink-3 block truncate text-[13px]">
+                    <span className="block font-semibold break-words">{x.title}</span>
+                    <span className="text-ink-3 block text-[13px] break-words">
                       {[x.patient, x.detail, x.by && t('ops.tasks.by', { name: x.by })]
                         .filter(Boolean)
                         .join(' · ')}
@@ -552,36 +561,36 @@ export function BedsPanel({
       {beds.length === 0 ? (
         <Empty icon={BedDouble}>{t('desk.nurse.noBeds')}</Empty>
       ) : (
-        <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,max(12.5rem,calc(50%_-_0.25rem))),1fr))] gap-2">
           {beds.map((b, k) => {
             const open = form?.bedId === b.id
             return (
               <div
                 key={b.id}
                 className={cn(
-                  'flex flex-col gap-1 rounded-md border px-3 py-2',
+                  'flex min-w-0 flex-col gap-1 rounded-md border px-3 py-2',
                   bedTint[b.state],
-                  open && 'col-span-2',
+                  open && 'col-span-full',
                 )}
                 style={{ '--i': k } as CSSProperties}
               >
-                <span className="flex items-center justify-between gap-1">
-                  <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold">
-                    <BedDouble size={15} aria-hidden="true" />
-                    {b.name}
+                <span className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
+                  <span className="inline-flex min-w-0 items-center gap-1.5 text-[13px] font-semibold">
+                    <BedDouble size={15} aria-hidden="true" className="flex-none" />
+                    <span className="min-w-0 break-words">{b.name}</span>
                   </span>
                   <span className="text-ink-3 text-[12px]">{t(`desk.bedState.${b.state}`)}</span>
                 </span>
                 <span className="text-ink-3 inline-flex items-center gap-1 text-[12px]">
-                  <Moon size={12} aria-hidden="true" />
+                  <Moon size={12} aria-hidden="true" className="flex-none" />
                   {t('ops.beds.perNight', { price: formatRwf(b.nightlyPrice) })}
                 </span>
                 {b.patient && (
-                  <span className="truncate text-[13px] font-semibold">{b.patient}</span>
+                  <span className="text-[13px] font-semibold break-words">{b.patient}</span>
                 )}
                 {b.state === 'occupied' && b.nights != null && b.until && (
                   <span className="text-ink-2 inline-flex items-center gap-1 text-[12px]">
-                    <CalendarClock size={12} aria-hidden="true" />
+                    <CalendarClock size={12} aria-hidden="true" className="flex-none" />
                     {t('ops.beds.until', {
                       count: b.nights,
                       date: `${formatDayMonth(new Date(b.until))} ${formatTime(new Date(b.until))}`,
@@ -890,8 +899,8 @@ export function FilesToCompletePanel({ i = 1 }: { i?: number }) {
                     {f.ticket ?? '—'}
                   </Pill>
                   <span className="min-w-[140px] flex-1">
-                    <span className="block truncate font-semibold">{f.name}</span>
-                    <span className="text-ink-3 block truncate text-[13px]">
+                    <span className="block font-semibold break-words">{f.name}</span>
+                    <span className="text-ink-3 block text-[13px] break-words">
                       {t('files.lacks', {
                         missing: f.missing.map(missingLabel).join(', '),
                       })}

@@ -289,82 +289,86 @@ export function PatientsDocuments({
       </Hint>
 
       <Panel i={1} icon={Search} tint="teal" title={tx(t, 'documents.filters', 'Filters')}>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="flex min-w-0 flex-col gap-1">
-            <label htmlFor={ids.doctor} className="text-ink-2 text-[13px] font-medium">
-              {tx(t, 'documents.cols.doctor', 'Doctor')}
-            </label>
-            <select
-              id={ids.doctor}
-              value={filters.doctor ?? ''}
-              onChange={(e) => update({ person: e.target.value || undefined }, { replace: true })}
-              className={cn(controlClass, 'w-full max-w-full')}
-            >
-              <option value="">{tx(t, 'documents.allDoctors', 'All doctors')}</option>
-              {d.options.doctors.map((x) => (
-                <option key={x.id} value={x.id}>
-                  {x.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex min-w-0 flex-col gap-1">
-            <label htmlFor={ids.service} className="text-ink-2 text-[13px] font-medium">
-              {tx(t, 'documents.service', 'Service')}
-            </label>
-            <select
-              id={ids.service}
-              value={service}
-              onChange={(e) => setService(e.target.value)}
-              className={cn(controlClass, 'w-full max-w-full')}
-            >
-              <option value="">{tx(t, 'documents.allServices', 'All services')}</option>
-              {d.options.services.map((x) => (
-                <option key={x} value={x}>
-                  {serviceName(x)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex min-w-0 flex-col gap-1">
-            <label htmlFor={ids.insurer} className="text-ink-2 text-[13px] font-medium">
-              {t('rxDoc.insurer', { defaultValue: 'Insurer' })}
-            </label>
-            <select
-              id={ids.insurer}
-              value={insurer}
-              onChange={(e) => setInsurer(e.target.value)}
-              className={cn(controlClass, 'w-full max-w-full')}
-            >
-              <option value="">{tx(t, 'documents.allInsurers', 'All insurers and cash')}</option>
-              {d.options.insurers.map((x) => (
-                <option key={x.id} value={x.id}>
-                  {x.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <Field
-            label={t('patients.search')}
-            placeholder={t('register.searchPh')}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            autoComplete="off"
-            wrapperClassName="sm:col-span-2"
-          />
-          <label
-            htmlFor={ids.closed}
-            className="text-ink-2 flex min-h-9 items-center gap-2 self-end text-[14px] font-medium"
-          >
-            <input
-              id={ids.closed}
-              type="checkbox"
-              checked={closedOnly}
-              onChange={(e) => setClosedOnly(e.target.checked)}
-              className="size-4"
+        {/* the filters follow the width of their panel (beside the sections list in Analytics),
+            not the window: two or three across only when each field keeps a readable width */}
+        <div className="@container">
+          <div className="grid grid-cols-1 gap-3 @lg:grid-cols-2 @3xl:grid-cols-3">
+            <div className="flex min-w-0 flex-col gap-1">
+              <label htmlFor={ids.doctor} className="text-ink-2 text-[13px] font-medium">
+                {tx(t, 'documents.cols.doctor', 'Doctor')}
+              </label>
+              <select
+                id={ids.doctor}
+                value={filters.doctor ?? ''}
+                onChange={(e) => update({ person: e.target.value || undefined }, { replace: true })}
+                className={cn(controlClass, 'w-full max-w-full')}
+              >
+                <option value="">{tx(t, 'documents.allDoctors', 'All doctors')}</option>
+                {d.options.doctors.map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex min-w-0 flex-col gap-1">
+              <label htmlFor={ids.service} className="text-ink-2 text-[13px] font-medium">
+                {tx(t, 'documents.service', 'Service')}
+              </label>
+              <select
+                id={ids.service}
+                value={service}
+                onChange={(e) => setService(e.target.value)}
+                className={cn(controlClass, 'w-full max-w-full')}
+              >
+                <option value="">{tx(t, 'documents.allServices', 'All services')}</option>
+                {d.options.services.map((x) => (
+                  <option key={x} value={x}>
+                    {serviceName(x)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex min-w-0 flex-col gap-1">
+              <label htmlFor={ids.insurer} className="text-ink-2 text-[13px] font-medium">
+                {t('rxDoc.insurer', { defaultValue: 'Insurer' })}
+              </label>
+              <select
+                id={ids.insurer}
+                value={insurer}
+                onChange={(e) => setInsurer(e.target.value)}
+                className={cn(controlClass, 'w-full max-w-full')}
+              >
+                <option value="">{tx(t, 'documents.allInsurers', 'All insurers and cash')}</option>
+                {d.options.insurers.map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Field
+              label={t('patients.search')}
+              placeholder={t('register.searchPh')}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              autoComplete="off"
+              wrapperClassName="@lg:col-span-2"
             />
-            {tx(t, 'documents.closedOnly', 'Only closed visits')}
-          </label>
+            <label
+              htmlFor={ids.closed}
+              className="text-ink-2 flex min-h-9 items-center gap-2 self-end text-[14px] font-medium"
+            >
+              <input
+                id={ids.closed}
+                type="checkbox"
+                checked={closedOnly}
+                onChange={(e) => setClosedOnly(e.target.checked)}
+                className="size-4"
+              />
+              {tx(t, 'documents.closedOnly', 'Only closed visits')}
+            </label>
+          </div>
         </div>
       </Panel>
 

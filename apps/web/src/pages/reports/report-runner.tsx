@@ -236,7 +236,7 @@ export function ReportRunner({ def, ctx }: { def: AnyReportDef; ctx: ReportConte
   const look = GROUP_LOOK[def.group]
   const countLabel = t(def.countLabel ?? 'reports.ui.rows')
   return (
-    <div className="flex min-w-0 flex-col gap-4">
+    <div className="@container flex min-w-0 flex-col gap-4">
       <section className={cn(card, 'gap-3')}>
         <div className="flex flex-wrap items-start gap-3">
           <IconChip icon={look.icon} tint={look.hue} />

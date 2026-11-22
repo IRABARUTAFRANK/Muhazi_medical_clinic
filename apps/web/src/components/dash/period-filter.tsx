@@ -106,12 +106,13 @@ export function PeriodCustom({ period, className }: { period: Period; className?
       (custom.to === `${y}-12-31` || (custom.to === today && today.startsWith(`${y}-`))),
   )
   return (
-    <div className={cn('flex flex-wrap items-end gap-3', className)}>
+    // a phone: two fields per row, each the width of its half, "or" on a line of its own
+    <div className={cn('grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap', className)}>
       <Select
         label={t('dashboard.custom.year')}
         value={chosenYear ? String(chosenYear) : ''}
         onChange={(e) => e.target.value && pickYear(Number(e.target.value))}
-        wrapperClassName="w-36"
+        wrapperClassName="min-w-0 sm:w-36"
       >
         <option value="">—</option>
         {allYears.map((y) => (
@@ -126,16 +127,18 @@ export function PeriodCustom({ period, className }: { period: Period; className?
         value={custom.from.slice(0, 7)}
         max={today.slice(0, 7)}
         onChange={(e) => e.target.value && pickMonth(e.target.value)}
-        wrapperClassName="w-44"
+        wrapperClassName="min-w-0 sm:w-44"
       />
-      <span className="text-ink-3 pb-2.5 text-[14px]">{t('dashboard.custom.or')}</span>
+      <span className="text-ink-3 text-[14px] max-sm:col-span-2 sm:pb-2.5">
+        {t('dashboard.custom.or')}
+      </span>
       <Field
         label={t('history.from')}
         type="date"
         value={custom.from}
         max={custom.to}
         onChange={(e) => e.target.value && setCustom({ ...custom, from: e.target.value })}
-        wrapperClassName="w-44"
+        wrapperClassName="min-w-0 sm:w-44"
       />
       <Field
         label={t('history.to')}
@@ -144,9 +147,11 @@ export function PeriodCustom({ period, className }: { period: Period; className?
         min={custom.from}
         max={today}
         onChange={(e) => e.target.value && setCustom({ ...custom, to: e.target.value })}
-        wrapperClassName="w-44"
+        wrapperClassName="min-w-0 sm:w-44"
       />
-      <span className="text-ink-2 pb-2.5 text-[14px] font-medium">{period.label}</span>
+      <span className="text-ink-2 text-[14px] font-medium max-sm:col-span-2 sm:pb-2.5">
+        {period.label}
+      </span>
     </div>
   )
 }

@@ -465,15 +465,18 @@ export function VitalsForm({
           >
             {taken && (
               <p className="bg-green-bg text-green border-green/30 m-0 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border px-3 py-2 text-[13px] font-semibold">
-                <Activity size={16} aria-hidden="true" />
-                {latest?.measuredBy
-                  ? t('vitalsForm.taken', {
-                      name: latest.measuredBy,
-                      time: formatTime(new Date(latest.at)),
-                    })
-                  : t('vitalsForm.takenAt', {
-                      time: latest ? formatTime(new Date(latest.at)) : '',
-                    })}
+                <Activity size={16} aria-hidden="true" className="flex-none" />
+                {/* beside the icon, wrapping there (not under an icon left alone on its line) */}
+                <span className="min-w-0 flex-1">
+                  {latest?.measuredBy
+                    ? t('vitalsForm.taken', {
+                        name: latest.measuredBy,
+                        time: formatTime(new Date(latest.at)),
+                      })
+                    : t('vitalsForm.takenAt', {
+                        time: latest ? formatTime(new Date(latest.at)) : '',
+                      })}
+                </span>
                 <span className="text-ink-2 basis-full font-normal">
                   {t('vitalsForm.takenHint')}
                 </span>
@@ -483,7 +486,8 @@ export function VitalsForm({
             <div
               className={cn(
                 // minmax(0, …): long nurse names must not push "Measured at" past the card edge.
-                'grid min-w-0 grid-cols-1 gap-3 rounded-md border p-3 sm:grid-cols-[minmax(0,2fr)_minmax(140px,1fr)]',
+                // side by side only when the card has the room (it is a narrow column beside the list)
+                'grid min-w-0 grid-cols-1 gap-3 rounded-md border p-3 @[26rem]:grid-cols-[minmax(0,2fr)_minmax(140px,1fr)]',
                 fromPaper ? 'border-amber/40 bg-amber-bg/50' : 'border-border',
               )}
             >
@@ -533,8 +537,9 @@ export function VitalsForm({
                       value={valueOf(r.code)}
                       onChange={(e) => setTyped((s) => ({ ...s, [r.code]: e.target.value }))}
                     />
-                    <span className="flex min-w-0 items-center justify-between gap-2 text-[12px]">
-                      <span className="text-ink-3 min-w-0 truncate">
+                    <span className="flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[12px]">
+                      {/* the saved value and its time keep their own line: in a narrow column the button goes under them */}
+                      <span className="text-ink-3 min-w-0 flex-[1_1_9.5rem] leading-snug wrap-break-word">
                         {e
                           ? t('vitalsForm.savedValue', {
                               value: `${vitalValue(e)}${e.unit ? ` ${e.unit}` : ''}`,
@@ -552,7 +557,7 @@ export function VitalsForm({
                           onClick={() => void removeRow(r)}
                           disabled={removeVital.isPending}
                           className={cn(
-                            'inline-flex h-6 flex-none items-center gap-1 rounded px-1.5 font-semibold',
+                            'ml-auto inline-flex h-6 flex-none items-center gap-1 rounded px-1.5 font-semibold',
                             e ? 'text-red hover:bg-red-bg' : 'text-ink-3 hover:bg-hover',
                           )}
                           title={t(e ? 'vitalsForm.removeSaved' : 'vitalsForm.removeRow', {
@@ -661,7 +666,7 @@ export function VitalsForm({
                     <label
                       key={l}
                       className={cn(
-                        'border-border flex min-h-9 cursor-pointer items-center gap-2 rounded-md border px-3 font-semibold',
+                        'border-border flex min-h-9 max-w-full cursor-pointer items-center gap-2 rounded-md border px-3 py-1 font-semibold',
                         colourSet && level === l && 'border-primary bg-primary-tint',
                       )}
                     >
@@ -693,7 +698,7 @@ export function VitalsForm({
                       <label
                         key={l}
                         className={cn(
-                          'border-border flex min-h-9 cursor-pointer items-center gap-2 rounded-md border px-3 font-semibold',
+                          'border-border flex min-h-9 max-w-full cursor-pointer items-center gap-2 rounded-md border px-3 py-1 font-semibold',
                           level === l && 'border-primary bg-primary-tint',
                         )}
                       >

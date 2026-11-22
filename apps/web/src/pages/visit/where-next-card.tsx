@@ -169,8 +169,10 @@ export function WhereNextCard({
         )}
 
         <p className="text-ink-2 m-0 text-[14px]">{t('visit.next.sectionLead')}</p>
+        {/* a tile wide enough for a two-word section name on one line ("Soins dentaires",
+            "Ibipimo by’ibanze"): at 9.5rem half the tiles of a tablet took two lines */}
         <div
-          className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-2"
+          className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,12rem),1fr))] gap-2"
           role="radiogroup"
           aria-label={t('visit.next.section')}
         >
@@ -188,7 +190,7 @@ export function WhereNextCard({
                   setPerson('')
                 }}
                 className={cn(
-                  'flex min-h-9 items-center gap-2 rounded-md border px-3 text-left text-[14px] font-semibold transition-colors',
+                  'flex min-h-9 items-center gap-2 rounded-md border px-3 py-1 text-left text-[14px] font-semibold transition-colors',
                   on
                     ? 'border-primary bg-primary text-on-primary'
                     : 'border-border bg-card text-ink-2 hover:bg-hover',

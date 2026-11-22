@@ -213,37 +213,39 @@ export function MedicinesSection({ onNotice }: { onNotice: (text: string) => voi
                       .join(' · ')}
                   </span>
                 </span>
-                <span className="text-primary text-[16px] font-semibold tabular-nums">
-                  {m.cashPrice == null ? t('prices.noPrice') : formatRwf(m.cashPrice)}
-                </span>
-                {/* 0135: the Ministry's price, or the clinic's own beside it */}
-                {m.listPrice != null &&
-                  (m.ownPrice == null ? (
-                    <Badge tone="blue" title={m.listName ?? ''}>
-                      {t('prices.listPrice.follows')}
-                    </Badge>
-                  ) : (
-                    <Badge tone="yellow" title={m.listName ?? ''}>
-                      {t('prices.listPrice.own', { price: formatRwf(m.listPrice) })}
-                    </Badge>
-                  ))}
-                {!m.active && <Badge tone="grey">{t('prices.inactive')}</Badge>}
-                <span className="flex flex-wrap gap-1">
-                  <Button size="sm" onClick={() => setEditing(m)}>
-                    <Pencil size={14} aria-hidden="true" />
-                    {t('prices.edit')}
-                  </Button>
-                  {canDelete && (
-                    <Button
-                      size="sm"
-                      variant="tint-coral"
-                      title={t('prices.delete')}
-                      aria-label={t('prices.delete')}
-                      onClick={() => void remove(m)}
-                    >
-                      <Trash2 size={14} aria-hidden="true" />
+                <span className="flex max-w-full flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="text-primary text-[16px] font-semibold tabular-nums">
+                    {m.cashPrice == null ? t('prices.noPrice') : formatRwf(m.cashPrice)}
+                  </span>
+                  {/* 0135: the Ministry's price, or the clinic's own beside it */}
+                  {m.listPrice != null &&
+                    (m.ownPrice == null ? (
+                      <Badge tone="blue" title={m.listName ?? ''}>
+                        {t('prices.listPrice.follows')}
+                      </Badge>
+                    ) : (
+                      <Badge tone="yellow" title={m.listName ?? ''}>
+                        {t('prices.listPrice.own', { price: formatRwf(m.listPrice) })}
+                      </Badge>
+                    ))}
+                  {!m.active && <Badge tone="grey">{t('prices.inactive')}</Badge>}
+                  <span className="flex flex-wrap gap-1">
+                    <Button size="sm" onClick={() => setEditing(m)}>
+                      <Pencil size={14} aria-hidden="true" />
+                      {t('prices.edit')}
                     </Button>
-                  )}
+                    {canDelete && (
+                      <Button
+                        size="sm"
+                        variant="tint-coral"
+                        title={t('prices.delete')}
+                        aria-label={t('prices.delete')}
+                        onClick={() => void remove(m)}
+                      >
+                        <Trash2 size={14} aria-hidden="true" />
+                      </Button>
+                    )}
+                  </span>
                 </span>
               </Row>
             ))

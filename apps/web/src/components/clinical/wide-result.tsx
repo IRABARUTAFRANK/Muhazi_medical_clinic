@@ -40,7 +40,7 @@ export function WideResult({ result, className }: { result: ResultView; classNam
         onClick={() => setOpen(true)}
         className={
           className ??
-          'text-primary hover:bg-primary-tint inline-flex h-7 items-center gap-1 rounded border border-transparent bg-transparent px-1.5 text-[12px] font-semibold'
+          'text-primary hover:bg-primary-tint inline-flex min-h-7 items-center gap-1 rounded border border-transparent bg-transparent px-1.5 text-[12px] font-semibold whitespace-nowrap'
         }
       >
         <Maximize2 size={13} aria-hidden="true" />

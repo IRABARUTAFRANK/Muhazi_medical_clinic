@@ -219,7 +219,12 @@ export function DeskWorkView({ view, period, clinic }: ViewProps) {
             rows={rows}
             rowKey={(r) => r.queueId}
             cols={[
-              { key: 'ticket', label: t('home.cols.ticket'), cell: (r) => <b>{r.ticket}</b> },
+              {
+                key: 'ticket',
+                tight: true,
+                label: t('home.cols.ticket'),
+                cell: (r) => <b>{r.ticket}</b>,
+              },
               { key: 'name', label: t('home.cols.patient'), cell: (r) => r.name },
               {
                 key: 'station',
@@ -315,7 +320,7 @@ export function DeskWorkView({ view, period, clinic }: ViewProps) {
                     <StaffLink
                       to="/app/visit"
                       search={{ encounter: r.encounterId }}
-                      className="text-primary font-semibold [overflow-wrap:anywhere]"
+                      className="text-primary font-semibold break-words"
                     >
                       {r.patient ?? '—'}
                     </StaffLink>
@@ -578,6 +583,7 @@ export function DeskWorkView({ view, period, clinic }: ViewProps) {
   const cols: Col<DeskRecord>[] = [
     {
       key: 'at',
+      tight: true,
       label: t('report.cols.dateTime'),
       cell: (r) => <span className="whitespace-nowrap">{when(r.at)}</span>,
       sort: (r) => r.at,
@@ -591,7 +597,7 @@ export function DeskWorkView({ view, period, clinic }: ViewProps) {
             <StaffLink
               to="/app/visit"
               search={{ encounter: r.encounterId }}
-              className="text-primary font-semibold [overflow-wrap:anywhere]"
+              className="text-primary font-semibold break-words"
             >
               {r.patientName ?? '—'}
             </StaffLink>
@@ -603,7 +609,11 @@ export function DeskWorkView({ view, period, clinic }: ViewProps) {
       ),
       sort: (r) => r.patientName,
     },
-    { key: 'what', label: tx(t, 'deskWork.what', 'What'), cell: (r) => r.what ?? '—' },
+    {
+      key: 'what',
+      label: tx(t, 'deskWork.what', 'What'),
+      cell: (r) => <span className="block min-w-[9rem]">{r.what ?? '—'}</span>,
+    },
   ]
   return (
     <>

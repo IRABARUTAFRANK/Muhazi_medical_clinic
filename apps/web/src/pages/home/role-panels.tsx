@@ -217,7 +217,7 @@ export function MyQueuePanel({
                     {q.ticket}
                   </Pill>
                   <span className="min-w-[140px] flex-1">
-                    <span className="block truncate font-semibold">{q.name}</span>
+                    <span className="block font-semibold break-words">{q.name}</span>
                     <span className="text-ink-3 flex flex-wrap items-center gap-x-2 text-[13px]">
                       <span>{q.ageSex}</span>
                       {/* what the patient comes for (chosen at registration) */}
@@ -451,9 +451,9 @@ function ReceptionistPanels({ data, onError }: PanelProps) {
                     <Pill tint={apptTint[a.status]} icon={apptIcon[a.status]}>
                       {a.time}
                     </Pill>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold">{a.name}</span>
-                      <span className="text-ink-3 block truncate text-[13px]">
+                    <span className="min-w-[140px] flex-1">
+                      <span className="block font-semibold break-words">{a.name}</span>
+                      <span className="text-ink-3 block text-[13px] break-words">
                         {a.doctor}
                         {a.station ? ` · ${a.station}` : ''}
                       </span>
@@ -485,14 +485,14 @@ function ReceptionistPanels({ data, onError }: PanelProps) {
                     {q.when ?? '?'}
                   </Pill>
                   <span className="min-w-[140px] flex-1">
-                    <span className="block truncate font-semibold">{q.name}</span>
-                    <span className="text-ink-3 block truncate text-[13px]">
+                    <span className="block font-semibold break-words">{q.name}</span>
+                    <span className="text-ink-3 block text-[13px] break-words">
                       {[q.category && t(`categories.${q.category}`), q.doctor, q.phone, q.note]
                         .filter(Boolean)
                         .join(' · ')}
                     </span>
                   </span>
-                  <span className="flex gap-1">
+                  <span className="flex flex-wrap gap-1">
                     <Button
                       variant="primary"
                       size="sm"
@@ -565,9 +565,9 @@ function NursePanels({ data, onError }: PanelProps) {
                   >
                     {task.time ?? '—'}
                   </Pill>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-semibold">{task.title}</span>
-                    <span className="text-ink-3 block truncate text-[13px]">
+                  <span className="min-w-[140px] flex-1">
+                    <span className="block font-semibold break-words">{task.title}</span>
+                    <span className="text-ink-3 block text-[13px] break-words">
                       {[task.patient, task.detail].filter(Boolean).join(' · ')}
                     </span>
                   </span>
@@ -606,7 +606,7 @@ function NursePanels({ data, onError }: PanelProps) {
                 <BedDouble size={15} aria-hidden="true" />
                 {b.name}
               </span>
-              <span className="truncate">
+              <span className="break-words">
                 {b.state === 'occupied' ? (b.who ?? '') : t(`home.bedState.${b.state}`)}
               </span>
             </div>
@@ -701,7 +701,7 @@ function DoctorPanels({ data, onError }: PanelProps) {
                     <Pill tint={apptTint[c.status]} icon={apptIcon[c.status]}>
                       {c.time}
                     </Pill>
-                    <span className="min-w-0 flex-1 truncate font-semibold">{c.name}</span>
+                    <span className="min-w-[120px] flex-1 font-semibold break-words">{c.name}</span>
                     <span className="text-ink-2 text-[13px] font-semibold">
                       {t(`home.apptStatus.${c.status}`)}
                     </span>
@@ -771,7 +771,7 @@ export function ToAcceptPanel({
                   {q.when}
                 </Pill>
                 <span className="min-w-[140px] flex-1">
-                  <span className="block truncate font-semibold">{q.name}</span>
+                  <span className="block font-semibold break-words">{q.name}</span>
                   {(q.note || q.category) && (
                     <span className="text-ink-3 block text-[13px]">
                       {[q.category, q.note].filter(Boolean).join(' · ')}
@@ -827,9 +827,9 @@ function CashierPanels({ data }: PanelProps) {
                   <Pill tint="amber" icon={Receipt}>
                     {b.ticket ?? '—'}
                   </Pill>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-semibold">{b.name}</span>
-                    <span className="text-ink-3 block truncate text-[13px]">
+                  <span className="min-w-[140px] flex-1">
+                    <span className="block font-semibold break-words">{b.name}</span>
+                    <span className="text-ink-3 block text-[13px] break-words">
                       {b.file}
                       {b.station
                         ? ` · ${t('home.atStation', { station: t(`register.stations.${b.station}`) })}`
@@ -863,7 +863,7 @@ function CashierPanels({ data }: PanelProps) {
         title={t('home.paidToday')}
         right={t('home.paymentsCount', { count: data.paidToday.count })}
       >
-        <div className="flex items-baseline justify-between gap-2">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-2">
           <span className="text-ink-2 font-semibold">{t('home.collectedToday')}</span>
           <span className="text-[28px] leading-8 font-semibold tracking-[-0.01em] tabular-nums">
             {formatRwf(data.paidToday.amount)}

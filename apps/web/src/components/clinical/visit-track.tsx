@@ -86,6 +86,7 @@ export function VisitTrack({
                     'block truncate text-[14px] font-semibold',
                     s.state === 'next' && 'text-ink-3',
                   )}
+                  title={s.title}
                 >
                   {s.title}
                 </span>

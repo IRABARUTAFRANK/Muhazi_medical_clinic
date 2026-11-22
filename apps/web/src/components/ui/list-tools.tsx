@@ -85,7 +85,8 @@ export function Pager({
         {t('list.showing', { from, to, total })}
       </span>
       {pages > 1 && (
-        <span className="flex items-center gap-1">
+        // wraps on a narrow phone (seven 44 px touch buttons are wider than the screen)
+        <span className="flex max-w-full flex-wrap items-center gap-1">
           <button
             type="button"
             className={cn(btn, 'hover:bg-hover')}
@@ -102,6 +103,8 @@ export function Pager({
               aria-current={n === page ? 'page' : undefined}
               className={cn(
                 btn,
+                // a phone keeps the page before and after the current one: the row stays on one line
+                Math.abs(n - page) > 1 && 'max-[430px]:hidden',
                 n === page
                   ? 'border-primary/30 bg-primary-tint text-primary border'
                   : 'hover:bg-hover text-ink-2',

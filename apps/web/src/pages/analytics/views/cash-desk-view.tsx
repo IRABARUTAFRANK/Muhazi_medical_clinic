@@ -368,6 +368,7 @@ export function CashDeskView({ view, period, update, search, clinic }: ViewProps
             cols={[
               {
                 key: 'at',
+                tight: true,
                 label: t('report.cols.dateTime'),
                 cell: (r) => <span className="whitespace-nowrap">{when(r.at)}</span>,
                 sort: (r) => r.at,
@@ -419,6 +420,7 @@ export function CashDeskView({ view, period, update, search, clinic }: ViewProps
             cols={[
               {
                 key: 'at',
+                tight: true,
                 label: t('report.cols.dateTime'),
                 cell: (r) => <span className="whitespace-nowrap">{when(r.at)}</span>,
                 sort: (r) => r.at,

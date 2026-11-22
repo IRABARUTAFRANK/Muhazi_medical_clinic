@@ -208,7 +208,7 @@ export function NewPatientForm({
               {duplicates.map((d) => (
                 <span key={d.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   <AlertTriangle size={16} aria-hidden="true" className="flex-none" />
-                  <span className="min-w-0 flex-1">
+                  <span className="min-w-0 flex-[1_1_10rem]">
                     {t('register.duplicate.line', { name: d.name, file: d.fileNumber })}
                   </span>
                   <StaffLink

@@ -65,7 +65,7 @@ import { isDoctorUser } from '@/lib/roles'
 import { NotAllowedNotice } from '@/components/clinical/perm-gate'
 import { STATION_DESKS, TREATING_DESKS, useCanDesk, useMyDesks } from '@/lib/api/desks'
 import { useVisitAccess } from '@/lib/api/calls'
-import { HelpCard } from './help-card'
+import { HelpAsked, HelpCard } from './help-card'
 import { HandoverCard } from './handover-card'
 import { openReceipt } from '@/lib/receipt-doc'
 import { useLetterhead } from '@/lib/report-parts'
@@ -488,18 +488,23 @@ export function VisitPage({
                 )}
                 {vitals.map((v) => (
                   <Chip key={v.id} title={vitalSource(v)}>
+                    {/* a space that holds: the chip lays its parts out in a row, where a plain
+                        space before the unit is dropped ("128mmHg") */}
                     {vitalName(v, t)}: <b className="ml-1 tabular-nums">{vitalValue(v)}</b>
-                    {v.unit ? ` ${v.unit}` : ''}
+                    {v.unit ? `\u00A0${v.unit}` : ''}
                   </Chip>
                 ))}
                 {bmi != null && (
                   <Chip title={t('vitalsForm.bmiComputed')}>
-                    {t('vitals.bmi')}: <b className="ml-1 tabular-nums">{bmi}</b> kg/m²
+                    {t('vitals.bmi')}: <b className="ml-1 tabular-nums">{bmi}</b>
+                    {'\u00A0kg/m²'}
                   </Chip>
                 )}
-                <span className="flex-1" />
+                {/* at the right end of its line, also when it goes to a line of its own (an empty
+                    spacer before it left it at the left edge there, at the right edge elsewhere);
+                    on a phone it stays at the left, under the values, like the buttons above */}
                 {!addingVitals && !closed && mayVitals && (
-                  <Button size="sm" onClick={() => setAddingVitals(true)}>
+                  <Button size="sm" className="sm:ml-auto" onClick={() => setAddingVitals(true)}>
                     <Activity size={14} aria-hidden="true" />
                     {t(vitals.length ? 'vitalsForm.edit' : 'vitalsForm.add')}
                   </Button>
@@ -547,8 +552,8 @@ export function VisitPage({
             )}
             {!closed && vitals.length === 0 && !addingVitals && mayVitals && !recordPrivate && (
               <p className="bg-amber-bg text-amber border-amber/30 m-0 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2.5 text-[14px] font-semibold">
-                <Activity size={18} aria-hidden="true" />
-                <span className="flex-1">{t('vitalsForm.notTakenBanner')}</span>
+                <Activity size={18} aria-hidden="true" className="flex-none" />
+                <span className="min-w-0 flex-[1_1_12rem]">{t('vitalsForm.notTakenBanner')}</span>
                 <Button size="sm" variant="primary" onClick={() => setAddingVitals(true)}>
                   {t('vitalsForm.add')}
                 </Button>
@@ -558,12 +563,15 @@ export function VisitPage({
             <VisitTrack encounterId={encounterId} />
             {closed && (
               <p className="bg-green-bg text-green border-green/30 m-0 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2.5 text-[14px] font-semibold">
-                <CheckCircle2 size={18} aria-hidden="true" />
-                {t('visit.closedBanner', {
-                  when: header.closedAt
-                    ? `${formatDate(new Date(header.closedAt))} ${formatTime(new Date(header.closedAt))}`
-                    : '',
-                })}
+                <CheckCircle2 size={18} aria-hidden="true" className="flex-none" />
+                {/* beside the tick, wrapping there (not under a tick left alone on its line) */}
+                <span className="min-w-0 flex-1">
+                  {t('visit.closedBanner', {
+                    when: header.closedAt
+                      ? `${formatDate(new Date(header.closedAt))} ${formatTime(new Date(header.closedAt))}`
+                      : '',
+                  })}
+                </span>
                 {header.leftReason && (
                   <span className="text-ink-2 basis-full text-[13px] font-normal">
                     {t('visit.leftWhy', { reason: header.leftReason })}
@@ -588,6 +596,8 @@ export function VisitPage({
                 onError={setActionError}
               />
             )}
+            {/* a colleague waits for my answer on this patient: Accept / Decline right here */}
+            {!closed && <HelpAsked encounterId={encounterId} user={user} />}
             {locked && !access?.handover?.forMe && (
               <p className="bg-violet-bg text-violet border-violet/30 m-0 flex flex-wrap items-start gap-2 rounded-md border px-3 py-2.5 text-[14px]">
                 <Lock size={18} aria-hidden="true" className="mt-0.5 shrink-0" />

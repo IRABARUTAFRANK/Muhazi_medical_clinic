@@ -203,7 +203,7 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
         {/* the segmented control of the kit: a grey track, the open tab a white tile in teal */}
         {canSend && (
           <div
-            className="border-border bg-surface flex h-9 gap-0.5 self-start rounded-md border p-0.5"
+            className="border-border bg-surface flex min-h-9 max-w-full flex-wrap gap-0.5 self-start rounded-md border p-0.5"
             role="tablist"
           >
             {(['inbox', 'sent'] as const).map((k) => (
@@ -283,53 +283,54 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                   />
                   {t('notices.selectAll')}
                 </label>
-                <span className="flex-1" />
-                <Button
-                  size="sm"
-                  variant="tint-mint"
-                  disabled={selected.length === 0}
-                  onClick={() =>
-                    void ask(
-                      {
-                        title: t('confirm.notices.markSelected.title', {
-                          count: selected.length,
-                        }),
-                        confirmLabel: t('confirm.notices.markAll.yes'),
-                      },
-                      async () => {
-                        await actions.markRead.mutateAsync(selected)
-                        setSelected([])
-                      },
-                    )
-                  }
-                >
-                  <CheckCheck size={14} aria-hidden="true" />
-                  {t('notices.markSelected', { count: selected.length })}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="tint-coral"
-                  disabled={selected.length === 0}
-                  onClick={() =>
-                    void ask(
-                      {
-                        title: t('confirm.notices.hideSelected.title', {
-                          count: selected.length,
-                        }),
-                        body: t('confirm.notices.hide.body'),
-                        confirmLabel: t('confirm.notices.hide.yes'),
-                        tone: 'danger',
-                      },
-                      async () => {
-                        await actions.hide.mutateAsync(selected)
-                        setSelected([])
-                      },
-                    )
-                  }
-                >
-                  <EyeOff size={14} aria-hidden="true" />
-                  {t('notices.removeSelected', { count: selected.length })}
-                </Button>
+                <span className="ml-auto flex min-w-0 flex-wrap justify-end gap-2">
+                  <Button
+                    size="sm"
+                    variant="tint-mint"
+                    disabled={selected.length === 0}
+                    onClick={() =>
+                      void ask(
+                        {
+                          title: t('confirm.notices.markSelected.title', {
+                            count: selected.length,
+                          }),
+                          confirmLabel: t('confirm.notices.markAll.yes'),
+                        },
+                        async () => {
+                          await actions.markRead.mutateAsync(selected)
+                          setSelected([])
+                        },
+                      )
+                    }
+                  >
+                    <CheckCheck size={14} aria-hidden="true" />
+                    {t('notices.markSelected', { count: selected.length })}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="tint-coral"
+                    disabled={selected.length === 0}
+                    onClick={() =>
+                      void ask(
+                        {
+                          title: t('confirm.notices.hideSelected.title', {
+                            count: selected.length,
+                          }),
+                          body: t('confirm.notices.hide.body'),
+                          confirmLabel: t('confirm.notices.hide.yes'),
+                          tone: 'danger',
+                        },
+                        async () => {
+                          await actions.hide.mutateAsync(selected)
+                          setSelected([])
+                        },
+                      )
+                    }
+                  >
+                    <EyeOff size={14} aria-hidden="true" />
+                    {t('notices.removeSelected', { count: selected.length })}
+                  </Button>
+                </span>
               </div>
             )}
 
@@ -356,7 +357,7 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                         style={{ '--i': Math.min(i, 12) } as CSSProperties}
                       >
                         {/* on a touch screen the box sits in a 44 px target (negative margins keep the row) */}
-                        <label className="coarse:-mx-3.5 coarse:-mt-1.5 coarse:-mb-3.5 coarse:size-[var(--tap)] mt-2 flex flex-none items-center justify-center">
+                        <label className="coarse:relative coarse:-mt-1.5 coarse:-mr-5 coarse:-mb-3.5 coarse:-ml-2 coarse:size-[var(--tap)] coarse:justify-start coarse:pl-2 mt-2 flex flex-none items-center justify-center">
                           <input
                             type="checkbox"
                             aria-label={w.title}
@@ -370,7 +371,7 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                           />
                         </label>
                         <IconChip icon={look.icon} tint={look.tint} />
-                        <span className="min-w-0 flex-[1_1_200px]">
+                        <span className="min-w-0 flex-1 sm:flex-[1_1_200px]">
                           {/* the title opens the notice in the side panel */}
                           <button
                             type="button"
@@ -394,7 +395,7 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                             {n.sender ? ` · ${t('notify.from', { name: n.sender })}` : ''}
                           </span>
                         </span>
-                        <span className="ml-auto flex flex-none flex-wrap justify-end gap-1 pl-7 sm:pl-0">
+                        <span className="ml-auto flex w-full flex-none flex-wrap justify-end gap-1 pl-7 sm:w-auto sm:pl-0">
                           {notice.target(n) && (
                             <Button size="sm" variant="info" onClick={() => notice.open(n)}>
                               {t('common.open')}
@@ -466,14 +467,14 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                     {shown.map((m, i) => (
                       <div
                         key={m.id}
-                        className="border-grid anim-enter flex items-start gap-3 border-b py-3 last:border-b-0"
+                        className="border-grid anim-enter flex flex-wrap items-start gap-3 border-b py-3 last:border-b-0"
                         style={{ '--i': Math.min(i, 12) } as CSSProperties}
                       >
                         <IconChip
                           icon={m.urgent ? Siren : Megaphone}
                           tint={m.urgent ? 'coral' : 'violet'}
                         />
-                        <span className="min-w-0 flex-1">
+                        <span className="min-w-0 flex-[1_1_180px]">
                           <span className="block text-[14px] font-medium">{m.title}</span>
                           {m.body && <span className="text-ink-2 block text-[14px]">{m.body}</span>}
                           <span className="text-ink-3 mt-1 flex flex-wrap items-center gap-x-3 text-[13px]">
@@ -496,6 +497,7 @@ export function NotificationsPage({ user }: { user: StaffUser }) {
                         <Button
                           size="sm"
                           variant="tint-coral"
+                          className="ml-auto"
                           onClick={() =>
                             void ask(
                               {
@@ -569,18 +571,19 @@ function NoticePanel({
       subtitle={`${ago(n.at)}${n.sender ? ` · ${t('notify.from', { name: n.sender })}` : ''}`}
       tags={
         n.urgent ? (
-          <span className="border-red/30 bg-red-bg text-red inline-flex h-6 items-center gap-1 rounded border px-2 text-[12px] font-medium">
+          <span className="border-red/30 bg-red-bg text-red inline-flex h-6 items-center gap-1 rounded border px-2 text-[12px] font-medium whitespace-nowrap">
             <Siren size={12} aria-hidden="true" />
             {t('notices.filters.urgent')}
           </span>
         ) : !n.read ? (
-          <span className="border-primary/30 bg-primary-tint text-primary inline-flex h-6 items-center rounded border px-2 text-[12px] font-medium">
+          <span className="border-primary/30 bg-primary-tint text-primary inline-flex h-6 items-center rounded border px-2 text-[12px] font-medium whitespace-nowrap">
             {t('notices.filters.unread')}
           </span>
         ) : undefined
       }
       footer={
-        <>
+        // the panel's footer is one row: the three buttons wrap here on a phone
+        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
           {!n.read && (
             <Button
               size="sm"
@@ -627,13 +630,17 @@ function NoticePanel({
               {t('common.open')}
             </Button>
           )}
-        </>
+        </div>
       }
     >
       <div className="flex flex-col gap-4">
         <div className={cn(card, 'flex-row items-start gap-3')}>
           <IconChip icon={look.icon} tint={look.tint} />
-          <p className="text-ink m-0 text-[14px] leading-relaxed">{w.body || w.title}</p>
+          {/* the title again, whole: the panel's header ends a long one with "…" */}
+          <p className="text-ink m-0 min-w-0 flex-1 text-[14px] leading-relaxed">
+            {w.body && <span className="block font-semibold">{w.title}</span>}
+            {w.body || w.title}
+          </p>
         </div>
         {/* a booking to accept is answered here; the notice is then marked read */}
         <NoticeBookingAnswer notice={n} />

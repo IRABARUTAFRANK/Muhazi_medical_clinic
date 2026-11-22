@@ -18,14 +18,17 @@ import { cn } from '@/lib/utils'
  * - `ghost` has no border and only a hover tint.
  * Keyboard focus shows a teal border and a 2 px teal/20 ring. Loading dims the label and swaps
  * the icon for a spinner while the width stays put; disabled turns grey (the grey tint with
- * grey text, 4:1, so its label stays readable) and inert. On a phone a long
- * label wraps inside the button (it grows taller, never wider than its box) and on a touch
- * screen it is at least 44 px high (--tap, globals.css).
+ * grey text, 4:1, so its label stays readable) and inert. The height is a minimum: a label
+ * that cannot fit on one line (a narrow column, a phone, a long French or Kinyarwanda label)
+ * wraps inside the button, which grows taller and never wider than its box, so the words never
+ * stick out of it. In a row it is the last thing to shrink (shrink 0.001: its neighbours give
+ * their room first), and inside a table cell it stays on one line (.mmc-btn, globals.css: the
+ * table scrolls instead). On a touch screen it is at least 44 px high (--tap, globals.css).
  * `buttonVariants` is exported so links can look like buttons; `actionLink` and `tableLink` are
  * the classes of a link that acts (open, view, edit) in text and inside a table row.
  */
 export const buttonVariants = cva(
-  'inline-flex max-w-full cursor-pointer items-center justify-center gap-1.5 rounded-md border font-medium whitespace-nowrap select-none max-sm:h-auto max-sm:min-h-[max(var(--btn-h),var(--tap,0px))] max-sm:py-1.5 max-sm:text-center max-sm:whitespace-normal transition-[color,background-color,border-color,box-shadow,transform,filter] duration-120 ease-out active:scale-[0.98] motion-reduce:active:scale-100 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:outline-none disabled:pointer-events-none disabled:border-border disabled:bg-hover disabled:bg-none disabled:text-ink-3 disabled:shadow-none aria-busy:pointer-events-none aria-busy:opacity-85',
+  'mmc-btn inline-flex h-fit min-h-[max(var(--btn-h),var(--tap,0px))] max-w-full shrink-[0.001] cursor-pointer items-center justify-center gap-1.5 rounded-md border py-1 text-center font-medium select-none max-sm:py-1.5 transition-[color,background-color,border-color,box-shadow,transform,filter] duration-120 ease-out active:scale-[0.98] motion-reduce:active:scale-100 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:outline-none disabled:pointer-events-none disabled:border-border disabled:bg-hover disabled:bg-none disabled:text-ink-3 disabled:shadow-none aria-busy:pointer-events-none aria-busy:opacity-85',
   {
     variants: {
       variant: {
@@ -54,11 +57,11 @@ export const buttonVariants = cva(
         ghost: 'border-transparent bg-transparent text-ink hover:bg-hover',
       },
       size: {
-        xs: 'h-7 px-2.5 text-[12px] [--btn-h:1.75rem]',
-        sm: 'h-8 px-3 text-[13px] [--btn-h:2rem]',
-        md: 'h-9 px-3.5 text-[14px] [--btn-h:2.25rem]',
-        lg: 'h-10 px-4 text-[14px] [--btn-h:2.5rem]',
-        xl: 'h-11 px-5 text-[15px] [--btn-h:2.75rem]',
+        xs: 'px-2.5 text-[12px] leading-[1.25] [--btn-h:1.75rem]',
+        sm: 'px-3 text-[13px] leading-[1.3] [--btn-h:2rem]',
+        md: 'px-3.5 text-[14px] leading-[1.3] [--btn-h:2.25rem]',
+        lg: 'px-4 text-[14px] leading-[1.3] [--btn-h:2.5rem]',
+        xl: 'px-5 text-[15px] leading-[1.3] [--btn-h:2.75rem]',
         icon: 'size-9 p-0 [--btn-h:2.25rem]',
       },
     },

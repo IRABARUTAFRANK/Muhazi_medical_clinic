@@ -64,8 +64,8 @@ export function PastHistoryPanel({
   return (
     <div className="border-primary/25 bg-primary-tint/30 flex flex-col gap-2 rounded-md border px-3 py-2.5">
       <span className="flex flex-wrap items-center gap-2 text-[14px] font-semibold">
-        <History size={15} aria-hidden="true" className="text-primary" />
-        {t('pastHistory.title', { count: data.count })}
+        <History size={15} aria-hidden="true" className="text-primary flex-none" />
+        <span className="min-w-0 flex-1">{t('pastHistory.title', { count: data.count })}</span>
         {data.via === 'treating' && (
           <span className="text-ink-3 text-xs font-normal">{t('pastHistory.logged')}</span>
         )}
@@ -118,7 +118,7 @@ function PastVisitRow({ visit: v, open: first }: { visit: PastVisit; open: boole
           <ChevronRight size={14} aria-hidden="true" className="self-center" />
         )}
         <span className="text-[14px] font-semibold tabular-nums">{formatDate(new Date(v.at))}</span>
-        <span className="text-ink-2 min-w-0 flex-1 text-[14px]">
+        <span className="text-ink-2 min-w-0 flex-[1_1_12rem] text-[14px]">
           <b className="text-ink font-semibold">{dxText}</b>
           {v.complaint ? ` · ${v.complaint}` : ''}
         </span>

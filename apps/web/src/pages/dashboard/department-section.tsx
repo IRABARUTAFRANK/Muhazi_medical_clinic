@@ -92,7 +92,8 @@ function DepartmentBody({
   const labDesk = d.stations.some((s) => s === 'laboratory' || s === 'ultrasound')
   return (
     <>
-      <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {/* as many tiles in a row as keep 210 px each (like the clinic's tiles below) */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(210px,1fr))]">
         <Kpi
           i={0}
           icon={UserCheck}
@@ -173,81 +174,85 @@ function DepartmentBody({
           title={t('dept.people', { period: periodWord })}
           right={t('dept.peopleNote')}
           to={link('staff')}
-          className="overflow-x-auto"
         >
           {d.members.length === 0 ? (
             <Empty>{t('dept.noPeople')}</Empty>
           ) : (
-            <table className="w-full border-collapse text-[14px]">
-              <thead>
-                <tr className="text-ink-3 text-left text-[12px] font-normal">
-                  <th className="border-border border-b py-2 pr-2 font-normal">
-                    {t('dashboard.cols.employee')}
-                  </th>
-                  <th className="border-border border-b py-2 pr-2 text-right font-normal">
-                    {t('dept.cols.work')}
-                  </th>
-                  <th className="border-border border-b py-2 pr-2 text-right font-normal">
-                    {t('dept.cols.now')}
-                  </th>
-                  <th className="border-border hidden border-b py-1.5 text-right font-semibold sm:table-cell">
-                    {t('dept.cols.lastSeen')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {d.members.map((m, i) => {
-                  // what this person did, in their own work's words
-                  const work = (
-                    [
-                      ['patients', m.patients],
-                      ['registrations', m.registrations],
-                      ['vitals', m.vitals],
-                      ['results', m.results],
-                      ['dispensed', m.dispensed],
-                      ['payments', m.payments],
-                      ['tasksDone', m.tasksDone],
-                    ] as const
-                  )
-                    .filter(([, n]) => Number(n) > 0)
-                    .map(([k, n]) => t(`dept.work.${k}`, { count: Number(n) }))
-                  return (
-                    <tr
-                      key={m.id}
-                      className={cn(
-                        'border-grid border-b last:border-b-0',
-                        !m.active && 'opacity-60',
-                      )}
-                      style={{ '--i': i } as CSSProperties}
-                    >
-                      <td className="py-2 pr-2">
-                        <span className="block font-semibold">
-                          <PersonName name={m.name} to={link('staff', { person: m.id })} />{' '}
-                          {m.position !== 'member' && (
-                            <Badge tone={m.position === 'head' ? 'blue' : 'grey'} dot={false}>
-                              {t(`staff.positions.${m.position}`)}
-                            </Badge>
-                          )}
-                        </span>
-                        <span className="text-ink-3 block text-[12px]">
-                          {t(`staff.roles.${m.role}`)}
-                          {m.station ? ` · ${m.station}` : ''}
-                        </span>
-                      </td>
-                      <td className="text-ink-2 py-2 pr-2 text-right text-[13px]">
-                        {work.length ? work.join(' · ') : '—'}
-                      </td>
-                      <td className="py-2 pr-2 text-right tabular-nums">
-                        {Number(m.busyNow) > 0 ? t('dept.busy', { count: Number(m.busyNow) }) : '—'}
-                      </td>
-                      <td className="text-ink-3 hidden py-2 text-right text-[12px] tabular-nums sm:table-cell">
-                        {lastSeen(m.lastSignIn)}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+            // the table scrolls in its own box: the panel's header stays in place
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-[14px]">
+                <thead>
+                  <tr className="text-ink-3 text-left text-[12px] font-normal">
+                    <th className="border-border border-b py-2 pr-2 font-normal">
+                      {t('dashboard.cols.employee')}
+                    </th>
+                    <th className="border-border border-b py-2 pr-2 text-right font-normal">
+                      {t('dept.cols.work')}
+                    </th>
+                    <th className="border-border border-b py-2 pr-2 text-right font-normal">
+                      {t('dept.cols.now')}
+                    </th>
+                    <th className="border-border hidden border-b py-1.5 text-right font-semibold sm:table-cell">
+                      {t('dept.cols.lastSeen')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {d.members.map((m, i) => {
+                    // what this person did, in their own work's words
+                    const work = (
+                      [
+                        ['patients', m.patients],
+                        ['registrations', m.registrations],
+                        ['vitals', m.vitals],
+                        ['results', m.results],
+                        ['dispensed', m.dispensed],
+                        ['payments', m.payments],
+                        ['tasksDone', m.tasksDone],
+                      ] as const
+                    )
+                      .filter(([, n]) => Number(n) > 0)
+                      .map(([k, n]) => t(`dept.work.${k}`, { count: Number(n) }))
+                    return (
+                      <tr
+                        key={m.id}
+                        className={cn(
+                          'border-grid border-b last:border-b-0',
+                          !m.active && 'opacity-60',
+                        )}
+                        style={{ '--i': i } as CSSProperties}
+                      >
+                        <td className="py-2 pr-2">
+                          <span className="block font-semibold">
+                            <PersonName name={m.name} to={link('staff', { person: m.id })} />{' '}
+                            {m.position !== 'member' && (
+                              <Badge tone={m.position === 'head' ? 'blue' : 'grey'} dot={false}>
+                                {t(`staff.positions.${m.position}`)}
+                              </Badge>
+                            )}
+                          </span>
+                          <span className="text-ink-3 block text-[12px]">
+                            {t(`staff.roles.${m.role}`)}
+                            {m.station ? ` · ${m.station}` : ''}
+                          </span>
+                        </td>
+                        <td className="text-ink-2 py-2 pr-2 text-right text-[13px]">
+                          {work.length ? work.join(' · ') : '—'}
+                        </td>
+                        <td className="py-2 pr-2 text-right tabular-nums">
+                          {Number(m.busyNow) > 0
+                            ? t('dept.busy', { count: Number(m.busyNow) })
+                            : '—'}
+                        </td>
+                        <td className="text-ink-3 hidden py-2 text-right text-[12px] tabular-nums sm:table-cell">
+                          {lastSeen(m.lastSignIn)}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </Panel>
 

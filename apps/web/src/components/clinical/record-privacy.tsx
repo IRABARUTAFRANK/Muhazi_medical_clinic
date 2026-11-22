@@ -367,7 +367,8 @@ export function SafetySummaryCard({
           <ShieldAlert size={16} aria-hidden="true" />
           {t('safetySummary.title')}
         </span>
-        <span className="inline-flex items-center gap-2">
+        {/* the blood group and the button wrap under each other on a phone (long in rw / fr) */}
+        <span className="inline-flex max-w-full flex-wrap items-center gap-2">
           {summary.bloodGroup && (
             <Badge tone="grey" dot={false}>
               {t('file.fields.blood_group')} {summary.bloodGroup}
@@ -410,7 +411,14 @@ export function SafetySummaryCard({
             <b>{t('safetySummary.alerts')}:</b> {summary.alerts}
           </p>
         )}
-        <div className={cn('grid grid-cols-1 gap-3 md:grid-cols-3', !open && 'hidden')}>
+        {/* three columns only where each gets 15rem: on a tablet (or beside the side menu) three
+            columns were strips too narrow for one vital sign, whose tag then took two lines */}
+        <div
+          className={cn(
+            'grid grid-cols-1 gap-3 md:grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]',
+            !open && 'hidden',
+          )}
+        >
           <Part
             icon={<HeartPulse size={12} aria-hidden="true" />}
             title={t('safetySummary.chronic')}

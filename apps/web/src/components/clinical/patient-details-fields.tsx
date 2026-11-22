@@ -55,7 +55,10 @@ export function CoreFields({
   const { t } = useTranslation()
   return (
     <>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {/* side by side while the form's own width gives each field the room (it is a narrow
+          column beside the search at the reception desk): a name is not typed in a 9-letter box,
+          and "Choose" and the date are not cut */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))]">
         <Field
           label={<Req on>{t('register.surname')}</Req>}
           value={draft.surname}
@@ -72,7 +75,7 @@ export function CoreFields({
           required
         />
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(min(100%,8.5rem),1fr))]">
         <Select
           label={<Req on>{t('register.sex')}</Req>}
           value={draft.sex}
@@ -137,7 +140,9 @@ export function IdField({
   const n = value.length
   const complete = national ? n === NATIONAL_ID_LENGTH : n >= ID_NUMBER_MIN
   return (
-    <div className="grid grid-cols-1 gap-3 sm:col-span-full sm:grid-cols-2">
+    // side by side only while each has the room for a whole ID number (16 digits); in a narrow
+    // column (the form beside the search) the number goes under its kind instead of being cut
+    <div className="grid grid-cols-1 gap-3 sm:col-span-full sm:grid-cols-[repeat(auto-fit,minmax(min(100%,13rem),1fr))]">
       <Select
         label={<Req on={required}>{t('patientFields.id.kind')}</Req>}
         value={kind}
@@ -393,7 +398,11 @@ export function DetailFields({
         onChange={(v) => setExtra(d.key, v)}
       />
     )
-  const grid = 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3'
+  // as many columns as the form's own width allows (at most three, each at least 12rem): the
+  // form is a narrow column beside the search at the reception desk and a wide one in the file,
+  // so the screen's width says nothing about the room a field has
+  const grid =
+    'grid grid-cols-[repeat(auto-fill,minmax(min(100%,max(12rem,calc((100%_-_1.5rem)/3))),1fr))] gap-3'
   return (
     <>
       {idFirst && render('national_id')}

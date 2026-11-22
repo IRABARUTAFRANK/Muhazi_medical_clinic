@@ -401,7 +401,9 @@ export function PickBars({
         const on = chosen === r.key
         const inner = (
           <>
-            <span className="text-ink-2 min-w-0 truncate text-left text-[14px]">{r.label}</span>
+            <span className="text-ink-2 min-w-0 truncate text-left text-[14px]" title={r.label}>
+              {r.label}
+            </span>
             <span className="text-ink text-right text-[14px] font-semibold whitespace-nowrap tabular-nums @md:order-3">
               {r.display ?? r.value}
             </span>

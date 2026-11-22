@@ -110,7 +110,8 @@ export function RequestForm() {
         <TimeSelect label={t('landing.book.time')} value={time} onChange={setTime} day={day} />
       </div>
       <div className="text-ink-2 flex flex-wrap items-center gap-2 text-[13px]">
-        {t('landing.book.confirmBy')}
+        {/* on a phone the words take their own line, so the three choices share one row */}
+        <span className="max-sm:w-full">{t('landing.book.confirmBy')}</span>
         {(Object.keys(channelKey) as InquiryChannel[]).map((c) => (
           <button
             key={c}

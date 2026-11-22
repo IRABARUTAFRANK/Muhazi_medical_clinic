@@ -715,7 +715,9 @@ export function AddStockForm({
                     }
                   />
                 )}
-                <div className="grid grid-cols-1 items-end gap-2 @xs:grid-cols-2 @lg:grid-cols-4">
+                {/* the quantity and the cost carry a small chooser beside the field: they get the
+                    wider columns, and four in a row only when the card is wide enough */}
+                <div className="grid grid-cols-1 items-end gap-2 @md:grid-cols-2 @4xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1.5fr)]">
                   <Field
                     label={t('stock.batchNo')}
                     value={l.batchNo}
@@ -729,18 +731,22 @@ export function AddStockForm({
                     value={l.expiry}
                     onChange={(e) => set(l.key, { expiry: e.target.value })}
                   />
-                  <div className="flex items-end gap-1.5">
+                  {/* the label runs over the whole cell; the field and its chooser share the row under it */}
+                  <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-end gap-x-1.5 gap-y-1">
                     <Field
-                      wrapperClassName="min-w-0 flex-1"
+                      wrapperClassName="contents"
                       label={
-                        l.qtyIn === 'packs' && size
-                          ? tx(t, 'packaging.qtyPacks', 'Quantity · {{pack}} of {{size}}', {
-                              size,
-                              pack: packWord(t, pk.packUnit),
-                            })
-                          : tx(t, 'packaging.qtyPieces', 'Quantity ({{piece}})', { piece })
+                        <span className="col-span-2">
+                          {l.qtyIn === 'packs' && size
+                            ? tx(t, 'packaging.qtyPacks', 'Quantity · {{pack}} of {{size}}', {
+                                size,
+                                pack: packWord(t, pk.packUnit),
+                              })
+                            : tx(t, 'packaging.qtyPieces', 'Quantity ({{piece}})', { piece })}
+                        </span>
                       }
                       inputMode="numeric"
+                      className={cn('w-full min-w-0', !size && 'col-span-2')}
                       value={l.quantity}
                       onChange={(e) => set(l.key, { quantity: digits(e.target.value) })}
                     />
@@ -764,20 +770,30 @@ export function AddStockForm({
                       />
                     )}
                   </div>
-                  <div className="flex items-end gap-1.5">
+                  <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-end gap-x-1.5 gap-y-1">
                     <Field
-                      wrapperClassName="min-w-0 flex-1"
-                      label={filledLabel(
-                        l.costPer === 'pack' && size
-                          ? tx(t, 'packaging.costPack', 'Cost of one {{pack}} (RWF)', {
-                              pack: packWord(t, pk.packUnit),
-                            })
-                          : tx(t, 'packaging.costPiece', 'Cost of one {{piece}} (RWF)', { piece }),
-                        l.costFrom,
-                      )}
+                      wrapperClassName="contents"
+                      label={
+                        <span className="col-span-2">
+                          {filledLabel(
+                            l.costPer === 'pack' && size
+                              ? tx(t, 'packaging.costPack', 'Cost of one {{pack}} (RWF)', {
+                                  pack: packWord(t, pk.packUnit),
+                                })
+                              : tx(t, 'packaging.costPiece', 'Cost of one {{piece}} (RWF)', {
+                                  piece,
+                                }),
+                            l.costFrom,
+                          )}
+                        </span>
+                      }
                       inputMode="decimal"
                       value={l.cost}
-                      className={filledClass(l.costFrom)}
+                      className={cn(
+                        'w-full min-w-0',
+                        !size && 'col-span-2',
+                        filledClass(l.costFrom),
+                      )}
                       onChange={(e) =>
                         set(l.key, { cost: decimal(e.target.value), costFrom: undefined })
                       }

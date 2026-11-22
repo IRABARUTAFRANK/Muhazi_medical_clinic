@@ -82,17 +82,19 @@ export function CategoriesCard({
   return (
     <Card className="border-primary">
       <CardHeader icon={Tags} className={headerBand('mint')}>
-        <span className="min-w-0 flex-1">{t('prices.cat.title')}</span>
-        <span className="flex gap-1">
-          {editing === null && (
-            <Button size="sm" variant="primary" onClick={() => setEditing('new')}>
-              <Plus size={14} aria-hidden="true" />
-              {t('prices.cat.new')}
+        <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
+          <span className="min-w-[min(9rem,100%)] flex-1">{t('prices.cat.title')}</span>
+          <span className="flex max-w-full flex-wrap gap-1">
+            {editing === null && (
+              <Button size="sm" variant="primary" onClick={() => setEditing('new')}>
+                <Plus size={14} aria-hidden="true" />
+                {t('prices.cat.new')}
+              </Button>
+            )}
+            <Button size="sm" variant="tint-grey" onClick={onClose}>
+              {t('common.close')}
             </Button>
-          )}
-          <Button size="sm" variant="tint-grey" onClick={onClose}>
-            {t('common.close')}
-          </Button>
+          </span>
         </span>
       </CardHeader>
       <CardBody className="gap-2">
@@ -146,7 +148,8 @@ export function CategoriesCard({
                 {t('prices.cat.bedLocked')}
               </span>
             ) : (
-              <>
+              // the two buttons stay together when the row wraps
+              <span className="flex flex-none gap-1.5">
                 <Button size="sm" onClick={() => setEditing(c)}>
                   <Pencil size={14} aria-hidden="true" />
                   {t('prices.cat.edit')}
@@ -161,7 +164,7 @@ export function CategoriesCard({
                 >
                   <Trash2 size={14} aria-hidden="true" />
                 </Button>
-              </>
+              </span>
             )}
           </Row>
         )

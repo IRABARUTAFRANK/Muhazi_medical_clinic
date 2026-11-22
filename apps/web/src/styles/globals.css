@@ -114,6 +114,11 @@
   svg {
     flex: none;
   }
+  /* A value or a placeholder longer than its field ends with "…" instead of a hard cut. */
+  input,
+  select {
+    text-overflow: ellipsis;
+  }
   /* Touch screens: whatever a finger presses is at least 44 px on the screen (--tap; the staff
      shell divides it by its text zoom, --mmc-zoom). In the base layer, so a component that sets
      its own min-height keeps it (and uses `min-h-[max(…,var(--tap,0px))]` when it is smaller).
@@ -158,6 +163,32 @@
   ) {
     min-height: var(--tap);
   }
+}
+
+/* Touch screens: a pill that wraps a field (the search boxes, the sort chooser) has a fixed
+   height for the mouse; the field inside is 44 px for a finger, so the pill grows with it
+   instead of letting the field stick out above and below. */
+@media (pointer: coarse) {
+  :is(label, form, div, span):is(.h-7, .h-8, .h-9, .h-10, .h-[38px]):has(
+      > input:not(
+          [type='checkbox'],
+          [type='radio'],
+          [type='range'],
+          [type='hidden'],
+          [type='file']
+        ),
+      > select
+    ) {
+    height: auto;
+    min-height: var(--tap);
+  }
+}
+
+/* Buttons and tags wrap their words when their box is too narrow (button.tsx, badge.tsx). Inside
+   a table cell they stay on one line: a table gives each column the room of its content and
+   scrolls sideways in its own wrapper, so wrapping there would only make ragged rows. */
+:is(td, th) :is(.mmc-btn, .mmc-tag) {
+  white-space: nowrap;
 }
 
 @layer components {

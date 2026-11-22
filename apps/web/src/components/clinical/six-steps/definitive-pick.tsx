@@ -254,7 +254,10 @@ export function DefinitivePick({
   return (
     <form onSubmit={submit} className="flex min-w-0 flex-col gap-3">
       <fieldset className="border-border bg-hover/40 m-0 flex min-w-0 flex-col gap-2 rounded-md border p-3">
-        <legend className="text-ink px-1 text-[14px] font-semibold">
+        {/* the question is a whole sentence: on a narrow screen it takes two lines, and a legend
+            sits on the border, so the edge of the box ran between its lines. There it becomes
+            the first line inside the box (a floated legend is no longer drawn on the border). */}
+        <legend className="text-ink px-1 text-[14px] font-semibold max-md:float-left max-md:w-full max-md:px-0">
           {t('sixSteps.pick.title')}
         </legend>
         {rows.length > 0 ? (

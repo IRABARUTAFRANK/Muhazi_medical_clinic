@@ -297,30 +297,35 @@ function InsurerCard({
   return (
     <Card className={cn(!insurer.active && 'opacity-80')}>
       <CardHeader icon={ShieldCheck} className={headerBand(insurer.active ? 'navy' : 'grey')}>
-        <span className="min-w-0 flex-1">
-          <span className="block">{insurer.name}</span>
-          <span className="text-ink-3 block text-xs font-normal">
-            {insurer.code} · {t(`prices.insurers.types.${insurer.type}`)}
+        {/* the name keeps a readable width: on a phone the tag and the buttons go under it */}
+        <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
+          <span className="min-w-[min(10rem,100%)] flex-1">
+            <span className="block">{insurer.name}</span>
+            <span className="text-ink-3 block text-xs font-normal">
+              {insurer.code} · {t(`prices.insurers.types.${insurer.type}`)}
+            </span>
+          </span>
+          <span className="flex flex-none items-center gap-2">
+            {insurer.active ? (
+              <Badge tone="green">{t('prices.insurers.active')}</Badge>
+            ) : (
+              <Badge tone="grey">{t('prices.insurers.inactive')}</Badge>
+            )}
+            <Button size="sm" onClick={onEdit}>
+              <Pencil size={14} aria-hidden="true" />
+              {t('prices.edit')}
+            </Button>
+            <Button
+              size="sm"
+              variant="tint-coral"
+              title={t('prices.delete')}
+              aria-label={t('prices.delete')}
+              onClick={onDelete}
+            >
+              <Trash2 size={14} aria-hidden="true" />
+            </Button>
           </span>
         </span>
-        {insurer.active ? (
-          <Badge tone="green">{t('prices.insurers.active')}</Badge>
-        ) : (
-          <Badge tone="grey">{t('prices.insurers.inactive')}</Badge>
-        )}
-        <Button size="sm" onClick={onEdit}>
-          <Pencil size={14} aria-hidden="true" />
-          {t('prices.edit')}
-        </Button>
-        <Button
-          size="sm"
-          variant="tint-coral"
-          title={t('prices.delete')}
-          aria-label={t('prices.delete')}
-          onClick={onDelete}
-        >
-          <Trash2 size={14} aria-hidden="true" />
-        </Button>
       </CardHeader>
       <CardBody className="gap-4">
         {/* the switches and the coverage */}
@@ -630,17 +635,17 @@ function TariffTable({
                     const isEditing = editing === key(r)
                     return (
                       <tr key={key(r)} className={tableRow}>
-                        <td className={tableCell}>
+                        <td className={cn(tableCell, 'min-w-[11rem]')}>
                           <span className="block font-medium">{name(r)}</span>
                           <span className="text-ink-3 text-[12px]">
                             {r.code} · {t(`prices.tariff.kinds.${r.kind}`)}
                             {r.kind === 'service' ? ` · ${t(`prices.groups.${r.group}`)}` : ''}
                           </span>
                         </td>
-                        <td className={cn(tableCell, 'text-right tabular-nums')}>
+                        <td className={cn(tableCell, 'text-right whitespace-nowrap tabular-nums')}>
                           {price(r.cashPrice)}
                         </td>
-                        <td className={cn(tableCell, 'text-right tabular-nums')}>
+                        <td className={cn(tableCell, 'text-right whitespace-nowrap tabular-nums')}>
                           {isEditing ? (
                             <form
                               className="flex items-center justify-end gap-1"
@@ -699,7 +704,7 @@ function TariffTable({
                             </span>
                           )}
                         </td>
-                        <td className={cn(tableCell, 'text-right tabular-nums')}>
+                        <td className={cn(tableCell, 'text-right whitespace-nowrap tabular-nums')}>
                           {r.price == null ? '—' : `${r.coveragePct}%`}
                           {r.ask && (
                             <span className="text-red block text-[12px]">
@@ -707,10 +712,15 @@ function TariffTable({
                             </span>
                           )}
                         </td>
-                        <td className={cn(tableCell, 'text-right font-semibold tabular-nums')}>
+                        <td
+                          className={cn(
+                            tableCell,
+                            'text-right font-semibold whitespace-nowrap tabular-nums',
+                          )}
+                        >
                           {price(r.patientShare)}
                         </td>
-                        <td className={cn(tableCell, 'text-right tabular-nums')}>
+                        <td className={cn(tableCell, 'text-right whitespace-nowrap tabular-nums')}>
                           {price(r.insurerShare)}
                         </td>
                         <td className={cn(tableCell, 'text-right')}>
@@ -1128,9 +1138,11 @@ function PreviewPanel({
           <Button type="button" variant="ghost" onClick={onClose}>
             {t('staff.form.cancel')}
           </Button>
+          {/* a long label: this button gives way in the panel foot, so Cancel stays in view */}
           <Button
             type="button"
             variant="primary"
+            className="min-w-0 shrink"
             disabled={busy || preview.matched === 0}
             onClick={onUse}
           >

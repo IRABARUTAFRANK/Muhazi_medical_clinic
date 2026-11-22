@@ -342,7 +342,6 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
                     <HBarList
                       subject="money"
                       colors={METHOD_COLORS}
-                      labelWidth="minmax(110px,140px)"
                       rows={['cash', 'momo', 'airtel'].map((m) => ({
                         icon: METHOD_ICON[m],
                         label: methodName(m),
@@ -393,13 +392,17 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
                             <span className="text-ink-3 w-12 tabular-nums">
                               {formatTime(new Date(p.at))}
                             </span>
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate font-semibold">{p.patient}</span>
-                              <span className="text-ink-3 flex items-center gap-1 truncate text-[13px]">
-                                <Icon size={12} aria-hidden="true" />
-                                {[methodName(p.method), p.reference, p.invoice]
-                                  .filter(Boolean)
-                                  .join(' · ')}
+                            <span className="min-w-[140px] flex-1">
+                              <span className="block font-semibold break-words">{p.patient}</span>
+                              <span className="text-ink-3 flex min-w-0 items-start gap-1 text-[13px]">
+                                <Icon size={12} aria-hidden="true" className="mt-1 flex-none" />
+                                {/* the method, its reference and the invoice wrap: a long mobile
+                                    money reference is read whole */}
+                                <span className="min-w-0 [overflow-wrap:anywhere]">
+                                  {[methodName(p.method), p.reference, p.invoice]
+                                    .filter(Boolean)
+                                    .join(' · ')}
+                                </span>
                               </span>
                             </span>
                             <span className="font-semibold whitespace-nowrap tabular-nums">

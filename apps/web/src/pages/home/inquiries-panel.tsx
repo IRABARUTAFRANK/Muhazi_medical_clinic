@@ -485,8 +485,8 @@ function BookForm({
           </span>
         ) : patientId ? (
           <span className="flex flex-wrap items-center gap-2">
-            <span className="border-green/25 bg-green-bg text-green inline-flex h-5 items-center gap-1 rounded border px-1.5 text-[11px] leading-none font-medium">
-              <Check size={14} aria-hidden="true" />
+            <span className="border-green/25 bg-green-bg text-green inline-flex min-h-5 max-w-full items-center gap-1 rounded border px-1.5 py-0.5 text-[11px] leading-tight font-medium">
+              <Check size={14} aria-hidden="true" className="flex-none" />
               {patientLabel}
             </span>
             <Button
@@ -689,7 +689,7 @@ function BookForm({
         </div>
       </div>
       {!q && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(14rem,100%),1fr))] gap-3">
           <Field
             label={t('ops.booking.reason')}
             value={reason}

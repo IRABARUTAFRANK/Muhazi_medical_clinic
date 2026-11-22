@@ -593,7 +593,7 @@ export function PatientFilePage({
                   aria-selected={tab === k}
                   onClick={() => setTab(k)}
                   className={cn(
-                    'h-8 rounded border px-3 text-[14px] font-medium transition-colors duration-120',
+                    'min-h-8 rounded border px-3 py-1 text-[14px] leading-tight font-medium transition-colors duration-120',
                     tab === k
                       ? 'border-border bg-card text-primary'
                       : 'text-ink-2 hover:bg-hover border-transparent',
@@ -1174,7 +1174,7 @@ function EditForm({
             </span>{' '}
             {t('patientFields.requiredHint')}
           </p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button type="submit" variant="primary" loading={actions.update.isPending}>
               <Check size={16} aria-hidden="true" />
               {t('file.save')}
@@ -1370,7 +1370,7 @@ function Clinical({
           {[...latest.values()].map((v) => (
             <Chip key={v.code}>
               {vitalName(v, t)}: <b className="ml-1 tabular-nums">{v.value ?? v.text}</b>
-              {v.unit ? ` ${v.unit}` : ''}
+              {v.unit ? `\u00A0${v.unit}` : ''}
             </Chip>
           ))}
         </CardBody>

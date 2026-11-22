@@ -50,7 +50,7 @@ export function SignInCard() {
         <span className="icon-gradient inline-flex size-11 flex-none items-center justify-center rounded-xl text-white">
           <IdCard size={22} strokeWidth={2} aria-hidden="true" />
         </span>
-        <span>
+        <span className="min-w-0">
           <span className="block text-lg font-bold">{t('landing.signin.title')}</span>
           <span className="text-ink-3 text-[13px]">{t('landing.signin.sub')}</span>
         </span>

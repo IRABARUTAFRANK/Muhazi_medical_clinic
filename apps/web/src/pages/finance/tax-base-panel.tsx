@@ -4,7 +4,7 @@ import { Calculator } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatRwf } from '@mmc/shared'
 import { Panel } from '@/components/dash/kit'
-import { tableCell, tableFirstCell, tableRow } from '@/components/dash/kit-style'
+import { tableRow } from '@/components/dash/kit-style'
 import { PeriodCustom, PeriodSeg } from '@/components/dash/period-filter'
 import { Field } from '@/components/ui/field'
 import {
@@ -18,6 +18,7 @@ import {
 import { kigaliToday } from '@/lib/clock'
 import { usePeriod } from '@/lib/period'
 import { cn } from '@/lib/utils'
+import { figureAmount, figureLabel } from './accounts-tabs'
 
 /**
  * The tax base (0187, grouped 0188, its own period 0189): what the system knows for the period
@@ -114,7 +115,7 @@ export function TaxBasePanel({ i }: { i: number }) {
               <Row label={t('accounts.taxBase.expenses')} value={s.expenses} strong />
               <Row label={t('accounts.money.net')} value={s.net} strong tone={resultTone(s.net)} />
             </Group>
-            <div className="flex flex-col gap-3">
+            <div className="flex min-w-0 flex-col gap-3">
               <div className="flex flex-wrap items-end gap-2">
                 <Field
                   wrapperClassName="w-28"
@@ -123,7 +124,7 @@ export function TaxBasePanel({ i }: { i: number }) {
                   value={rate}
                   onChange={(e) => setTyped(cleanPercent(e.target.value))}
                 />
-                <p className="text-ink-3 m-0 min-w-0 flex-1 pb-2 text-[13px]">
+                <p className="text-ink-3 m-0 min-w-0 flex-[1_1_10rem] pb-2 text-[13px]">
                   {saved && typed == null
                     ? t('accounts.taxBase.rateFrom', { name: saved.name })
                     : t('accounts.taxBase.rateHint')}
@@ -200,18 +201,10 @@ function Row({
 }) {
   return (
     <tr className={tableRow}>
-      <td className={cn(tableFirstCell, strong && 'font-semibold', sub && 'text-ink-2 pl-6')}>
+      <td className={cn(figureLabel, strong && 'font-semibold', sub && 'text-ink-2 pl-6')}>
         {label}
       </td>
-      <td
-        className={cn(
-          tableCell,
-          'text-right whitespace-nowrap tabular-nums',
-          strong && 'font-semibold',
-          sub && 'text-ink-2',
-          tone,
-        )}
-      >
+      <td className={cn(figureAmount, strong && 'font-semibold', sub && 'text-ink-2', tone)}>
         {formatRwf(Math.round(value))}
       </td>
     </tr>
@@ -231,13 +224,15 @@ function Note({ children }: { children: ReactNode }) {
 /** A bordered group with its heading. */
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="border-border bg-card flex flex-col rounded-md border p-3">
+    <div className="border-border bg-card flex min-w-0 flex-col rounded-md border p-3">
       <h4 className="text-violet m-0 mb-1 text-[11px] font-semibold tracking-wide uppercase">
         {title}
       </h4>
-      <table className="w-full border-collapse text-[14px]">
-        <tbody>{children}</tbody>
-      </table>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-[14px]">
+          <tbody>{children}</tbody>
+        </table>
+      </div>
     </div>
   )
 }

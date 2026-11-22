@@ -25,11 +25,14 @@ export function ReportFigures({ figures }: { figures: ReportFigureDef[] }) {
             ? formatRwf(Math.round(f.value))
             : `${docNumber(Math.round(f.value * 10) / 10)}${f.unit ? ` ${t(f.unit)}` : ''}`
         return (
-          <div key={f.label} className={cn('rounded-md border px-3 py-2.5', tileClass[hue])}>
+          <div
+            key={f.label}
+            className={cn('@container min-w-0 rounded-md border px-3 py-2.5', tileClass[hue])}
+          >
             <div className="text-ink-2 text-[13px] leading-tight font-medium">{t(f.label)}</div>
             <div
               className={cn(
-                'mt-1 text-[22px] leading-tight font-semibold tabular-nums',
+                'mt-1 text-[22px] leading-tight font-semibold tabular-nums @max-[9rem]:text-[18px]',
                 tintText[hue],
               )}
             >

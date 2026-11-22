@@ -249,8 +249,8 @@ export function FollowUpForm({
         <span className="text-ink-2 text-[13px] font-semibold">{t('followUp.patient')}</span>
         {chosen ? (
           <span className="flex flex-wrap items-center gap-2">
-            <span className="border-green/25 bg-green-bg text-green inline-flex min-h-6 items-center gap-1 rounded border px-2 text-[13px] font-semibold">
-              <Check size={14} aria-hidden="true" />
+            <span className="border-green/25 bg-green-bg text-green inline-flex min-h-6 max-w-full items-center gap-1 rounded border px-2 py-0.5 text-[13px] leading-tight font-semibold">
+              <Check size={14} aria-hidden="true" className="flex-none" />
               {[chosen.fileNumber, chosen.name].filter(Boolean).join(' · ')}
             </span>
             {chosen.phone ? (
@@ -282,7 +282,7 @@ export function FollowUpForm({
                   <button
                     key={h.id}
                     type="button"
-                    className="border-grid hover:bg-hover flex items-center gap-2 border-b px-3 py-2 text-left text-[13px] last:border-b-0"
+                    className="border-grid hover:bg-hover flex flex-wrap items-center gap-x-2 gap-y-0.5 border-b px-3 py-2 text-left text-[13px] last:border-b-0"
                     onClick={() =>
                       setChosen({
                         id: h.id,
@@ -293,7 +293,8 @@ export function FollowUpForm({
                     }
                   >
                     <span className="text-primary font-semibold tabular-nums">{h.fileNumber}</span>
-                    <span className="flex-1 font-semibold">
+                    {/* the phone goes under a long name on a narrow screen */}
+                    <span className="min-w-0 flex-[1_1_8rem] font-semibold">
                       {h.surname} {h.givenNames}
                     </span>
                     <span className="text-ink-3">{h.phone ?? ''}</span>
@@ -339,7 +340,7 @@ export function FollowUpForm({
                 aria-pressed={on}
                 onClick={() => pickDay(d)}
                 className={cn(
-                  'min-h-9 rounded-md border px-3 text-[14px] font-semibold transition-colors',
+                  'min-h-9 rounded-md border px-3 py-1 text-[14px] leading-tight font-semibold transition-colors',
                   on
                     ? 'border-violet bg-violet text-white'
                     : 'border-border bg-card text-ink-2 hover:bg-hover',

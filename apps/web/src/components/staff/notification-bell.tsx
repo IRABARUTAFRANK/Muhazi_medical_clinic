@@ -109,11 +109,14 @@ export function NotificationBell({ user }: { user: StaffUser }) {
           {/* the header on the amber band of every notices panel */}
           <div
             className={cn(
-              'border-border flex min-h-10 items-center gap-2 border-b px-3 py-1.5',
+              // wraps: with long words (Kinyarwanda) the two actions go under the title
+              'border-border flex min-h-10 flex-wrap items-center gap-x-2 gap-y-1 border-b px-3 py-1.5',
               headerBand('amber'),
             )}
           >
-            <span className="flex-1 text-[16px] font-semibold">{t('notify.title')}</span>
+            <span className="min-w-0 flex-[1_1_auto] text-[16px] font-semibold">
+              {t('notify.title')}
+            </span>
             <button
               type="button"
               aria-label={t('common.close')}
@@ -125,7 +128,7 @@ export function NotificationBell({ user }: { user: StaffUser }) {
             {unreadAll > 0 && (
               <button
                 type="button"
-                className="text-primary hover:bg-hover inline-flex h-8 items-center gap-1 rounded-md px-2 text-[13px] font-medium whitespace-nowrap"
+                className="text-primary hover:bg-hover inline-flex min-h-8 max-w-full items-center gap-1 rounded-md px-2 py-0.5 text-left text-[13px] leading-tight font-medium"
                 aria-label={t('notify.markAll')}
                 title={t('notify.markAll')}
                 onClick={async () => {

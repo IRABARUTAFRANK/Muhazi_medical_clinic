@@ -40,7 +40,7 @@ export function AdjustField({
         <div
           role="radiogroup"
           aria-label={t('adjust.mode')}
-          className="border-border bg-surface inline-flex h-7 gap-0.5 rounded-md border p-0.5"
+          className="border-border bg-surface inline-flex min-h-7 flex-none gap-0.5 rounded-md border p-0.5"
         >
           {modes.map((m) => (
             <button

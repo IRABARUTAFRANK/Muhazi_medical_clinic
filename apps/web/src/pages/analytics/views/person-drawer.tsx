@@ -138,6 +138,7 @@ export function PersonDrawer({
               cols={[
                 {
                   key: 'at',
+                  tight: true,
                   label: t('report.cols.when'),
                   cell: (r) => (
                     <span className="flex flex-col whitespace-nowrap">
@@ -156,16 +157,16 @@ export function PersonDrawer({
                         <StaffLink
                           to="/app/visit"
                           search={{ encounter: r.encounterId }}
-                          className="text-primary font-semibold [overflow-wrap:anywhere]"
+                          className="text-primary font-semibold break-words"
                         >
                           {r.patientName ?? t('analytics.staff.hidden')}
                         </StaffLink>
                       ) : (
-                        <span className="[overflow-wrap:anywhere]">
+                        <span className="break-words">
                           {r.patientName ?? (r.patientId ? t('analytics.staff.hidden') : '—')}
                         </span>
                       )}
-                      <span className="text-ink-3 text-[12px] [overflow-wrap:anywhere]">
+                      <span className="text-ink-3 text-[12px] break-words">
                         {[r.fileNumber, r.what].filter(Boolean).join(' · ')}
                       </span>
                     </span>

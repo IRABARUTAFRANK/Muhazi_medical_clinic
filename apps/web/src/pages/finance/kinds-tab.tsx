@@ -146,14 +146,31 @@ function KindTable({
       onMsg({ ok: false, text: errText(e) })
     }
   }
+  const actions = (k: MoneyKind) => (
+    <>
+      <Button size="sm" variant="tint-blue" onClick={() => onChange(k)}>
+        {t('accounts.salaries.edit')}
+      </Button>
+      {!k.code && (
+        <Button size="sm" variant="ghost" onClick={() => void toggle(k)}>
+          {t(k.active ? 'accounts.kinds.retire' : 'accounts.kinds.restore')}
+        </Button>
+      )}
+      {!k.code && k.inUse === 0 && (
+        <Button size="sm" variant="ghost" onClick={() => void remove(k)}>
+          {t('accounts.kinds.remove')}
+        </Button>
+      )}
+    </>
+  )
   return (
-    <div className="overflow-x-auto">
+    <div className="@container overflow-x-auto">
       <table className="w-full border-collapse text-[14px]">
         <thead className="bg-surface">
           <tr className="border-border border-b">
             <th className={tableHead}>{t('accounts.kinds.name')}</th>
             <th className={cn(tableHead, 'text-right')}>{t('accounts.kinds.inUse')}</th>
-            <th className={tableHead}></th>
+            <th className={cn(tableHead, '@max-[32rem]:hidden')}></th>
           </tr>
         </thead>
         <tbody>
@@ -168,22 +185,13 @@ function KindTable({
                 {k.description && (
                   <span className="text-ink-3 block text-[12px]">{k.description}</span>
                 )}
+                <span className="mt-1.5 hidden flex-wrap gap-1 @max-[32rem]:flex">
+                  {actions(k)}
+                </span>
               </td>
               <td className={cn(tableCell, 'text-right tabular-nums')}>{k.inUse}</td>
-              <td className={cn(tableCell, 'text-right whitespace-nowrap')}>
-                <Button size="sm" variant="tint-blue" onClick={() => onChange(k)}>
-                  {t('accounts.salaries.edit')}
-                </Button>
-                {!k.code && (
-                  <Button size="sm" variant="ghost" className="ml-1" onClick={() => void toggle(k)}>
-                    {t(k.active ? 'accounts.kinds.retire' : 'accounts.kinds.restore')}
-                  </Button>
-                )}
-                {!k.code && k.inUse === 0 && (
-                  <Button size="sm" variant="ghost" className="ml-1" onClick={() => void remove(k)}>
-                    {t('accounts.kinds.remove')}
-                  </Button>
-                )}
+              <td className={cn(tableCell, 'text-right whitespace-nowrap @max-[32rem]:hidden')}>
+                <span className="inline-flex gap-1">{actions(k)}</span>
               </td>
             </tr>
           ))}

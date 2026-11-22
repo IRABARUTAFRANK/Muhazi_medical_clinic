@@ -92,7 +92,7 @@ export function Seg<T extends string>({
               size === 'sm'
                 ? 'min-h-[max(1.75rem,var(--tap,0px))]'
                 : 'min-h-[max(2rem,var(--tap,0px))]',
-              'focus-visible:ring-primary/20 relative inline-flex min-w-10 flex-none items-center justify-center rounded px-3 text-[13px] font-medium whitespace-nowrap transition-colors duration-120 focus-visible:ring-2 focus-visible:outline-none',
+              'focus-visible:ring-primary/20 relative inline-flex max-w-full min-w-10 flex-none items-center justify-center rounded px-3 py-0.5 text-center text-[13px] leading-[1.25] font-medium transition-colors duration-120 focus-visible:ring-2 focus-visible:outline-none',
               on ? 'text-primary' : 'text-ink-2 hover:bg-hover hover:text-ink',
             )}
           >

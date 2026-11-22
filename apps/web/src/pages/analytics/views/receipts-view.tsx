@@ -116,8 +116,8 @@ export function ReceiptsView({ user, period, search, update, clinic }: ViewProps
       key: 'patient',
       label: t('finance.cols.patient'),
       cell: (r) => (
-        <span className="block min-w-0">
-          <span className="block font-semibold [overflow-wrap:anywhere]">{r.patient.name}</span>
+        <span className="block min-w-[8.5rem]">
+          <span className="block font-semibold break-words">{r.patient.name}</span>
           {r.patient.fileNumber && (
             <span className="text-ink-3 block text-[12px]">{r.patient.fileNumber}</span>
           )}

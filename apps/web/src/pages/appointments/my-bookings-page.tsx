@@ -291,56 +291,59 @@ export function MyBookingsPage({ user, focus }: { user: StaffUser; focus?: strin
           </ShownList>
         </Panel>
 
-        <div className="pc:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] grid grid-cols-1 gap-4">
-          <Panel
-            i={5}
-            icon={CalendarDays}
-            tint="teal"
-            title={t('myBookings.coming')}
-            right={t('myBookings.comingNote', { count: coming.length })}
-          >
-            {!isLoading && days.length === 0 && (
-              <Empty icon={CalendarDays}>{t('myBookings.nothingComing')}</Empty>
-            )}
-            {days.map((g) => (
-              <section key={g.key} className="flex flex-col">
-                <h4 className="text-ink-2 m-0 pb-1 text-[13px] font-semibold">{g.label}</h4>
-                {g.items.map((b) => (
-                  <div key={b.id} className={rowClass}>
-                    <Pill tint="teal">{formatTime(new Date(b.startsAt))}</Pill>
-                    {who(b)}
-                    {statusBadge(b)}
-                    {visitLink(b)}
-                  </div>
-                ))}
-              </section>
-            ))}
-          </Panel>
-
-          <Panel
-            i={6}
-            icon={History}
-            tint="violet"
-            title={t('myBookings.earlier')}
-            right={String(earlier.length)}
-          >
-            {!isLoading && earlier.length === 0 && (
-              <Empty icon={History}>{t('myBookings.nothingEarlier')}</Empty>
-            )}
-            <ShownList items={earlier} step={8}>
-              {(shown) => (
-                <div className="flex flex-col">
-                  {shown.map((b) => (
+        {/* two columns only where the second one is at least as wide as a phone (see the bookings page) */}
+        <div className="@container">
+          <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+            <Panel
+              i={5}
+              icon={CalendarDays}
+              tint="teal"
+              title={t('myBookings.coming')}
+              right={t('myBookings.comingNote', { count: coming.length })}
+            >
+              {!isLoading && days.length === 0 && (
+                <Empty icon={CalendarDays}>{t('myBookings.nothingComing')}</Empty>
+              )}
+              {days.map((g) => (
+                <section key={g.key} className="flex flex-col">
+                  <h4 className="text-ink-2 m-0 pb-1 text-[13px] font-semibold">{g.label}</h4>
+                  {g.items.map((b) => (
                     <div key={b.id} className={rowClass}>
-                      <Pill tint="violet">{when(b.startsAt)}</Pill>
-                      {who(b, CLOSED.includes(b.status) ? b.cancelReason : null)}
+                      <Pill tint="teal">{formatTime(new Date(b.startsAt))}</Pill>
+                      {who(b)}
                       {statusBadge(b)}
+                      {visitLink(b)}
                     </div>
                   ))}
-                </div>
+                </section>
+              ))}
+            </Panel>
+
+            <Panel
+              i={6}
+              icon={History}
+              tint="violet"
+              title={t('myBookings.earlier')}
+              right={String(earlier.length)}
+            >
+              {!isLoading && earlier.length === 0 && (
+                <Empty icon={History}>{t('myBookings.nothingEarlier')}</Empty>
               )}
-            </ShownList>
-          </Panel>
+              <ShownList items={earlier} step={8}>
+                {(shown) => (
+                  <div className="flex flex-col">
+                    {shown.map((b) => (
+                      <div key={b.id} className={rowClass}>
+                        <Pill tint="violet">{when(b.startsAt)}</Pill>
+                        {who(b, CLOSED.includes(b.status) ? b.cancelReason : null)}
+                        {statusBadge(b)}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ShownList>
+            </Panel>
+          </div>
         </div>
 
         <BookingPanel

@@ -61,7 +61,12 @@ export function PatientsDocumentsPage({
             </Button>
             <ActionRowEnd />
           </ActionRow>
-          <PeriodCustom period={period} className={cn(card, 'flex-row gap-3 px-4 py-3')} />
+          {/* the card's look only: the row keeps its own layout (two fields per row on a phone);
+              the card's "flex" used to undo that grid and squeeze all five in one row */}
+          <PeriodCustom
+            period={period}
+            className={cn(card, 'grid flex-row gap-3 px-4 py-3 sm:flex')}
+          />
         </header>
         {accessQ.error ? (
           <LoadError error={accessQ.error} />

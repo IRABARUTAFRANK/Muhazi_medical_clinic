@@ -294,8 +294,9 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
 
         {data && (
           <div key={range} className="flex flex-col gap-4">
-            {/* KPI ROW */}
-            <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {/* KPI ROW: as many tiles in a row as keep 210 px each (four across left 160 to
+                190 px a tile beside the sidebar: the change line under the figure wrapped) */}
+            <div className={kpiRow}>
               <Kpi
                 i={0}
                 icon={UserPlus}
@@ -417,20 +418,30 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
 
             {/* MONEY */}
             {isManager && (
-              <section className="flex flex-col gap-3">
+              <section className="@container flex flex-col gap-3">
                 <SectionTitle icon={Coins}>{t('dashboard.sections.money')}</SectionTitle>
+                {/* The columns follow the room the section really has, not the window: the sidebar
+                    and the text size (the shell's zoom) take their share, so a 1,366 px laptop
+                    leaves about 810 px here. The chart sits beside the small panels only when
+                    each of them keeps about 250 px; before that the chart has its own row and
+                    the small panels sit two or three in a row under it. */}
                 <div
                   className={cn(
-                    'grid grid-cols-1 gap-4',
+                    'grid grid-cols-1 gap-4 @xl:grid-cols-2',
                     insurance
-                      ? 'pc:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]'
-                      : 'pc:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]',
+                      ? '@[54rem]:grid-cols-3 @7xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]'
+                      : '@5xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]',
                   )}
                 >
                   <Panel
                     i={1}
                     icon={ChartLine}
                     tint="violet"
+                    className={
+                      insurance
+                        ? '@xl:col-span-2 @[54rem]:col-span-3 @7xl:col-span-1'
+                        : '@xl:col-span-2 @5xl:col-span-1'
+                    }
                     title={
                       periodSeries
                         ? t('dashboard.revenueByDay', { period: periodWord })
@@ -464,11 +475,10 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                         label={periodWord}
                         total={collections.reduce((s, c) => s + c.amount, 0)}
                       />
-                      <div className="min-w-[190px] flex-1">
+                      <div className="min-w-[min(190px,100%)] flex-1">
                         <HBarList
                           subject="money"
                           colors={METHOD_COLORS}
-                          labelWidth="minmax(72px,96px)"
                           rows={collections.map((m) => ({
                             // cash, momo, airtel → the interface language
                             icon: methodIcon(m.method),
@@ -501,7 +511,6 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                       <HBarList
                         subject="money"
                         colors={METHOD_COLORS}
-                        labelWidth="minmax(72px,96px)"
                         rows={receipts.data.byMethod.map((m) => ({
                           icon: methodIcon(m.method),
                           label: t(`visit.payment.methods.${m.method}`, {
@@ -535,6 +544,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                       i={3}
                       icon={Landmark}
                       tint="navy"
+                      className="@xl:col-span-2 @[54rem]:col-span-1"
                       title={t('dashboard.receivables')}
                       right={formatRwf(data.receivables.reduce((s, r) => s + r.amount, 0))}
                       to={link('revenue', { by: 'payer' })}
@@ -609,7 +619,6 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                   ) : (
                     <HBarList
                       subject="visits"
-                      labelWidth="minmax(96px,140px)"
                       rows={data.visitsByGroup.map((v) => ({
                         icon: stationIconFor(v.group),
                         label: v.name
@@ -700,149 +709,151 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                 title={t('dashboard.staffActivity', { period: periodWord })}
                 right={t('dashboard.staffActivityNote')}
                 to={link('staff')}
-                className="overflow-x-auto"
               >
                 {data.staff.length === 0 ? (
                   <Empty>{t('dashboard.noStaffActivity')}</Empty>
                 ) : (
-                  <table className="w-full border-collapse text-[14px]">
-                    <thead>
-                      <tr className="text-ink-3 text-left text-[12px] font-normal">
-                        <th className="border-border border-b py-2 pr-2 font-normal">
-                          <span className="inline-flex items-center gap-1">
-                            <Users size={13} aria-hidden="true" />
-                            {t('dashboard.cols.employee')}
-                          </span>
-                        </th>
-                        <th className="border-border hidden border-b py-2 pr-2 text-right font-normal sm:table-cell">
-                          <span className="inline-flex items-center gap-1">
-                            <UserPlus size={13} aria-hidden="true" />
-                            {t('dashboard.cols.registrations')}
-                          </span>
-                        </th>
-                        <th className="border-border hidden border-b py-2 pr-2 text-right font-normal sm:table-cell">
-                          <span className="inline-flex items-center gap-1">
-                            <HeartPulse size={13} aria-hidden="true" />
-                            {t('dashboard.cols.vitals')}
-                          </span>
-                        </th>
-                        <th className="border-border border-b py-2 pr-2 text-right font-normal">
-                          <span className="inline-flex items-center gap-1">
-                            <Stethoscope size={13} aria-hidden="true" />
-                            {t('dashboard.cols.patients')}
-                          </span>
-                        </th>
-                        <th className="border-border hidden border-b py-2 pr-2 text-right font-normal sm:table-cell">
-                          <span className="inline-flex items-center gap-1">
-                            <FlaskConical size={13} aria-hidden="true" />
-                            {t('dashboard.cols.results')}
-                          </span>
-                        </th>
-                        <th className="border-border hidden border-b py-2 pr-2 text-right font-normal sm:table-cell">
-                          <span className="inline-flex items-center gap-1">
-                            <Tablets size={13} aria-hidden="true" />
-                            {t('dashboard.cols.dispensed')}
-                          </span>
-                        </th>
-                        <th className="border-border hidden border-b py-2 pr-2 text-right font-normal sm:table-cell">
-                          <span className="inline-flex items-center gap-1">
-                            <Receipt size={13} aria-hidden="true" />
-                            {t('dashboard.cols.charges')}
-                          </span>
-                        </th>
-                        {isManager && (
-                          <th className="border-border border-b py-1.5 text-right font-semibold">
+                  // the table scrolls in its own box: the panel's header stays in place
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-[14px]">
+                      <thead>
+                        <tr className="text-ink-3 text-left text-[12px] font-normal">
+                          <th className="border-border border-b py-2 pr-2 font-normal">
                             <span className="inline-flex items-center gap-1">
-                              <Wallet size={13} aria-hidden="true" />
-                              {t('dashboard.cols.collected')}
+                              <Users size={13} aria-hidden="true" />
+                              {t('dashboard.cols.employee')}
                             </span>
                           </th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {staffRows.visible.map((s, i) => {
-                        const cell = (what: string, n: number) =>
-                          `${s.name} · ${what}: ${formatNumber(n)}`
-                        const person = personLink(s.id)
-                        return (
-                          <tr
-                            key={s.id ?? s.name}
-                            className="border-grid border-b last:border-b-0"
-                            style={{ '--i': i } as CSSProperties}
-                          >
-                            <td className="py-2 pr-2">
-                              <PersonCell
-                                to={person}
-                                label={t('dashboard.links.person', { name: s.name })}
-                              >
-                                <span
-                                  className={cn(
-                                    'inline-flex size-8 flex-none items-center justify-center rounded-full text-[12px] font-semibold',
-                                    avatarTint(i),
-                                  )}
+                          <th className="border-border hidden border-b py-2 pr-2 text-right font-normal sm:table-cell">
+                            <span className="inline-flex items-center gap-1">
+                              <UserPlus size={13} aria-hidden="true" />
+                              {t('dashboard.cols.registrations')}
+                            </span>
+                          </th>
+                          <th className="border-border hidden border-b py-2 pr-2 text-right font-normal sm:table-cell">
+                            <span className="inline-flex items-center gap-1">
+                              <HeartPulse size={13} aria-hidden="true" />
+                              {t('dashboard.cols.vitals')}
+                            </span>
+                          </th>
+                          <th className="border-border border-b py-2 pr-2 text-right font-normal">
+                            <span className="inline-flex items-center gap-1">
+                              <Stethoscope size={13} aria-hidden="true" />
+                              {t('dashboard.cols.patients')}
+                            </span>
+                          </th>
+                          <th className="border-border hidden border-b py-2 pr-2 text-right font-normal sm:table-cell">
+                            <span className="inline-flex items-center gap-1">
+                              <FlaskConical size={13} aria-hidden="true" />
+                              {t('dashboard.cols.results')}
+                            </span>
+                          </th>
+                          <th className="border-border hidden border-b py-2 pr-2 text-right font-normal sm:table-cell">
+                            <span className="inline-flex items-center gap-1">
+                              <Tablets size={13} aria-hidden="true" />
+                              {t('dashboard.cols.dispensed')}
+                            </span>
+                          </th>
+                          <th className="border-border hidden border-b py-2 pr-2 text-right font-normal sm:table-cell">
+                            <span className="inline-flex items-center gap-1">
+                              <Receipt size={13} aria-hidden="true" />
+                              {t('dashboard.cols.charges')}
+                            </span>
+                          </th>
+                          {isManager && (
+                            <th className="border-border border-b py-1.5 text-right font-semibold">
+                              <span className="inline-flex items-center gap-1">
+                                <Wallet size={13} aria-hidden="true" />
+                                {t('dashboard.cols.collected')}
+                              </span>
+                            </th>
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {staffRows.visible.map((s, i) => {
+                          const cell = (what: string, n: number) =>
+                            `${s.name} · ${what}: ${formatNumber(n)}`
+                          const person = personLink(s.id)
+                          return (
+                            <tr
+                              key={s.id ?? s.name}
+                              className="border-grid border-b last:border-b-0"
+                              style={{ '--i': i } as CSSProperties}
+                            >
+                              <td className="py-2 pr-2">
+                                <PersonCell
+                                  to={person}
+                                  label={t('dashboard.links.person', { name: s.name })}
                                 >
-                                  {initials(s.name)}
-                                </span>
-                                <span className="min-w-0">
-                                  <span className="block truncate font-semibold">{s.name}</span>
-                                  <span className="text-ink-3 block truncate text-[12px]">
-                                    {t(`staff.roles.${s.role}`)}
-                                    {s.staffId ? ` · ${s.staffId}` : ''}
-                                    {!s.active && ` · ${t('dashboard.staffLeft')}`}
+                                  <span
+                                    className={cn(
+                                      'inline-flex size-8 flex-none items-center justify-center rounded-full text-[12px] font-semibold',
+                                      avatarTint(i),
+                                    )}
+                                  >
+                                    {initials(s.name)}
                                   </span>
-                                </span>
-                              </PersonCell>
-                            </td>
-                            <CountCell
-                              n={s.registrations}
-                              to={personLink(s.id, 'registered')}
-                              label={cell(t('dashboard.cols.registrations'), s.registrations)}
-                              className="hidden sm:table-cell"
-                            />
-                            <CountCell
-                              n={s.vitals}
-                              to={personLink(s.id, 'vitals')}
-                              label={cell(t('dashboard.cols.vitals'), s.vitals)}
-                              className="hidden sm:table-cell"
-                            />
-                            <CountCell
-                              n={s.patients ?? 0}
-                              to={personLink(s.id, 'patientsSeen')}
-                              label={cell(t('dashboard.cols.patients'), s.patients ?? 0)}
-                            />
-                            <CountCell
-                              n={s.results ?? 0}
-                              to={personLink(s.id, 'results')}
-                              label={cell(t('dashboard.cols.results'), s.results ?? 0)}
-                              className="hidden sm:table-cell"
-                            />
-                            <CountCell
-                              n={s.dispensed ?? 0}
-                              to={personLink(s.id, 'medicinesGiven')}
-                              label={cell(t('dashboard.cols.dispensed'), s.dispensed ?? 0)}
-                              className="hidden sm:table-cell"
-                            />
-                            <CountCell
-                              n={s.charges}
-                              to={personLink(s.id, 'charges')}
-                              label={cell(t('dashboard.cols.charges'), s.charges)}
-                              className="hidden sm:table-cell"
-                            />
-                            {isManager && (
+                                  <span className="min-w-0">
+                                    <span className="block truncate font-semibold">{s.name}</span>
+                                    <span className="text-ink-3 block truncate text-[12px]">
+                                      {t(`staff.roles.${s.role}`)}
+                                      {s.staffId ? ` · ${s.staffId}` : ''}
+                                      {!s.active && ` · ${t('dashboard.staffLeft')}`}
+                                    </span>
+                                  </span>
+                                </PersonCell>
+                              </td>
                               <CountCell
-                                n={s.collected ?? 0}
-                                to={personLink(s.id, 'payments')}
-                                label={cell(t('dashboard.cols.collected'), s.collected ?? 0)}
-                                empty="—"
-                                className="pr-0"
+                                n={s.registrations}
+                                to={personLink(s.id, 'registered')}
+                                label={cell(t('dashboard.cols.registrations'), s.registrations)}
+                                className="hidden sm:table-cell"
                               />
-                            )}
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+                              <CountCell
+                                n={s.vitals}
+                                to={personLink(s.id, 'vitals')}
+                                label={cell(t('dashboard.cols.vitals'), s.vitals)}
+                                className="hidden sm:table-cell"
+                              />
+                              <CountCell
+                                n={s.patients ?? 0}
+                                to={personLink(s.id, 'patientsSeen')}
+                                label={cell(t('dashboard.cols.patients'), s.patients ?? 0)}
+                              />
+                              <CountCell
+                                n={s.results ?? 0}
+                                to={personLink(s.id, 'results')}
+                                label={cell(t('dashboard.cols.results'), s.results ?? 0)}
+                                className="hidden sm:table-cell"
+                              />
+                              <CountCell
+                                n={s.dispensed ?? 0}
+                                to={personLink(s.id, 'medicinesGiven')}
+                                label={cell(t('dashboard.cols.dispensed'), s.dispensed ?? 0)}
+                                className="hidden sm:table-cell"
+                              />
+                              <CountCell
+                                n={s.charges}
+                                to={personLink(s.id, 'charges')}
+                                label={cell(t('dashboard.cols.charges'), s.charges)}
+                                className="hidden sm:table-cell"
+                              />
+                              {isManager && (
+                                <CountCell
+                                  n={s.collected ?? 0}
+                                  to={personLink(s.id, 'payments')}
+                                  label={cell(t('dashboard.cols.collected'), s.collected ?? 0)}
+                                  empty="—"
+                                  className="pr-0"
+                                />
+                              )}
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
                 {data.staff.length > 0 && (
                   <ShowMore
@@ -857,11 +868,13 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
             </section>
 
             {/* CLINICAL · STOCK · SECURITY */}
-            <section className="flex flex-col gap-3">
+            <section className="@container flex flex-col gap-3">
               <SectionTitle icon={ShieldCheck}>
                 {t('dashboard.sections.clinical')} · {t('dashboard.logins')}
               </SectionTitle>
-              <div className="pc:grid-cols-3 grid grid-cols-1 gap-4">
+              {/* three side by side only when the section itself is 1024 px wide; before that
+                  two in a row and the sign-ins under them on the whole width */}
+              <div className="pc:grid-cols-2 grid grid-cols-1 gap-4 @5xl:grid-cols-3">
                 <Panel
                   i={1}
                   icon={ListOrdered}
@@ -948,6 +961,7 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                   i={3}
                   icon={LogIn}
                   tint="navy"
+                  className="pc:col-span-2 @5xl:col-span-1"
                   title={`${t('dashboard.logins')} · ${t('dashboard.last24h')}`}
                   right={`${data.logins.length}`}
                   to={link('staff', { by: 'signins' })}
@@ -985,6 +999,9 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
 
 /* ---------------------------------------------------------------- pieces */
 
+/** The row of KPI tiles: one per row on a phone, then as many as keep 210 px each. */
+const kpiRow = 'grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(210px,1fr))]'
+
 function Donut({
   values,
   colors,
@@ -1011,6 +1028,26 @@ function Donut({
       : total >= 1000
         ? `${Math.round(total / 1000)}k`
         : String(total)
+  // The words under the figure must stay inside the hole (68 units wide at its middle, less
+  // lower down): up to 11 letters go on one line; longer words ("sur cette période", "kuva mu
+  // ntangiriro") go on two lines, split where the longer line is shortest.
+  const words = label.split(' ')
+  let lines = [label]
+  if (label.length > 11 && words.length > 1) {
+    let best = 1
+    for (let k = 1; k < words.length; k++) {
+      const longer = (n: number) =>
+        Math.max(words.slice(0, n).join(' ').length, words.slice(n).join(' ').length)
+      if (longer(k) < longer(best)) best = k
+    }
+    lines = [words.slice(0, best).join(' '), words.slice(best).join(' ')]
+  }
+  const two = lines.length > 1
+  // a line that is still too long is pressed into the room it has (never over the ring)
+  const fit = (line: string) =>
+    line.length > (two ? 10 : 11)
+      ? { textLength: two ? 54 : 60, lengthAdjust: 'spacingAndGlyphs' as const }
+      : {}
   return (
     <svg
       viewBox="0 0 120 120"
@@ -1034,12 +1071,30 @@ function Donut({
           className="fade-in-late"
         />
       ))}
-      <text x="60" y="58" textAnchor="middle" fontSize="15" fontWeight={700} className="fill-ink">
+      <text
+        x="60"
+        y={two ? 53 : 58}
+        textAnchor="middle"
+        fontSize="15"
+        fontWeight={700}
+        className="fill-ink"
+      >
         {short}
       </text>
-      <text x="60" y="74" textAnchor="middle" fontSize="10" fontWeight={600} className="fill-ink-3">
-        {label}
-      </text>
+      {lines.map((line, n) => (
+        <text
+          key={n}
+          x="60"
+          y={two ? 66 + n * 11 : 74}
+          textAnchor="middle"
+          fontSize={two ? 9.5 : 10}
+          fontWeight={600}
+          className="fill-ink-3"
+          {...fit(line)}
+        >
+          {line}
+        </text>
+      ))}
     </svg>
   )
 }
@@ -1188,7 +1243,7 @@ function Skeleton({ isManager }: { isManager: boolean }) {
   const { t } = useTranslation()
   return (
     <div className="flex flex-col gap-4" aria-busy="true" aria-label={t('dashboard.loading')}>
-      <div className="pc:grid-cols-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className={kpiRow}>
         {Array.from({ length: isManager ? 7 : 5 }, (_, i) => (
           <div key={i} className="skeleton h-[130px] rounded-md" />
         ))}

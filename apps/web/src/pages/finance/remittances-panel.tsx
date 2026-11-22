@@ -13,7 +13,7 @@ import { useConfirm } from '@/lib/confirm'
 import { kigaliToday } from '@/lib/clock'
 import { cn } from '@/lib/utils'
 import { Note, PanelForm } from './accounts-kit'
-import { METHODS, STATUS_TONE, errText, type Msg } from './accounts-tabs'
+import { METHODS, STATUS_TONE, errText, figureAmount, type Msg } from './accounts-tabs'
 
 /**
  * The payroll remittances (0186): per month and agency, what was withheld from the salaries paid
@@ -77,15 +77,19 @@ export function RemittancesPanel({ i, year }: { i: number; year: number }) {
           <Empty icon={Landmark}>{t('accounts.remittances.none')}</Empty>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-[13px]">
+            <table className="w-full border-collapse text-[13px] [&_td]:px-2 [&_th]:px-2">
               <thead className="bg-surface">
                 <tr className="border-border border-b">
                   <th className={tableHead}>{t('accounts.money.month')}</th>
                   <th className={tableHead}>{t('accounts.deductions.agency')}</th>
-                  <th className={cn(tableHead, 'text-right')}>
+                  <th
+                    className={cn(tableHead, 'py-1.5 text-right leading-tight whitespace-normal')}
+                  >
                     {t('accounts.remittances.withheld')}
                   </th>
-                  <th className={cn(tableHead, 'text-right')}>
+                  <th
+                    className={cn(tableHead, 'py-1.5 text-right leading-tight whitespace-normal')}
+                  >
                     {t('accounts.remittances.employer')}
                   </th>
                   <th className={cn(tableHead, 'text-right')}>{t('accounts.remittances.total')}</th>
@@ -113,35 +117,29 @@ export function RemittancesPanel({ i, year }: { i: number; year: number }) {
                         : ''
                   return (
                     <tr key={key} className={cn(tableRow, here && 'bg-yellow-bg')}>
-                      <td className={cn(tableFirstCell, 'whitespace-nowrap')}>
-                        {r.month}
+                      <td className={cn(tableFirstCell, 'min-w-36')}>
+                        <span className="whitespace-nowrap">{r.month}</span>
                         <span className="text-ink-3 block text-[12px]">
                           {t('accounts.remittances.people', { count: r.people })} ·{' '}
                           {r.lines.map((l) => l.name).join(', ')}
                         </span>
                       </td>
                       <td className={tableCell}>{agency(r.agency)}</td>
-                      <td className={cn(tableCell, 'text-right tabular-nums')}>
-                        {formatRwf(r.employeeTotal)}
-                      </td>
-                      <td className={cn(tableCell, 'text-right tabular-nums')}>
-                        {formatRwf(r.employerTotal)}
-                      </td>
-                      <td className={cn(tableCell, 'text-right font-semibold tabular-nums')}>
-                        {formatRwf(r.total)}
-                      </td>
+                      <td className={figureAmount}>{formatRwf(r.employeeTotal)}</td>
+                      <td className={figureAmount}>{formatRwf(r.employerTotal)}</td>
+                      <td className={cn(figureAmount, 'font-semibold')}>{formatRwf(r.total)}</td>
                       <td className={cn(tableCell, 'whitespace-nowrap')}>
                         {formatDate(new Date(r.dueOn))}
                       </td>
-                      <td className={tableCell}>
+                      <td className={cn(tableCell, detail && 'min-w-32')}>
                         <Badge tone={STATUS_TONE[r.status]}>
                           {t(`accounts.status.${r.status}`)}
                         </Badge>
                         {detail && <span className="text-ink-3 block text-[12px]">{detail}</span>}
                       </td>
-                      <td className={cn(tableCell, 'text-right whitespace-nowrap')}>
+                      <td className={cn(tableCell, 'text-right')}>
                         {r.status === 'due' || r.status === 'overdue' ? (
-                          <>
+                          <span className="flex flex-wrap justify-end gap-1">
                             <Button
                               size="sm"
                               variant={here ? 'tint-grey' : 'primary'}
@@ -150,15 +148,10 @@ export function RemittancesPanel({ i, year }: { i: number; year: number }) {
                               <CalendarCheck size={14} aria-hidden="true" />
                               {t('accounts.salaries.markPaid')}
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="ml-1"
-                              onClick={() => void skip(r)}
-                            >
+                            <Button size="sm" variant="ghost" onClick={() => void skip(r)}>
                               {t('accounts.salaries.skip')}
                             </Button>
-                          </>
+                          </span>
                         ) : (
                           <Button size="sm" variant="tint-grey" onClick={() => void undo(r)}>
                             <Undo2 size={14} aria-hidden="true" />
@@ -231,7 +224,7 @@ function RemitForm({
             employer: formatRwf(r.employerTotal),
           })}
         </p>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Field
             label={t('accounts.salaries.paidOn')}
             type="date"

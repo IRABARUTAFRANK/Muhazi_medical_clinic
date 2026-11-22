@@ -223,7 +223,7 @@ export function SidePanel({
         <div className={cn('min-h-0 flex-1 overflow-y-auto', padded && 'p-5')}>{children}</div>
 
         {footer && (
-          <footer className="border-border bg-card flex min-h-14 flex-none items-center justify-end gap-2 border-t px-5 py-2">
+          <footer className="border-border bg-card flex min-h-14 flex-none flex-wrap items-center justify-end gap-2 border-t px-5 py-2 [&>.mmc-btn]:min-w-0 [&>.mmc-btn]:shrink">
             {footer}
           </footer>
         )}

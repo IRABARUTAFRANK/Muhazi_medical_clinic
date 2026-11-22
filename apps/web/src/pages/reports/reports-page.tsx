@@ -32,14 +32,14 @@ export function ReportsPage({
   const def = reports.find((r) => r.id === reportId) ?? null
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="reports">
-      <main className="pc:p-6 flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
+      <main className="pc:p-6 relative flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
         <PageBanner
           icon={Printer}
           tint="navy"
           title={t('reports.ui.title')}
           lead={t('reports.ui.lead')}
         />
-        <div className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(240px,300px)_minmax(0,1fr)]">
+        <div className="grid min-w-0 grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(240px,300px)_minmax(0,1fr)]">
           <ReportList reports={reports} current={def?.id ?? null} onPick={onPick} />
           {ctx && def ? (
             <ReportRunner key={def.id} def={def} ctx={ctx} />

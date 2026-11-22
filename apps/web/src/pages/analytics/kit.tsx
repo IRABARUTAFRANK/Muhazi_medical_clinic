@@ -232,6 +232,9 @@ export interface Col<T> {
   align?: 'right'
   /** Shown from 640 px only (phones keep the few columns that matter). */
   wide?: boolean
+  /** A first column that is short (a date, a ticket): it takes no more than its words, and the
+   *  readable minimum width goes to the column after it (the name). */
+  tight?: boolean
   /** The totals row's cell. */
   total?: ReactNode
 }
@@ -289,6 +292,8 @@ export function DataTable<T>({
   if (rows.length === 0) return <div className="py-2">{empty}</div>
   // the header row: 12 px grey, normal weight; the rows 40 px with a 1 px divider (kit-style)
   const th = cn(tableHead, 'border-border border-b')
+  // the column that keeps a readable width: the first one, or the one after a short first one
+  const lead = cols[0]?.tight ? cols[1] : cols[0]
   return (
     <div className="flex min-w-0 flex-col gap-1">
       <div className="max-h-[70vh] max-w-full overflow-auto overscroll-contain">
@@ -307,7 +312,7 @@ export function DataTable<T>({
                       th,
                       // the first column (a name, a medicine) keeps a readable width: on a
                       // phone the table scrolls sideways in its box instead of crushing it
-                      c === cols[0] && 'min-w-[10rem]',
+                      c === lead && 'min-w-[10rem]',
                       c.align === 'right' && 'text-right',
                       c.wide && 'hidden sm:table-cell',
                     )}
@@ -363,7 +368,9 @@ export function DataTable<T>({
                       key={c.key}
                       className={cn(
                         i === 0 ? tableFirstCell : tableCell,
-                        c.align === 'right' && 'text-right tabular-nums',
+                        i === 0 && c.tight && 'min-w-0',
+                        // a figure (a count, an amount, "1 h 21 min") stays on one line
+                        c.align === 'right' && 'text-right whitespace-nowrap tabular-nums',
                         c.wide && 'hidden sm:table-cell',
                       )}
                     >
@@ -399,7 +406,7 @@ export function DataTable<T>({
                     key={c.key}
                     className={cn(
                       tableCell,
-                      c.align === 'right' && 'text-right tabular-nums',
+                      c.align === 'right' && 'text-right whitespace-nowrap tabular-nums',
                       c.wide && 'hidden sm:table-cell',
                     )}
                   >
@@ -459,7 +466,14 @@ export function Drawer({
       icon={icon}
       title={title}
       subtitle={subtitle}
-      footer={actions}
+      footer={
+        // the panel's footer is one row: several actions wrap here on a phone
+        actions ? (
+          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
+            {actions}
+          </div>
+        ) : undefined
+      }
     >
       <div className="flex flex-col gap-4">{children}</div>
     </SidePanel>

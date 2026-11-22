@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import {
   Activity,
   ArrowDown,
@@ -105,36 +105,44 @@ export function WaitingForMePanel({
  */
 function EarlierPatients({ rows }: { rows: MyQueueItem[] }) {
   const { t } = useTranslation()
+  // the rows exist only while the box is open: closed, nothing of them is laid out
+  const [open, setOpen] = useState(false)
   return (
-    <details className="border-yellow-dot/40 bg-yellow-bg/50 rounded-md border px-3 py-2">
+    <details
+      open={open}
+      onToggle={(e) => setOpen(e.currentTarget.open)}
+      className="border-yellow-dot/40 bg-yellow-bg/50 min-w-0 rounded-md border px-3 py-2"
+    >
       <summary className="text-yellow flex cursor-pointer items-center gap-1.5 text-[14px] font-semibold">
-        <CalendarClock size={14} aria-hidden="true" />
+        <CalendarClock size={14} aria-hidden="true" className="flex-none" />
         {t('daily.earlierTitle', { count: rows.length })}
       </summary>
-      <p className="text-ink-2 m-0 mt-1 text-[13px]">{t('daily.earlierHint')}</p>
-      <div className="mt-1 flex flex-col">
-        {rows.map((q) => (
-          <div
-            key={q.queueId ?? q.ticket}
-            className="border-grid flex min-h-9 flex-wrap items-center gap-2 border-b py-1 text-[14px] last:border-b-0"
-          >
-            <span className="text-ink-2 font-semibold tabular-nums">{q.ticket}</span>
-            <span className="min-w-[120px] flex-1 truncate font-medium">{q.name}</span>
-            <span className="text-ink-3 text-[13px]">
-              {t('daily.since', { date: q.queuedAt ? formatDate(new Date(q.queuedAt)) : '' })}
-            </span>
-            {q.encounterId && (
-              <StaffLink
-                to="/app/visit"
-                search={{ encounter: q.encounterId }}
-                className={buttonVariants({ size: 'sm' })}
-              >
-                {t('common.open')}
-              </StaffLink>
-            )}
-          </div>
-        ))}
-      </div>
+      {open && <p className="text-ink-2 m-0 mt-1 text-[13px]">{t('daily.earlierHint')}</p>}
+      {open && (
+        <div className="mt-1 flex flex-col">
+          {rows.map((q) => (
+            <div
+              key={q.queueId ?? q.ticket}
+              className="border-grid flex min-h-9 flex-wrap items-center gap-2 border-b py-1 text-[14px] last:border-b-0"
+            >
+              <span className="text-ink-2 font-semibold tabular-nums">{q.ticket}</span>
+              <span className="min-w-[120px] flex-1 font-medium break-words">{q.name}</span>
+              <span className="text-ink-3 text-[13px]">
+                {t('daily.since', { date: q.queuedAt ? formatDate(new Date(q.queuedAt)) : '' })}
+              </span>
+              {q.encounterId && (
+                <StaffLink
+                  to="/app/visit"
+                  search={{ encounter: q.encounterId }}
+                  className={buttonVariants({ size: 'sm' })}
+                >
+                  {t('common.open')}
+                </StaffLink>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </details>
   )
 }
@@ -282,9 +290,11 @@ export function MiniTile({
   const Arrow = diff == null || diff === 0 ? Minus : diff > 0 ? ArrowUp : ArrowDown
   const body = (
     <>
-      <span className="flex items-center gap-2 text-[13px] font-medium">
+      {/* in a tile under 176 px the name goes under its symbol on the whole width (as in the
+          KPI tiles on a phone): a long word ("Remboursements") is not broken beside it */}
+      <span className="flex flex-col items-start gap-1.5 text-[13px] font-medium @[11rem]:flex-row @[11rem]:items-center @[11rem]:gap-2">
         <IconChip icon={icon} tint={tint} size="sm" />
-        <span className="text-ink-2 min-w-0 [overflow-wrap:normal]">{label}</span>
+        <span className="text-ink-2 max-w-full min-w-0 break-words">{label}</span>
       </span>
       <span className="flex flex-wrap items-baseline gap-1.5">
         <span className="text-[28px] leading-8 font-semibold tabular-nums">
@@ -305,7 +315,7 @@ export function MiniTile({
       )}
     </>
   )
-  const className = cn(card, 'anim-enter gap-1 px-3 py-2.5', tileClass[tint])
+  const className = cn(card, 'anim-enter @container gap-1 px-3 py-2.5', tileClass[tint])
   const style = { '--i': i } as CSSProperties
   return to ? (
     <DashLink

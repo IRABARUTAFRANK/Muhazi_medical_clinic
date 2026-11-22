@@ -241,7 +241,8 @@ export function NurseOrderRow({
         >
           <Icon size={16} />
         </span>
-        <span className="min-w-0 flex-[1_1_14rem]">
+        {/* 11rem: on a phone the words stay beside the round icon (it is not left alone on a line) */}
+        <span className="min-w-0 flex-[1_1_11rem]">
           {showPatient && o.patient && (
             <span className="text-ink-2 block text-[13px] font-semibold">
               {[o.ticket, o.patient, o.fileNumber].filter(Boolean).join(' · ')}

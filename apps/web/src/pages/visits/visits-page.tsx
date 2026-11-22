@@ -219,39 +219,45 @@ function VisitRow({
         )}
       </span>
       <Badge tone={r.triage}>{t(`home.triage.${r.triage}`)}</Badge>
-      {r.canWork === false ? (
-        // sent to someone else: in the clinic, read only for me
-        <StaffLink
-          to="/app/visit"
-          search={{ encounter: r.encounterId }}
-          className={buttonVariants({ size: 'sm', variant: 'ghost' })}
-          title={t('access.notYours', {
-            holder: r.takenBy ?? r.assignedName ?? r.departmentName ?? '',
-          })}
+      {/* the three actions stay together: on a phone they go to the next line as one group
+          (the last icon is not left alone on a line of its own), and always to a line of their
+          own there: a short tag ("Red") used to keep them beside it while a longer one
+          ("Yellow") sent them under it, so the rows of one list did not look alike */}
+      <span className="flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 max-sm:basis-full sm:gap-x-3">
+        {r.canWork === false ? (
+          // sent to someone else: in the clinic, read only for me
+          <StaffLink
+            to="/app/visit"
+            search={{ encounter: r.encounterId }}
+            className={buttonVariants({ size: 'sm', variant: 'ghost' })}
+            title={t('access.notYours', {
+              holder: r.takenBy ?? r.assignedName ?? r.departmentName ?? '',
+            })}
+          >
+            <Lock size={14} aria-hidden="true" />
+            {t('access.view')}
+          </StaffLink>
+        ) : (
+          <StaffLink
+            to="/app/visit"
+            search={{ encounter: r.encounterId }}
+            className={buttonVariants({ size: 'sm', variant: 'primary' })}
+          >
+            <Stethoscope size={14} aria-hidden="true" />
+            {t('visits.openVisit')}
+          </StaffLink>
+        )}
+        {/* the file opens beside the list (teal tint: an action); middle-click: the whole page */}
+        <OpenFileLink
+          patientId={r.patientId}
+          className={buttonVariants({ size: 'sm', variant: 'tint-teal' })}
+          aria-label={t('visit.patientFile')}
+          title={t('visit.patientFile')}
         >
-          <Lock size={14} aria-hidden="true" />
-          {t('access.view')}
-        </StaffLink>
-      ) : (
-        <StaffLink
-          to="/app/visit"
-          search={{ encounter: r.encounterId }}
-          className={buttonVariants({ size: 'sm', variant: 'primary' })}
-        >
-          <Stethoscope size={14} aria-hidden="true" />
-          {t('visits.openVisit')}
-        </StaffLink>
-      )}
-      {/* the file opens beside the list (teal tint: an action); middle-click: the whole page */}
-      <OpenFileLink
-        patientId={r.patientId}
-        className={buttonVariants({ size: 'sm', variant: 'tint-teal' })}
-        aria-label={t('visit.patientFile')}
-        title={t('visit.patientFile')}
-      >
-        <FolderOpen size={14} aria-hidden="true" />
-      </OpenFileLink>
-      <LeftButton encounterId={r.encounterId} name={r.name} user={user} compact />
+          <FolderOpen size={14} aria-hidden="true" />
+        </OpenFileLink>
+        <LeftButton encounterId={r.encounterId} name={r.name} user={user} compact />
+      </span>
     </Row>
   )
 }

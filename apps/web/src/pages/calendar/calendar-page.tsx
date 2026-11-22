@@ -276,7 +276,9 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
           title={t('calendar.weekly')}
           right={t('calendar.workdays', { count: workdays })}
         >
-          <div className="flex flex-col">
+          {/* a container: in a panel under 512 px the hours of a day go under its name on the
+              whole width (beside the name, the two times and the button did not fit one line) */}
+          <div className="@container flex flex-col">
             {WEEK.map((k) => {
               const spans = hours[k] ?? []
               const works = spans.length > 0
@@ -299,95 +301,98 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
                   {!works && (
                     <span className="text-ink-3 text-[13px]">{t('calendar.board.off')}</span>
                   )}
-                  <span className="flex flex-1 flex-col gap-1.5">
-                    {spans.map(([a, b], n) => (
-                      <span key={n} className="flex flex-wrap items-center gap-2">
-                        <input
-                          type="time"
-                          step={900}
-                          value={a}
-                          aria-label={t('calendar.from')}
-                          onChange={(e) =>
-                            setDay(
-                              k,
-                              spans.map((s, j) => (j === n ? [e.target.value || a, s[1]] : s)),
-                            )
-                          }
-                          className="border-border bg-card focus:border-primary focus:ring-primary/20 h-[38px] rounded-md border px-2 text-[14px] tabular-nums outline-none focus:ring-2"
-                        />
-                        <span className="text-ink-3">–</span>
-                        <input
-                          type="time"
-                          step={900}
-                          value={b}
-                          aria-label={t('calendar.to')}
-                          onChange={(e) =>
-                            setDay(
-                              k,
-                              spans.map((s, j) => (j === n ? [s[0], e.target.value || b] : s)),
-                            )
-                          }
-                          className={cn(
-                            'bg-card focus:border-primary focus:ring-primary/20 h-[38px] rounded-md border px-2 text-[14px] tabular-nums outline-none focus:ring-2',
-                            toMinutes(a) >= toMinutes(b) ? 'border-red' : 'border-border',
-                          )}
-                        />
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="tint-coral"
-                          aria-label={t('calendar.removePeriod')}
-                          title={t('calendar.removePeriod')}
-                          onClick={() =>
-                            setDay(
-                              k,
-                              spans.filter((_, j) => j !== n),
-                            )
-                          }
-                        >
-                          <X size={14} aria-hidden="true" />
-                        </Button>
-                        {n < spans.length - 1 && (
-                          <span className="text-amber border-amber/30 bg-amber-bg inline-flex h-6 items-center rounded border px-2 text-[12px] font-medium">
-                            {t('calendar.breakBetween', { from: b, to: spans[n + 1]![0] })}
-                          </span>
-                        )}
-                        {n === spans.length - 1 && spans.length === 1 && (
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => {
-                              // Split the day around a midday break when the hours allow it.
-                              const [start, end] = spans[0]!
-                              const midday = toMinutes(start) < 12 * 60 && toMinutes(end) > 14 * 60
+                  {works && (
+                    <span className="flex min-w-0 flex-1 basis-full flex-col gap-1.5 @lg:basis-0">
+                      {spans.map(([a, b], n) => (
+                        <span key={n} className="flex flex-wrap items-center gap-2">
+                          <input
+                            type="time"
+                            step={900}
+                            value={a}
+                            aria-label={t('calendar.from')}
+                            onChange={(e) =>
                               setDay(
                                 k,
-                                midday
-                                  ? [
-                                      [start, '12:00'],
-                                      ['14:00', end],
-                                    ]
-                                  : [...spans, ['14:00', '17:00']],
+                                spans.map((s, j) => (j === n ? [e.target.value || a, s[1]] : s)),
                               )
-                            }}
-                          >
-                            <Plus size={14} aria-hidden="true" />
-                            {t('calendar.addBreak')}
-                          </Button>
-                        )}
-                        {n === spans.length - 1 && spans.length === 2 && (
+                            }
+                            className="border-border bg-card focus:border-primary focus:ring-primary/20 h-[38px] rounded-md border px-2 text-[14px] tabular-nums outline-none focus:ring-2"
+                          />
+                          <span className="text-ink-3">–</span>
+                          <input
+                            type="time"
+                            step={900}
+                            value={b}
+                            aria-label={t('calendar.to')}
+                            onChange={(e) =>
+                              setDay(
+                                k,
+                                spans.map((s, j) => (j === n ? [s[0], e.target.value || b] : s)),
+                              )
+                            }
+                            className={cn(
+                              'bg-card focus:border-primary focus:ring-primary/20 h-[38px] rounded-md border px-2 text-[14px] tabular-nums outline-none focus:ring-2',
+                              toMinutes(a) >= toMinutes(b) ? 'border-red' : 'border-border',
+                            )}
+                          />
                           <Button
                             type="button"
                             size="sm"
-                            onClick={() => setDay(k, [...spans, ['16:00', '18:00']])}
+                            variant="tint-coral"
+                            aria-label={t('calendar.removePeriod')}
+                            title={t('calendar.removePeriod')}
+                            onClick={() =>
+                              setDay(
+                                k,
+                                spans.filter((_, j) => j !== n),
+                              )
+                            }
                           >
-                            <Plus size={14} aria-hidden="true" />
-                            {t('calendar.addPeriod')}
+                            <X size={14} aria-hidden="true" />
                           </Button>
-                        )}
-                      </span>
-                    ))}
-                  </span>
+                          {n < spans.length - 1 && (
+                            <span className="text-amber border-amber/30 bg-amber-bg inline-flex min-h-6 items-center rounded border px-2 py-0.5 text-[12px] leading-tight font-medium">
+                              {t('calendar.breakBetween', { from: b, to: spans[n + 1]![0] })}
+                            </span>
+                          )}
+                          {n === spans.length - 1 && spans.length === 1 && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => {
+                                // Split the day around a midday break when the hours allow it.
+                                const [start, end] = spans[0]!
+                                const midday =
+                                  toMinutes(start) < 12 * 60 && toMinutes(end) > 14 * 60
+                                setDay(
+                                  k,
+                                  midday
+                                    ? [
+                                        [start, '12:00'],
+                                        ['14:00', end],
+                                      ]
+                                    : [...spans, ['14:00', '17:00']],
+                                )
+                              }}
+                            >
+                              <Plus size={14} aria-hidden="true" />
+                              {t('calendar.addBreak')}
+                            </Button>
+                          )}
+                          {n === spans.length - 1 && spans.length === 2 && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => setDay(k, [...spans, ['16:00', '18:00']])}
+                            >
+                              <Plus size={14} aria-hidden="true" />
+                              {t('calendar.addPeriod')}
+                            </Button>
+                          )}
+                        </span>
+                      ))}
+                    </span>
+                  )}
                 </div>
               )
             })}
@@ -454,7 +459,7 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
                       aria-pressed={on}
                       onClick={() => setCats((xs) => (on ? xs.filter((x) => x !== c) : [...xs, c]))}
                       className={cn(
-                        'inline-flex h-8 items-center rounded-md border px-3 text-[13px] font-medium transition-colors duration-120',
+                        'inline-flex min-h-8 items-center rounded-md border px-3 py-1 text-left text-[13px] leading-tight font-medium transition-colors duration-120',
                         on
                           ? 'border-green bg-green-bg text-green'
                           : 'border-border bg-card text-ink-2 hover:bg-hover',
@@ -511,7 +516,7 @@ function CalendarEditor({ cal, userId }: { cal: DoctorCalendar; userId: string |
                 {upcomingOff.map((d) => (
                   <span
                     key={d}
-                    className="border-amber/30 bg-amber-bg text-amber inline-flex h-8 items-center gap-1.5 rounded-md border py-1 pr-1 pl-2.5 text-[13px] font-medium"
+                    className="border-amber/30 bg-amber-bg text-amber inline-flex min-h-8 items-center gap-1.5 rounded-md border py-1 pr-1 pl-2.5 text-[13px] leading-tight font-medium"
                   >
                     <CalendarOff size={14} aria-hidden="true" />
                     {formatDate(new Date(`${d}T00:00:00`))}

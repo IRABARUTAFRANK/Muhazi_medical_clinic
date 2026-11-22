@@ -8,7 +8,7 @@ import { useClinicInfo, useClinicStatus } from '@/lib/api/public'
 import { cn } from '@/lib/utils'
 import { LangSwitch } from './lang-switch'
 
-export const Wrap = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+export const Wrap = ({ className, ...props }: React.ComponentProps<'div'>) => (
   <div
     className={cn('mx-auto w-full max-w-[1180px] px-4 sm:px-8 2xl:max-w-[1280px]', className)}
     {...props}
@@ -46,9 +46,11 @@ interface NavLink {
  *  · On scroll (PC) the identity tier folds away and a small logo slides into the strip, so the
  *    header shrinks to one line; a thin bar shows how far down the page the visitor is.
  *  · Section links scroll smoothly. Below `lg` the strip becomes a menu sheet.
+ *  · The strip stays on one line in French and Kinyarwanda too: what does not fit gives way in
+ *    steps (the clinic's name beside the small logo, then the links' size), see `stripLevel`.
  */
 export function SiteNav({ current }: SiteNavProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -124,6 +126,63 @@ export function SiteNav({ current }: SiteNavProps) {
   const activeKey =
     links.find((l) => l.active)?.key ?? links.find((l) => l.hash && l.hash === inView)?.key ?? null
 
+  /*
+   * The link strip holds, on one line, the small identity (once the header is folded), the
+   * section links and "Find a doctor". French and Kinyarwanda words are longer than the strip
+   * of a laptop: the links wrapped over two lines, under their own underline. What does not
+   * fit now gives way in steps, measured from the words themselves:
+   *   1 the clinic's name beside the small logo goes (the logo stays, and links home);
+   *   2 the links and the button get a smaller size and padding;
+   *   3 only then may a link take two lines.
+   * Measured again when the language, the window's width or the fold changes.
+   */
+  const strip = useRef<HTMLDivElement>(null)
+  const [room, setRoom] = useState(0)
+  useEffect(() => {
+    let on = true
+    const changed = () => {
+      if (on) setRoom((k) => k + 1)
+    }
+    window.addEventListener('resize', changed)
+    // the web font arrives after the first paint, with other widths
+    void document.fonts?.ready.then(changed)
+    return () => {
+      on = false
+      window.removeEventListener('resize', changed)
+    }
+  }, [])
+  const stripKey = `${i18n.language}|${current}|${scrolled ? 1 : 0}|${room}`
+  const [fitted, setFitted] = useState({ key: '', level: 0 })
+  const stripLevel = fitted.key === stripKey ? fitted.level : 0
+  const measured = useRef('')
+  useLayoutEffect(() => {
+    const el = strip.current
+    const at = `${stripKey}|${stripLevel}`
+    if (!el || measured.current === at) return
+    measured.current = at
+    const [mini, nav, side] = [...el.children] as HTMLElement[]
+    // below `lg` the strip is not shown: nothing to fit
+    if (!mini || !nav || !side || el.clientWidth === 0) return
+    const cs = getComputedStyle(el)
+    const inner = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)
+    const gap = parseFloat(cs.columnGap) || 0
+    // the small identity at its full width (it is still sliding in when this runs)
+    const identity = scrolled ? mini.scrollWidth + 12 : 0
+    const need =
+      identity +
+      gap +
+      nav.scrollWidth +
+      (parseFloat(getComputedStyle(nav).marginLeft) || 0) +
+      gap +
+      side.offsetWidth
+    // measured on the laid-out strip before it is painted: one step tighter until it fits
+    const settle = () => {
+      if (need > inner + 0.5 && stripLevel < 3) setFitted({ key: stripKey, level: stripLevel + 1 })
+      else if (fitted.key !== stripKey) setFitted({ key: stripKey, level: stripLevel })
+    }
+    settle()
+  })
+
   return (
     <>
       {/* The header is fixed: folding it on scroll must not move the page (anchors would land
@@ -142,11 +201,14 @@ export function SiteNav({ current }: SiteNavProps) {
           <div className="overflow-hidden">
             <Wrap
               className={cn(
-                'flex items-center gap-4 transition-[min-height] duration-300',
+                'flex items-center gap-3 transition-[min-height] duration-300 sm:gap-4',
                 scrolled ? 'min-h-[64px]' : 'min-h-[92px]',
               )}
             >
-              <Link to="/" className="group flex min-w-0 items-center gap-3.5 no-underline">
+              <Link
+                to="/"
+                className="group flex min-w-0 items-center gap-3 no-underline sm:gap-3.5"
+              >
                 <img
                   src="/logo.jpg"
                   alt=""
@@ -164,13 +226,15 @@ export function SiteNav({ current }: SiteNavProps) {
                   >
                     {t('app.clinicName')}
                   </span>
-                  <span className="text-ink-3 mt-1 truncate text-[10.5px] font-semibold tracking-[.1em] uppercase sm:text-[13px] sm:tracking-[.12em]">
+                  {/* the place stays whole: on a narrow phone it takes a second line */}
+                  <span className="text-ink-3 mt-1 text-[10.5px] leading-[1.25] font-semibold tracking-[.06em] uppercase sm:text-[13px] sm:tracking-[.12em]">
                     {t('app.place')}
                   </span>
                 </span>
               </Link>
 
-              <div className="ml-auto flex items-center gap-2 sm:gap-3">
+              {/* never squeezed: the clinic's name beside it wraps instead */}
+              <div className="ml-auto flex flex-none items-center gap-2 sm:gap-3">
                 <a
                   href={telHref(profile.phone)}
                   className="group wide:inline-flex hidden items-center gap-2.5 rounded-xl px-2 py-1.5 text-left no-underline transition-colors hover:bg-[#f1f6fb]"
@@ -212,13 +276,16 @@ export function SiteNav({ current }: SiteNavProps) {
                   to="/"
                   hash="signin"
                   hashScrollIntoView={smooth()}
+                  aria-label={t('common.staffSignIn')}
+                  title={t('common.staffSignIn')}
                   className={cn(
                     buttonVariants({ variant: 'default', size: 'md' }),
-                    'hidden md:inline-flex',
+                    'hidden whitespace-nowrap md:inline-flex',
                   )}
                 >
                   <LogIn size={16} aria-hidden="true" />
-                  {t('common.staffSignIn')}
+                  {/* a tablet has room for the icon only; the words are in the menu beside it */}
+                  <span className="hidden lg:inline">{t('common.staffSignIn')}</span>
                 </Link>
                 <button
                   type="button"
@@ -241,16 +308,17 @@ export function SiteNav({ current }: SiteNavProps) {
 
         {/* Link strip */}
         <div className="relative hidden bg-[linear-gradient(90deg,#0b2252,#13306b_60%,#145a3a)] lg:block">
-          <Wrap className="flex min-h-[54px] items-center gap-2">
+          <Wrap ref={strip} className="flex min-h-[54px] items-center gap-2">
             {/* Mini identity, slides in when the identity tier folds away */}
             <Link
               to="/"
               aria-hidden={!scrolled}
+              aria-label={t('app.clinicName')}
               tabIndex={scrolled ? 0 : -1}
               className={cn(
                 'flex items-center gap-2.5 overflow-hidden text-white no-underline transition-[max-width,opacity,transform,margin] duration-300 ease-out',
                 scrolled
-                  ? 'mr-3 max-w-[260px] translate-x-0 opacity-100'
+                  ? 'mr-3 max-w-[260px] flex-none translate-x-0 opacity-100'
                   : 'pointer-events-none mr-0 max-w-0 -translate-x-3 opacity-0',
               )}
             >
@@ -259,14 +327,24 @@ export function SiteNav({ current }: SiteNavProps) {
                 alt=""
                 className="size-8 flex-none rounded-full ring-2 ring-white/70"
               />
-              <span className="text-[15px] font-extrabold whitespace-nowrap">
+              <span
+                className={cn(
+                  'text-[15px] font-extrabold whitespace-nowrap',
+                  stripLevel >= 1 && 'hidden',
+                )}
+              >
                 {t('app.clinicName')}
               </span>
             </Link>
 
-            <StripLinks links={links} activeKey={activeKey} label={t('common.siteNav')} />
+            <StripLinks
+              links={links}
+              activeKey={activeKey}
+              label={t('common.siteNav')}
+              level={stripLevel}
+            />
 
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex flex-none items-center gap-2">
               <Link
                 to="/"
                 hash="signin"
@@ -282,9 +360,12 @@ export function SiteNav({ current }: SiteNavProps) {
               </Link>
               <Link
                 to="/book"
-                className="group inline-flex min-h-9 items-center gap-2 rounded-full bg-[#37a935] px-4 text-[14px] font-bold text-white no-underline shadow-[0_6px_16px_rgba(55,169,53,.35)] transition-[transform,background-color,box-shadow] hover:bg-[#2f9a2e] hover:shadow-[0_10px_22px_rgba(55,169,53,.45)]"
+                className={cn(
+                  'group inline-flex min-h-9 items-center gap-2 rounded-full bg-[#37a935] font-bold whitespace-nowrap text-white no-underline shadow-[0_6px_16px_rgba(55,169,53,.35)] transition-[transform,background-color,box-shadow] hover:bg-[#2f9a2e] hover:shadow-[0_10px_22px_rgba(55,169,53,.45)]',
+                  stripLevel >= 2 ? 'px-3 text-[13px]' : 'px-4 text-[14px]',
+                )}
               >
-                <CalendarDays size={16} aria-hidden="true" />
+                <CalendarDays size={16} className="flex-none" aria-hidden="true" />
                 {t('common.findDoctor')}
                 <span
                   aria-hidden="true"
@@ -364,10 +445,13 @@ function StripLinks({
   links,
   activeKey,
   label,
+  level,
 }: {
   links: NavLink[]
   activeKey: string | null
   label: string
+  /** How short of room the strip is (0 = none): see `stripLevel`. */
+  level: number
 }) {
   const { t } = useTranslation()
   const navRef = useRef<HTMLElement>(null)
@@ -382,12 +466,14 @@ function StripLinks({
     if (!el || !nav) return setBar(null)
     const a = el.getBoundingClientRect()
     const n = nav.getBoundingClientRect()
-    setBar({ left: a.left - n.left + 12, width: a.width - 24 })
+    // under the words: the link's padding is 12 px, 8 px when the strip is short of room
+    const pad = parseFloat(getComputedStyle(el).paddingLeft) || 0
+    setBar({ left: a.left - n.left + pad, width: a.width - pad * 2 })
   }, [target])
 
   useLayoutEffect(() => {
     measure()
-  }, [measure, t])
+  }, [measure, t, level])
   useEffect(() => {
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
@@ -397,7 +483,11 @@ function StripLinks({
     <nav
       ref={navRef}
       aria-label={label}
-      className="relative -ml-3 flex gap-1"
+      className={cn(
+        'relative flex gap-1',
+        level >= 2 ? '-ml-2' : '-ml-3',
+        level >= 3 ? 'min-w-0' : 'flex-none',
+      )}
       onMouseLeave={() => setHovered(null)}
     >
       {links.map((l) => (
@@ -416,7 +506,10 @@ function StripLinks({
           activeOptions={{ includeHash: true }}
           data-current={l.key === activeKey ? '' : undefined}
           className={cn(
-            'inline-flex min-h-[54px] items-center px-3 text-[14px] font-semibold no-underline transition-colors duration-200',
+            'inline-flex min-h-[54px] items-center font-semibold no-underline transition-colors duration-200',
+            level >= 2 ? 'px-2 text-[13px]' : 'px-3 text-[14px]',
+            // one line; two only when even the smaller size cannot hold the words
+            level >= 3 ? 'leading-tight' : 'whitespace-nowrap',
             l.key === target ? 'text-white' : 'text-white/72 hover:text-white',
           )}
         >

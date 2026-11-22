@@ -5,6 +5,13 @@
  * per desk (icon, room, "now serving", the next ones with NEXT in gold), and a scrolling line
  * at the bottom. Every size follows the screen (vh / vw / clamp), so nothing ever scrolls.
  * The tokens are scoped to .qd: the staff app keeps its own theme.
+ *
+ * Nothing scrolls, so everything has to fit: text wraps instead of being cut (the call, the
+ * earlier calls, the results, a long name in a row); the big sizes follow the height of the
+ * screen and are capped by its width (min(vh, vw)), so a screen that is not 16:9 keeps them
+ * inside their column; and the middle of the page (the call and the desk) is sized by --qd-fit,
+ * which the page lowers from 1 only when a long call leaves the desk too little room
+ * (display-page.tsx, fitStage). The list of a desk shows the rows that fit whole.
  */
 .qd {
   --qd-bg: oklch(0.985 0.008 170);
@@ -83,7 +90,7 @@
 }
 .qd-clinic {
   margin: 0;
-  font-size: clamp(22px, 4.2vh, 50px);
+  font-size: clamp(20px, min(4.2vh, 5.4vw), 50px);
   font-weight: 700;
   line-height: 1.1;
   white-space: nowrap;
@@ -93,16 +100,23 @@
 .qd-sub {
   margin: 0;
   color: var(--qd-muted-fg);
-  font-size: clamp(16px, 2.7vh, 32px);
+  font-size: clamp(14px, min(2.7vh, 4.4vw), 32px);
 }
 .qd-sub b {
   color: var(--qd-fg);
 }
+/* short of room, this side gives way first: its pills go on a line above the clock (the clock
+   is never pushed out of the screen); only then is the clinic's name shortened */
 .qd-head-right {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: clamp(8px, 1.4vw, 24px);
-  flex: none;
+  justify-content: flex-end;
+  gap: clamp(4px, 0.8vh, 10px) clamp(8px, 1.4vw, 24px);
+  flex: 0 1000 auto;
+}
+.qd-brand > div {
+  min-width: 0;
 }
 .qd-pill {
   display: inline-flex;
@@ -112,9 +126,21 @@
   padding: 0.35em 0.9em;
   font-size: clamp(14px, 2.1vh, 22px);
   font-weight: 600;
+  line-height: 1.2;
   border: 1px solid var(--qd-border);
   background: var(--qd-card);
   color: var(--qd-muted-fg);
+  white-space: nowrap;
+  max-width: 100%;
+}
+.qd-pill svg {
+  flex: none;
+}
+/* "Connection lost — showing the last update" is a sentence: it wraps inside its pill */
+.qd-pill.is-off {
+  white-space: normal;
+  border-radius: 1.2em;
+  max-width: min(100%, 26em);
 }
 .qd-pill.is-off {
   color: var(--qd-red);
@@ -134,30 +160,34 @@
   color: var(--qd-primary);
 }
 .qd-clock {
+  flex: none;
+  max-width: 100%;
   text-align: right;
   line-height: 1.05;
 }
 .qd-time {
   font-family: var(--qd-font-display);
-  font-size: clamp(26px, 5.4vh, 64px);
+  font-size: clamp(24px, min(5.4vh, 8vw), 64px);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 .qd-date {
   color: var(--qd-muted-fg);
-  font-size: clamp(15px, 2.5vh, 30px);
+  font-size: clamp(13px, min(2.5vh, 4vw), 30px);
 }
 
 /* ---------- "Now calling" bar ---------- */
 .qd-banner {
+  --qd-banner-icon: calc(clamp(40px, min(8vh, 11vw), 84px) * var(--qd-fit, 1));
+  --qd-banner-gap: clamp(10px, 1.6vw, 28px);
   flex: none;
   display: flex;
   align-items: center;
-  gap: clamp(10px, 1.6vw, 28px);
+  gap: var(--qd-banner-gap);
   border-radius: calc(var(--qd-radius) + 8px);
   background: var(--qd-primary);
   color: var(--qd-primary-fg);
-  padding: clamp(10px, 2vh, 26px) clamp(14px, 2vw, 30px);
+  padding: calc(clamp(10px, 2vh, 26px) * var(--qd-fit, 1)) clamp(14px, 2vw, 30px);
   box-shadow: var(--qd-glow);
   animation: qd-slide-in 0.6s ease-out;
 }
@@ -170,8 +200,8 @@
   flex: none;
   display: grid;
   place-items: center;
-  width: clamp(40px, 8vh, 84px);
-  height: clamp(40px, 8vh, 84px);
+  width: var(--qd-banner-icon);
+  height: var(--qd-banner-icon);
   border-radius: 9999px;
   background: var(--qd-primary-fg);
   color: var(--qd-primary);
@@ -187,52 +217,87 @@
 }
 .qd-banner-label,
 .qd-banner-to-label {
-  font-size: clamp(15px, 2.6vh, 30px);
+  font-size: calc(clamp(13px, min(2.6vh, 3.4vw), 30px) * var(--qd-fit, 1));
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.2em;
   opacity: 0.85;
 }
+/* two pieces of one line ("A-016 · Nshimiyimana Patrick", "Ingabire Diane · with Dr. …"):
+   side by side while they fit, else the second under the first as a whole. The "·" between
+   them is drawn in the gap before the second piece, so a line never starts or ends with it:
+   at the start of a line the dot falls outside the box and is clipped (the box is a little
+   taller than its lines, so no letter is). */
+.qd-pair {
+  --qd-pair-gap: 0.55em;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--qd-pair-gap);
+  overflow: clip;
+  padding-block: 0.2em;
+  margin-block: -0.2em;
+  overflow-wrap: break-word;
+}
+.qd-pair > span {
+  min-width: 0;
+}
+.qd-pair > .has-dot {
+  position: relative;
+}
+.qd-pair > .has-dot::before {
+  content: '·';
+  position: absolute;
+  right: 100%;
+  width: var(--qd-pair-dot, var(--qd-pair-gap));
+  text-align: center;
+}
+/* a long name goes on a second line, whole words; only a word wider than the bar is broken */
 .qd-banner-who {
   font-family: var(--qd-font-display);
-  font-size: clamp(28px, 6.4vh, 76px);
+  font-size: calc(clamp(24px, min(6.4vh, 4.6vw), 76px) * var(--qd-fit, 1));
   font-weight: 700;
   line-height: 1.1;
-  overflow-wrap: anywhere;
+  --qd-pair-gap: 0.8em;
 }
+/* where to go: as wide as its words, at most half the bar; the patient keeps the other half */
 .qd-banner-to {
   text-align: right;
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
   max-width: 50%;
 }
 .qd-banner-where {
   font-family: var(--qd-font-display);
-  font-size: clamp(28px, 6vh, 72px);
+  font-size: calc(clamp(22px, min(6vh, 4.3vw), 72px) * var(--qd-fit, 1));
   font-weight: 700;
   line-height: 1.1;
+  overflow-wrap: break-word;
+  text-wrap: balance;
 }
 .qd-banner-with {
-  font-size: clamp(17px, 2.9vh, 34px);
+  font-size: calc(clamp(15px, min(2.9vh, 3.6vw), 34px) * var(--qd-fit, 1));
   opacity: 0.9;
 }
 .qd-banner-empty {
   font-family: var(--qd-font-display);
-  font-size: clamp(18px, 3.6vh, 40px);
+  font-size: calc(clamp(18px, min(3.6vh, 5vw), 40px) * var(--qd-fit, 1));
   font-weight: 600;
 }
+/* the earlier calls: each one whole, on a second line when the first is full */
 .qd-prev {
   flex: none;
   display: flex;
-  flex-wrap: nowrap;
-  overflow: hidden;
-  gap: clamp(8px, 1.4vw, 24px);
+  flex-wrap: wrap;
+  gap: 0.1em clamp(8px, 1.4vw, 24px);
   color: var(--qd-muted-fg);
-  font-size: clamp(16px, 2.6vh, 30px);
+  font-size: calc(clamp(14px, min(2.6vh, 3.6vw), 30px) * var(--qd-fit, 1));
   padding: 0 0.4em;
   margin-top: calc(var(--qd-gap) * -0.5);
 }
 .qd-prev > span {
-  white-space: nowrap;
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 .qd-prev b {
   color: var(--qd-fg);
@@ -340,7 +405,7 @@
   padding: clamp(6px, 1.2vh, 14px) clamp(10px, 1.4vw, 22px);
 }
 .qd-label {
-  font-size: clamp(14px, 2.3vh, 26px);
+  font-size: calc(clamp(13px, min(2.3vh, 3.4vw), 26px) * var(--qd-fit, 1));
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.2em;
@@ -370,7 +435,7 @@
 }
 .qd-serving-with {
   color: var(--qd-muted-fg);
-  font-size: clamp(16px, 2.5vh, 28px);
+  font-size: calc(clamp(15px, min(2.5vh, 3.6vw), 28px) * var(--qd-fit, 1));
 }
 .qd-list {
   flex: 1;
@@ -398,7 +463,7 @@
   display: flex;
   align-items: center;
   gap: 0.6em;
-  min-width: 0;
+  flex: none;
 }
 .qd-tag {
   flex: none;
@@ -407,8 +472,9 @@
   text-align: center;
   border-radius: 0.4em;
   padding: 0.15em 0.5em;
-  font-size: clamp(13px, 2.1vh, 22px);
+  font-size: calc(clamp(12px, min(2.1vh, 3vw), 22px) * var(--qd-fit, 1));
   font-weight: 800;
+  white-space: nowrap;
   color: var(--qd-muted-fg);
 }
 .qd-tag.is-next {
@@ -420,13 +486,23 @@
   font-weight: 700;
   white-space: nowrap;
 }
+/* the name, then "· urgent": a name too long for the row goes on two lines, never cut */
 .qd-row-name {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  column-gap: 0.3em;
+  line-height: 1.15;
+  overflow-wrap: break-word;
   color: var(--qd-muted-fg);
   text-align: right;
+}
+.qd-row-name > span {
+  min-width: 0;
+}
+.qd-row-level {
+  white-space: nowrap;
 }
 .qd-row.is-next .qd-row-name {
   color: var(--qd-fg);
@@ -448,9 +524,9 @@
 }
 .qd-more,
 .qd-empty {
-  padding: clamp(4px, 1vh, 12px) 0;
+  padding: calc(clamp(4px, 1vh, 12px) * var(--qd-fit, 1)) 0;
   color: var(--qd-muted-fg);
-  font-size: clamp(18px, 3vh, 34px);
+  font-size: calc(clamp(16px, min(3vh, 4vw), 34px) * var(--qd-fit, 1));
   border-top: 1px solid var(--qd-border);
 }
 .qd-list .qd-empty:first-child,
@@ -479,12 +555,16 @@
 .qd-slide-left {
   flex: none;
   width: 40%;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: var(--qd-gap);
+  gap: calc(var(--qd-gap) * var(--qd-fit, 1));
   background: var(--qd-secondary);
-  padding: clamp(14px, 3vh, 40px);
+  padding: calc(clamp(14px, min(3vh, 3vw), 40px) * var(--qd-fit, 1));
+}
+.qd-slide-left > div {
+  min-width: 0;
 }
 .qd-slide-id {
   display: flex;
@@ -493,38 +573,48 @@
   min-width: 0;
 }
 .qd-slide-id .qd-icon {
-  width: clamp(40px, 8vh, 84px);
-  height: clamp(40px, 8vh, 84px);
+  width: calc(clamp(40px, min(8vh, 11vw), 84px) * var(--qd-fit, 1));
+  height: calc(clamp(40px, min(8vh, 11vw), 84px) * var(--qd-fit, 1));
   background: var(--qd-primary);
   color: var(--qd-primary-fg);
 }
 .qd-slide-name {
   margin: 0;
-  font-size: clamp(26px, 5.6vh, 66px);
+  font-size: calc(clamp(22px, min(5.6vh, 4.4vw), 66px) * var(--qd-fit, 1));
   font-weight: 700;
   line-height: 1.1;
+  overflow-wrap: break-word;
 }
 .qd-slide-room {
   color: var(--qd-muted-fg);
-  font-size: clamp(17px, 2.9vh, 34px);
+  font-size: calc(clamp(15px, min(2.9vh, 3.6vw), 34px) * var(--qd-fit, 1));
 }
+/* the ticket stays in one piece ("A-016" is never broken at its hyphen) */
 .qd-slide-ticket {
   font-family: var(--qd-font-display);
-  font-size: clamp(48px, 13vh, 152px);
+  font-size: calc(clamp(44px, min(13vh, 9.6vw), 152px) * var(--qd-fit, 1));
   font-weight: 800;
   line-height: 1;
   margin: 0.1em 0;
+  white-space: nowrap;
 }
+/* the name, then "· with Dr. …" (.qd-pair) */
 .qd-slide-who {
-  font-size: clamp(24px, 4.4vh, 52px);
+  font-size: calc(clamp(20px, min(4.4vh, 5vw), 52px) * var(--qd-fit, 1));
   font-weight: 500;
+  line-height: 1.2;
+}
+/* the gap is in the name's size, the dot in the smaller words' own: as wide as the gap */
+.qd-slide-who > .qd-serving-with {
+  --qd-pair-dot: 0.97em;
 }
 .qd-slide-right {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: clamp(14px, 3vh, 40px);
+  padding: calc(clamp(14px, min(3vh, 3vw), 40px) * var(--qd-fit, 1));
 }
 .qd-slide-right .qd-label {
   color: var(--qd-muted-fg);
@@ -539,8 +629,8 @@
   overflow: hidden;
 }
 .qd-slide-list .qd-row {
-  font-size: clamp(20px, 3.9vh, 46px);
-  padding: clamp(6px, 1.4vh, 16px) 0;
+  font-size: calc(clamp(18px, min(3.9vh, 4.6vw), 46px) * var(--qd-fit, 1));
+  padding: calc(clamp(6px, 1.4vh, 16px) * var(--qd-fit, 1)) 0;
 }
 .qd-dots {
   flex: none;
@@ -561,21 +651,23 @@
 }
 .qd-calm {
   flex: 1;
+  min-height: 0;
   display: grid;
   place-content: center;
   text-align: center;
+  padding: 0 clamp(12px, 3vw, 48px);
   border-radius: calc(var(--qd-radius) + 8px);
   border: 2px solid var(--qd-border);
   background: var(--qd-card);
 }
 .qd-calm h2 {
   margin: 0;
-  font-size: clamp(28px, 6vh, 68px);
+  font-size: clamp(24px, min(6vh, 7vw), 68px);
 }
 .qd-calm p {
   margin: 0.4em 0 0;
   color: var(--qd-muted-fg);
-  font-size: clamp(18px, 3.1vh, 36px);
+  font-size: clamp(16px, min(3.1vh, 4.4vw), 36px);
 }
 
 /* ---------- results ready, message, scrolling line ---------- */
@@ -588,13 +680,17 @@
   border: 1px solid color-mix(in oklab, var(--qd-green) 35%, transparent);
   background: color-mix(in oklab, var(--qd-green) 10%, white);
   padding: clamp(6px, 1vh, 12px) clamp(10px, 1.4vw, 22px);
-  overflow: hidden;
+  flex-wrap: wrap;
+  row-gap: clamp(4px, 0.8vh, 10px);
 }
+/* every ticket shows: the tickets go on a second line when one is full, under the title on a
+   narrow screen */
 .qd-results-title {
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
   font-weight: 700;
   color: var(--qd-green);
-  font-size: clamp(16px, 2.6vh, 30px);
+  font-size: clamp(15px, min(2.6vh, 3.8vw), 30px);
 }
 .qd-results-hint {
   margin-left: 0.5em;
@@ -602,17 +698,20 @@
   color: var(--qd-muted-fg);
 }
 .qd-chips {
+  flex: 1 1 12em;
+  min-width: 0;
   display: flex;
-  gap: 0.5em;
-  overflow: hidden;
-  white-space: nowrap;
+  flex-wrap: wrap;
+  gap: clamp(4px, 0.8vh, 10px) 0.5em;
 }
 .qd-chip {
+  max-width: 100%;
   border-radius: 9999px;
   background: var(--qd-card);
   border: 1px solid var(--qd-border);
   padding: 0.25em 0.8em;
-  font-size: clamp(15px, 2.4vh, 28px);
+  font-size: clamp(14px, min(2.4vh, 3.6vw), 28px);
+  overflow-wrap: break-word;
 }
 .qd-chip b {
   font-family: var(--qd-font-display);
@@ -622,6 +721,7 @@
   text-align: center;
   color: var(--qd-muted-fg);
   font-size: clamp(12px, 2vh, 22px);
+  overflow-wrap: break-word;
 }
 .qd-ticker {
   flex: none;
@@ -665,15 +765,18 @@
 }
 .qd-overlay-card {
   max-width: min(90vw, 560px);
+  max-height: 94dvh;
+  overflow-y: auto;
   text-align: center;
   border-radius: calc(var(--qd-radius) + 8px);
   background: var(--qd-card);
-  padding: clamp(20px, 5vh, 48px);
+  padding: clamp(20px, 5vh, 48px) clamp(16px, 5vw, 48px);
   box-shadow: var(--qd-glow);
 }
 .qd-overlay-card h1 {
   margin: 0 0 0.3em;
-  font-size: clamp(22px, 4.6vh, 44px);
+  font-size: clamp(22px, min(4.6vh, 7vw), 44px);
+  overflow-wrap: break-word;
 }
 .qd-overlay-card p {
   margin: 0 0 1.2em;
@@ -683,9 +786,11 @@
   font: inherit;
   font-weight: 700;
   font-size: clamp(16px, 2.8vh, 26px);
+  line-height: 1.2;
+  max-width: 100%;
   border: 0;
   border-radius: 9999px;
-  padding: 0.7em 2em;
+  padding: 0.7em clamp(1em, 5vw, 2em);
   background: var(--qd-primary);
   color: var(--qd-primary-fg);
   box-shadow: var(--qd-glow);
@@ -699,6 +804,9 @@
 }
 .qd-setup-card {
   width: min(92vw, 720px);
+  max-width: 100%;
+  max-height: 100%;
+  overflow-y: auto;
   border-radius: calc(var(--qd-radius) + 8px);
   border: 2px solid var(--qd-border);
   background: var(--qd-card);
@@ -724,8 +832,10 @@
 }
 .qd-setup-title {
   margin: 0;
-  font-size: clamp(22px, 4.4vh, 40px);
+  font-size: clamp(20px, min(4.4vh, 6.4vw), 40px);
   font-weight: 700;
+  line-height: 1.15;
+  overflow-wrap: break-word;
 }
 .qd-setup-sub,
 .qd-setup-lead,
@@ -861,8 +971,9 @@
     animation: none !important;
   }
 }
-/* a narrow screen (a tablet held upright): the slide stacks, the grid has one column */
-@media (max-width: 700px) {
+/* a narrow or upright screen (a tablet held upright, a phone): the desk stacks (who is being
+   seen, then who is next), and where to go sits under the patient called instead of beside */
+@media (max-width: 700px), (max-aspect-ratio: 1/1) {
   .qd-slide {
     flex-direction: column;
   }
@@ -872,7 +983,13 @@
   .qd-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+  .qd-banner {
+    flex-wrap: wrap;
+  }
   .qd-banner-to {
-    display: none;
+    flex: 1 1 100%;
+    max-width: none;
+    text-align: left;
+    padding-left: calc(var(--qd-banner-icon) + var(--qd-banner-gap));
   }
 }

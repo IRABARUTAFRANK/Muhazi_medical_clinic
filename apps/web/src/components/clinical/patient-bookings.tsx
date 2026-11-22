@@ -143,8 +143,13 @@ export function PatientBookings({
         </p>
       )}
       <Card className="anim-enter">
-        <CardHeader icon={CalendarCheck} hue="violet">
-          <span>{t('followUp.upcoming')}</span>
+        {/* on a phone the count and the button go under the title instead of being squeezed */}
+        <CardHeader
+          icon={CalendarCheck}
+          hue="violet"
+          className="[&>span]:flex-wrap [&>span]:gap-y-1.5"
+        >
+          <span className="min-w-0 flex-[1_1_8rem]">{t('followUp.upcoming')}</span>
           <span className="flex items-center gap-2">
             <span className="text-ink-3 text-[13px]">{upcoming.length}</span>
             {mayBook && !adding && (

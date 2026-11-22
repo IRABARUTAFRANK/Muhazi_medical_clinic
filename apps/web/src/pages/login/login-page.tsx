@@ -286,7 +286,13 @@ export function LoginPage({ staffId }: { staffId: string }) {
               required
             />
             {error && <Alert>{error}</Alert>}
-            <Button type="submit" variant="primary" size="lg" disabled={busy}>
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              className="[text-wrap:balance]"
+              disabled={busy}
+            >
               {busy ? t('landing.signin.signingIn') : t('login.continue')}
             </Button>
             <Link
@@ -321,7 +327,13 @@ export function LoginPage({ staffId }: { staffId: string }) {
               required
             />
             {error && <Alert>{error}</Alert>}
-            <Button type="submit" variant="primary" size="lg" disabled={busy}>
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              className="[text-wrap:balance]"
+              disabled={busy}
+            >
               {busy ? t('pin.saving') : t('login.firstPinSave')}
             </Button>
             <button
@@ -335,7 +347,7 @@ export function LoginPage({ staffId }: { staffId: string }) {
           </form>
         ) : (
           <form onSubmit={submitCode} className="flex flex-col gap-3.5">
-            <p className="text-ink-2 m-0 text-[14px]">
+            <p className="text-ink-2 m-0 text-[14px] [overflow-wrap:anywhere]">
               {t('login.codeLead', { email: maskEmail(pending?.email ?? '') })}
             </p>
             {!isLive && <p className="text-ink-3 m-0 text-xs">{t('login.codeSample')}</p>}
@@ -374,10 +386,16 @@ export function LoginPage({ staffId }: { staffId: string }) {
                 />
               </>
             )}
-            <Button type="submit" variant="primary" size="lg" disabled={busy}>
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              className="[text-wrap:balance]"
+              disabled={busy}
+            >
               {busy ? t('landing.signin.signingIn') : t('login.verify')}
             </Button>
-            <div className="flex items-center justify-between text-[13px]">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-[13px]">
               <button
                 type="button"
                 className="text-ink-2 inline-flex items-center gap-1"
@@ -388,7 +406,7 @@ export function LoginPage({ staffId }: { staffId: string }) {
               </button>
               <button
                 type="button"
-                className="text-primary disabled:text-ink-3 font-semibold disabled:cursor-not-allowed"
+                className="text-primary disabled:text-ink-3 ml-auto text-right font-semibold disabled:cursor-not-allowed"
                 disabled={cooldown > 0 || (askPin && !resendPin.trim())}
                 onClick={() => void resend()}
               >
@@ -426,7 +444,7 @@ function SignedOutNote({ note }: { note: SignOutNote }) {
       className="bg-amber-bg border-amber/30 text-amber flex items-start gap-2.5 rounded-md border px-3 py-2.5 text-[13px]"
     >
       <Clock size={16} aria-hidden="true" className="mt-0.5 flex-none" />
-      <span>
+      <span className="min-w-0">
         <span className="text-ink block font-semibold">{why}</span>
         {note.reason !== 'inactive' && (
           <span className="text-ink-2 block">{t('login.ended.next')}</span>
@@ -443,7 +461,7 @@ function Alert({ children }: { children: string }) {
       className="border-red/30 bg-red-bg text-red m-0 flex items-start gap-2 rounded-md border px-3 py-2 text-[13px] font-medium"
     >
       <CircleAlert size={16} aria-hidden="true" className="mt-0.5 flex-none" />
-      <span>{children}</span>
+      <span className="min-w-0 [overflow-wrap:anywhere]">{children}</span>
     </p>
   )
 }

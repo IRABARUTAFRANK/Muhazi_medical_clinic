@@ -512,14 +512,18 @@ export function PricesPage({ user }: { user: StaffUser }) {
 
         {/* Search and filter */}
         <Card>
-          <CardBody className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto_auto]">
+          {/* a wrapping row: the search and the category keep a readable width, the ticks and
+              the view chooser go to the next line when the row is too narrow for them */}
+          <CardBody className="flex-row flex-wrap items-end gap-3">
             <Field
+              wrapperClassName="min-w-[min(240px,100%)] flex-[2_1_0%]"
               label={t('prices.search')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t('prices.searchPh')}
             />
             <Select
+              wrapperClassName="min-w-[min(200px,100%)] flex-[1_1_0%]"
               label={t('prices.form.group')}
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
@@ -531,26 +535,29 @@ export function PricesPage({ user }: { user: StaffUser }) {
                 </option>
               ))}
             </Select>
-            <label className="flex min-h-9 items-center gap-2 text-[14px] font-medium">
-              <input
-                type="checkbox"
-                className="accent-primary size-[18px]"
-                checked={showHidden}
-                onChange={(e) => setShowHidden(e.target.checked)}
-              />
-              {t('prices.showHidden')}
-            </label>
-            <label className="flex min-h-9 items-center gap-2 text-[14px] font-medium">
-              <input
-                type="checkbox"
-                className="accent-primary size-[18px]"
-                checked={unpricedOnly}
-                onChange={(e) => setUnpricedOnly(e.target.checked)}
-              />
-              {t('prices.unpricedOnly', {
-                count: treatments.filter((x) => x.cashPrice == null).length,
-              })}
-            </label>
+            {/* the two ticks stay together */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <label className="flex min-h-9 items-center gap-2 text-[14px] font-medium">
+                <input
+                  type="checkbox"
+                  className="accent-primary size-[18px] flex-none"
+                  checked={showHidden}
+                  onChange={(e) => setShowHidden(e.target.checked)}
+                />
+                {t('prices.showHidden')}
+              </label>
+              <label className="flex min-h-9 items-center gap-2 text-[14px] font-medium">
+                <input
+                  type="checkbox"
+                  className="accent-primary size-[18px] flex-none"
+                  checked={unpricedOnly}
+                  onChange={(e) => setUnpricedOnly(e.target.checked)}
+                />
+                {t('prices.unpricedOnly', {
+                  count: treatments.filter((x) => x.cashPrice == null).length,
+                })}
+              </label>
+            </div>
             <Seg
               label={t('prices.dept.viewBy')}
               value={view}
@@ -800,7 +807,7 @@ function AdjustPricesCard({
       <form onSubmit={(e) => void submit(e)}>
         <CardBody className="gap-3">
           <p className="text-ink-2 m-0 text-[14px]">{t('prices.adjust.lead')}</p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4">
             <Select
               label={t('prices.adjust.which')}
               value={category}
@@ -1141,7 +1148,8 @@ function TreatmentForm({
             )}
             <p className="text-ink-3 m-0 text-xs">{t('prices.dept.fieldHint')}</p>
           </fieldset>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+          {/* inside the side panel: two per row, so a category name is read whole */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Select
               label={t('prices.form.group')}
               value={chosenCategory?.id ?? ''}

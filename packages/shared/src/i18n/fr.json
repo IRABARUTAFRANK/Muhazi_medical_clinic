@@ -7425,7 +7425,8 @@
       "payments": "Paiements",
       "refunds": "Remboursements",
       "voided": "Paiements annulés",
-      "handovers": "Ventes au comptoir remises"
+      "handovers": "Ventes au comptoir remises",
+      "bookings": "Réservations"
     },
     "revenue": {
       "collected": "Encaissé",
@@ -11008,7 +11009,7 @@
     "whereHome": "À la maison",
     "whereBoth": "Les deux : une partie ici, le reste à la maison",
     "medicineHint": "Depuis le stock de la clinique : combien il en reste et le prix. Un médicament que la clinique n’a pas est prescrit pour être acheté dehors (plus haut).",
-    "inStock": "{{count}} en stock",
+    "inStock": "{{count}} {{unit}} en stock",
     "noStock": "aucun en stock",
     "groupInStock": "Dans le stock de la clinique",
     "groupNoStock": "Pas dans le stock de la clinique : à prescrire pour achat dehors",
@@ -11049,7 +11050,7 @@
     "summaryAct": "{{act}} × {{count}} va sur la facture : {{amount}} au prix comptant.",
     "summaryTyped": "Pas dans la liste des prix : rien ne va sur la facture.",
     "summaryNoPrice": "Aucun prix n’est fixé : rien ne va sur la facture. Demandez au gérant de fixer le prix.",
-    "notEnough": "Seulement {{count}} dans le stock de la clinique : donnez moins, ou prescrivez-le pour achat dehors.",
+    "notEnough": "Le stock de la clinique ne contient que {{count}} {{unit}} et cette prescription en demande {{asked}} : donnez moins, ou prescrivez-le pour achat dehors. S’il en est arrivé d’autres, enregistrez d’abord la livraison sous Stock › Ajouter du stock.",
     "wholePacksNote": "Vendu seulement par {{pack}} entière de {{size}} : mettez le total à {{next}}.",
     "sendOnce": "Il est donné en une fois : un appui sur « Donné » enregistre tout et termine l’ordre.",
     "sendOnceHand": "Il est remis en une fois : un appui sur « Remis » enregistre tout et termine l’ordre.",

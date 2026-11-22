@@ -81,7 +81,7 @@ export function SectionEditor({
           <Button
             size="sm"
             variant="ghost"
-            className="h-7 px-2"
+            className="px-2 [--btn-h:1.75rem]"
             onClick={() => {
               setDraft(value.text)
               setEditing(true)

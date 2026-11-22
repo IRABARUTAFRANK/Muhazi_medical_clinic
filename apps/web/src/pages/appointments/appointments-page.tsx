@@ -108,7 +108,7 @@ export function AppointmentsPage({ user, initialDay }: { user: StaffUser; initia
               <ChevronRight size={16} aria-hidden="true" />
             </Button>
           </div>
-          <label className="border-border bg-card flex h-[38px] items-center gap-2 rounded-md border px-3 text-[14px]">
+          <label className="border-border bg-card flex min-h-[38px] items-center gap-2 rounded-md border px-3 text-[14px]">
             <span className="sr-only">{t('ops.appts.pickDay')}</span>
             <input
               type="date"
@@ -148,9 +148,11 @@ export function AppointmentsPage({ user, initialDay }: { user: StaffUser; initia
             <span>{t('ops.appts.managerOversees')}</span>
           </p>
         )}
-        <section className="flex flex-col gap-3">
+        {/* two columns only where the second one is at least as wide as a phone: by the room the
+            section really has (the rail and the text size make the window's width a poor guide) */}
+        <section className="@container flex flex-col gap-3">
           <div className={sectionTitle}>{t('ops.appts.section')}</div>
-          <div className="pc:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-4 @3xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
             {registering ? (
               <Reveal focus>
                 <NewPatientForm

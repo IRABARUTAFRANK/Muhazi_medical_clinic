@@ -111,11 +111,13 @@ export function Kpi({
         className={cn(
           'flex flex-wrap items-baseline gap-1.5 font-semibold tracking-[-0.01em] tabular-nums',
           // a sentence in place of a number ("Not enough data") reads at a text size
-          text && text.length > 6 ? 'text-[18px] leading-6' : 'text-[28px] leading-8',
+          text && text.length > 6
+            ? 'text-[18px] leading-6'
+            : 'text-[28px] leading-8 @max-[11rem]:text-[22px] @max-[11rem]:leading-7 @max-[8.5rem]:text-[19px] @max-[8.5rem]:leading-6',
         )}
       >
         {text ?? <CountUp value={value} />}
-        <small className="text-ink-2 text-[13px] font-normal">{unit}</small>
+        <small className="text-ink-2 text-[13px] leading-snug font-normal">{unit}</small>
       </span>
       {(d || (spark && spark.length > 1)) && (
         // wraps: a long change line (French, Kinyarwanda) pushes the small chart below it
@@ -124,7 +126,7 @@ export function Kpi({
           {d ? (
             <span
               className={cn(
-                'inline-flex min-h-6 max-w-full min-w-0 items-center gap-1 rounded border px-2 py-0.5 text-[12px] leading-tight font-medium tabular-nums',
+                'inline-flex min-h-6 max-w-full min-w-0 items-center gap-1 rounded border px-2 py-0.5 text-[12px] leading-tight font-medium tabular-nums @max-[11rem]:gap-0.5 @max-[11rem]:px-1.5',
                 tag,
               )}
             >
@@ -314,7 +316,7 @@ export function Pill({
   return (
     <span
       className={cn(
-        'inline-flex h-6 min-w-6 flex-none items-center justify-center gap-1 rounded border px-2 text-[12px] leading-none font-medium whitespace-nowrap tabular-nums',
+        'mmc-tag inline-flex min-h-6 max-w-full min-w-6 shrink-[0.001] items-center justify-center gap-1 rounded border px-2 py-[3px] text-[12px] leading-[1.25] font-medium tabular-nums',
         tagClass[tint],
       )}
     >

@@ -142,7 +142,7 @@ export function BillsPage({ user }: { user: StaffUser }) {
   const sum = (xs: { amount: number }[]) => xs.reduce((s, x) => s + x.amount, 0)
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="bills">
-      <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
+      <main className="pc:px-8 pc:pb-10 relative flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
         <PageBanner
           icon={Receipt}
           tint="coral"
@@ -216,7 +216,7 @@ export function BillsPage({ user }: { user: StaffUser }) {
                       {t('finance.cols.amount')}
                     </th>
                     <th className={cn(tableHead, 'text-right')}>{t('finance.toCollect')}</th>
-                    <th className={cn(tableHead, 'w-0')}>
+                    <th className={cn(tableHead, 'hidden w-0 sm:table-cell')}>
                       <span className="sr-only">{t('home.takePayment')}</span>
                     </th>
                   </tr>
@@ -242,6 +242,9 @@ export function BillsPage({ user }: { user: StaffUser }) {
                                 : ''}
                             </span>
                           </span>
+                          <span className="basis-full sm:hidden">
+                            <VisitLink encounterId={b.encounterId} canTake={canTake} />
+                          </span>
                         </span>
                       </td>
                       <td
@@ -260,22 +263,13 @@ export function BillsPage({ user }: { user: StaffUser }) {
                       >
                         {formatRwf(b.balance)}
                       </td>
-                      <td className={cn(tableCell, 'text-right whitespace-nowrap')}>
-                        <StaffLink
-                          to="/app/visit"
-                          search={{ encounter: b.encounterId }}
-                          className={buttonVariants({
-                            variant: canTake ? 'success' : 'tint-blue',
-                            size: 'sm',
-                          })}
-                        >
-                          {canTake ? (
-                            <Wallet size={14} aria-hidden="true" />
-                          ) : (
-                            <ArrowUpRight size={14} aria-hidden="true" />
-                          )}
-                          {t(canTake ? 'home.takePayment' : 'finance.openVisit')}
-                        </StaffLink>
+                      <td
+                        className={cn(
+                          tableCell,
+                          'hidden text-right whitespace-nowrap sm:table-cell',
+                        )}
+                      >
+                        <VisitLink encounterId={b.encounterId} canTake={canTake} />
                       </td>
                     </tr>
                   ))}
@@ -290,6 +284,26 @@ export function BillsPage({ user }: { user: StaffUser }) {
         <DebtsPanel canTake={canTake} i={4} />
       </main>
     </StaffShell>
+  )
+}
+
+/** "Take payment" (or "Open the visit" for someone who may not take payments) of a bill's row:
+ *  in the last column, and on a phone under the patient. */
+function VisitLink({ encounterId, canTake }: { encounterId: string; canTake: boolean }) {
+  const { t } = useTranslation()
+  return (
+    <StaffLink
+      to="/app/visit"
+      search={{ encounter: encounterId }}
+      className={buttonVariants({ variant: canTake ? 'success' : 'tint-blue', size: 'sm' })}
+    >
+      {canTake ? (
+        <Wallet size={14} aria-hidden="true" />
+      ) : (
+        <ArrowUpRight size={14} aria-hidden="true" />
+      )}
+      {t(canTake ? 'home.takePayment' : 'finance.openVisit')}
+    </StaffLink>
   )
 }
 
@@ -336,7 +350,7 @@ export function DebtsPanel({ canTake, i = 2 }: { canTake: boolean; i?: number })
               <tr>
                 <th className={tableHead}>{t('finance.cols.patient')}</th>
                 <th className={cn(tableHead, 'text-right')}>{t('finance.cols.amount')}</th>
-                <th className={cn(tableHead, 'w-0')}>
+                <th className={cn(tableHead, 'hidden w-0 sm:table-cell')}>
                   <span className="sr-only">{t('home.takePayment')}</span>
                 </th>
               </tr>
@@ -379,6 +393,9 @@ export function DebtsPanel({ canTake, i = 2 }: { canTake: boolean; i?: number })
                             </span>
                           )}
                         </span>
+                        <span className="basis-full sm:hidden">
+                          <VisitLink encounterId={d.encounterId} canTake={canTake} />
+                        </span>
                       </span>
                     </td>
                     <td
@@ -389,22 +406,10 @@ export function DebtsPanel({ canTake, i = 2 }: { canTake: boolean; i?: number })
                     >
                       {formatRwf(d.amount)}
                     </td>
-                    <td className={cn(tableCell, 'text-right whitespace-nowrap')}>
-                      <StaffLink
-                        to="/app/visit"
-                        search={{ encounter: d.encounterId }}
-                        className={buttonVariants({
-                          variant: canTake ? 'success' : 'tint-blue',
-                          size: 'sm',
-                        })}
-                      >
-                        {canTake ? (
-                          <Wallet size={14} aria-hidden="true" />
-                        ) : (
-                          <ArrowUpRight size={14} aria-hidden="true" />
-                        )}
-                        {t(canTake ? 'home.takePayment' : 'finance.openVisit')}
-                      </StaffLink>
+                    <td
+                      className={cn(tableCell, 'hidden text-right whitespace-nowrap sm:table-cell')}
+                    >
+                      <VisitLink encounterId={d.encounterId} canTake={canTake} />
                     </td>
                   </tr>
                 )
@@ -535,7 +540,7 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
 
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="payments">
-      <main className="pc:px-8 pc:pb-10 flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4 print:overflow-visible">
+      <main className="pc:px-8 pc:pb-10 relative flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4 print:overflow-visible">
         <PageBanner
           icon={HandCoins}
           tint="mint"
@@ -631,11 +636,13 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
         )}
         {(s?.counterToPay ?? []).length > 0 && day === today() && (
           <p className="border-amber/30 bg-amber-bg text-amber m-0 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-[14px] font-medium print:hidden">
-            <ShoppingBag size={16} aria-hidden="true" />
-            {t('cashierDesk.counter.waitingNote', {
-              count: s!.counterToPay!.length,
-              amount: formatRwf(s!.counterToPay!.reduce((a, c) => a + c.total, 0)),
-            })}
+            <ShoppingBag size={16} aria-hidden="true" className="flex-none" />
+            <span className="min-w-0 flex-[1_1_12rem]">
+              {t('cashierDesk.counter.waitingNote', {
+                count: s!.counterToPay!.length,
+                amount: formatRwf(s!.counterToPay!.reduce((a, c) => a + c.total, 0)),
+              })}
+            </span>
             <StaffLink
               to="/app/bills"
               className={buttonVariants({ size: 'sm', variant: 'tint-amber' })}
@@ -652,11 +659,11 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
               {s.byCashier.map((c) => (
                 <span
                   key={c.name}
-                  className="border-border bg-card inline-flex min-h-10 items-center gap-2 rounded-md border py-1 pr-3 pl-1 text-[14px]"
+                  className="border-border bg-card inline-flex min-h-10 max-w-full items-center gap-2 rounded-md border py-1 pr-3 pl-1 text-[14px]"
                 >
                   <IconChip icon={UserRound} tint="teal" size="sm" />
-                  <b>{c.name}</b>
-                  <span className="tabular-nums">{formatRwf(c.amount)}</span>
+                  <b className="min-w-0 break-words">{c.name}</b>
+                  <span className="whitespace-nowrap tabular-nums">{formatRwf(c.amount)}</span>
                   <span className="text-ink-3 text-[12px]">({c.count})</span>
                 </span>
               ))}
@@ -706,7 +713,7 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
                         <td
                           className={cn(
                             tableFirstCell,
-                            'text-ink-2 whitespace-nowrap tabular-nums',
+                            'text-ink-2 min-w-0 whitespace-nowrap tabular-nums',
                           )}
                         >
                           {whenOf(p.at)}
@@ -716,12 +723,14 @@ export function PaymentsPage({ user }: { user: StaffUser }) {
                             {p.patient || (p.counterSale ? t('cashierDesk.counter.walkIn') : '—')}
                           </span>
                           {p.counterSale ? (
-                            <span className="text-ink-3 inline-flex items-center gap-1 text-[12px]">
+                            <span className="text-ink-3 inline-flex items-center gap-1 text-[12px] whitespace-nowrap">
                               <ShoppingBag size={12} aria-hidden="true" />
                               {t('cashierDesk.counter.saleLine', { number: p.counterSale })}
                             </span>
                           ) : (
-                            <span className="text-ink-3 text-[12px]">{p.fileNumber}</span>
+                            <span className="text-ink-3 text-[12px] whitespace-nowrap">
+                              {p.fileNumber}
+                            </span>
                           )}
                         </td>
                         <td className={tableCell}>

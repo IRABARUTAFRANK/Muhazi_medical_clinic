@@ -41,7 +41,7 @@ import { kigaliToday } from '@/lib/clock'
 import { taxesReport } from '@/lib/reports/build'
 import { cn } from '@/lib/utils'
 import { Note, PanelForm, ReportsLink } from './accounts-kit'
-import { METHODS, STATUSES, STATUS_TONE, errText, type Msg } from './accounts-tabs'
+import { METHODS, STATUSES, STATUS_TONE, errText, figureAmount, type Msg } from './accounts-tabs'
 import { RemittancesPanel } from './remittances-panel'
 import { TaxBasePanel } from './tax-base-panel'
 
@@ -114,7 +114,7 @@ export function TaxesTab({ user, initialYear }: { user: StaffUser; initialYear?:
           <Empty icon={Percent}>{t('accounts.taxes.none')}</Empty>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-[14px]">
+            <table className="w-full border-collapse text-[14px] [&_td]:px-2 [&_th]:px-2 [&_th]:py-1.5 [&_th]:leading-tight [&_th]:whitespace-normal">
               <thead className="bg-surface">
                 <tr className="border-border border-b">
                   <th className={tableHead}>{t('accounts.taxes.cols.tax')}</th>
@@ -139,7 +139,7 @@ export function TaxesTab({ user, initialYear }: { user: StaffUser; initialYear?:
                       : undefined
                   return (
                     <tr key={x.id} className={tableRow}>
-                      <td className={tableFirstCell}>
+                      <td className={cn(tableFirstCell, 'min-w-32')}>
                         {(i === 0 || taxes[i - 1]?.kind !== x.kind) && (
                           <span className="text-violet mb-0.5 block text-[11px] font-semibold tracking-wide uppercase">
                             {t(`accounts.taxes.kinds.${x.kind}`)}
@@ -148,29 +148,31 @@ export function TaxesTab({ user, initialYear }: { user: StaffUser; initialYear?:
                         {x.name}
                         {x.note && <span className="text-ink-3 block text-[12px]">{x.note}</span>}
                       </td>
-                      <td className={cn(tableCell, 'min-w-44 font-semibold tabular-nums')}>
+                      <td className={cn(tableCell, 'min-w-32 font-semibold tabular-nums')}>
                         {taxHowWords(t, x)}
                         <span className="text-ink-3 block text-[12px] font-normal">
                           {intervalWords(t, x.intervalKind, x.customEvery, x.customUnit)}
                         </span>
                       </td>
-                      <td className={cn(tableCell, 'whitespace-nowrap')}>
-                        {x.nextDue ? formatDate(new Date(x.nextDue)) : '—'}
-                        {x.overdue > 0 && (
-                          <Badge tone="red" className="ml-2">
-                            {t('accounts.salaries.overdueCount', { count: x.overdue })}
-                          </Badge>
-                        )}
+                      <td className={tableCell}>
+                        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="whitespace-nowrap">
+                            {x.nextDue ? formatDate(new Date(x.nextDue)) : '—'}
+                          </span>
+                          {x.overdue > 0 && (
+                            <Badge tone="red">
+                              {t('accounts.salaries.overdueCount', { count: x.overdue })}
+                            </Badge>
+                          )}
+                        </span>
                         {next?.amount != null && (
-                          <span className="text-ink-2 block text-[12px] tabular-nums">
+                          <span className="text-ink-2 block text-[12px] whitespace-nowrap tabular-nums">
                             {formatRwf(next.amount)}
                             {next.running ? ` ${t('accounts.taxes.soFar')}` : ''}
                           </span>
                         )}
                       </td>
-                      <td className={cn(tableCell, 'text-right tabular-nums')}>
-                        {formatRwf(x.paidThisYear)}
-                      </td>
+                      <td className={figureAmount}>{formatRwf(x.paidThisYear)}</td>
                       <td className={tableCell}>
                         <span className="flex flex-wrap gap-1">
                           {STATUSES.map((s) => {
@@ -448,7 +450,7 @@ function TaxPanel({
                           </span>
                         ))}
                       </td>
-                      <td className={tableCell}>
+                      <td className={cn(tableCell, 'max-sm:min-w-48')}>
                         <Badge tone={STATUS_TONE[x.status]}>
                           {t(`accounts.status.${x.status}`)}
                         </Badge>
@@ -669,7 +671,9 @@ function TaxForm({
               </p>
             )}
           </div>
+          {/* the custom interval's words are long: its select takes the whole row */}
           <Select
+            wrapperClassName={interval === 'custom' ? 'sm:col-span-2' : undefined}
             label={t('accounts.salaries.cols.interval')}
             value={interval}
             onChange={(e) => setInterval(e.target.value as SalaryInterval)}
@@ -690,6 +694,7 @@ function TaxForm({
                 onChange={(e) => setEvery(e.target.value.replace(/[^\d]/g, '').slice(0, 3))}
               />
               <Select
+                wrapperClassName="min-w-0 flex-1"
                 label={t('accounts.salaries.customUnit')}
                 value={unit}
                 onChange={(e) => setUnit(e.target.value as CustomUnit)}

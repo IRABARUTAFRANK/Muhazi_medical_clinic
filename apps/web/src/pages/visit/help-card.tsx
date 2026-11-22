@@ -1,17 +1,110 @@
 import { useState } from 'react'
-import { HandHelping, Send, X } from 'lucide-react'
+import { Check, HandHelping, Send, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader } from '@/components/ui/card'
 import { Flash } from '@/components/ui/flash'
-import { useCallActions, type VisitAccess } from '@/lib/api/calls'
+import { useCallActions, useMyCalls, type VisitAccess } from '@/lib/api/calls'
 import { useColleagues } from '@/lib/api/referrals'
 import { useConfirm } from '@/lib/confirm'
 
 const control =
   'border-border bg-card text-ink focus:border-primary h-10 w-full rounded-md border px-2.5 text-[14px] outline-none'
+
+/**
+ * A colleague asked for my help on this patient and waits for my answer: the request, with Accept
+ * and Decline, on the visit screen itself. Before, the answer could only be given from the
+ * "Calls and help" panel of the home page: someone who opened the patient from "In clinic" saw
+ * the visit as read only ("the patient is with …") and nothing said a request was waiting, while
+ * the colleague's screen kept showing "waiting". Shows nothing when no request waits for me here.
+ */
+export function HelpAsked({ encounterId, user }: { encounterId: string; user: StaffUser }) {
+  const { t } = useTranslation()
+  const actions = useCallActions()
+  const confirm = useConfirm()
+  const { data: calls } = useMyCalls(user.role)
+  const [error, setError] = useState<string | null>(null)
+  const asked = (calls?.incoming ?? []).filter(
+    (c) => c.kind === 'help' && c.status === 'open' && c.encounterId === encounterId,
+  )
+  if (!asked.length && !error) return null
+  const answer = async (callId: string, accept: boolean) => {
+    setError(null)
+    try {
+      await actions.respond.mutateAsync({ callId, accept })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+  return (
+    <>
+      {error && <Flash tone="error">{error}</Flash>}
+      {asked.map((c) => (
+        <div
+          key={c.id}
+          role="status"
+          className="border-red/30 bg-red-bg/40 text-ink flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border px-3 py-2.5 text-[14px]"
+        >
+          <HandHelping size={18} aria-hidden="true" className="text-red flex-none" />
+          <span className="min-w-0 flex-[1_1_16rem]">
+            <b className="block">
+              {t('calls.help.incoming', {
+                name: c.fromName,
+                patient: `${c.patientName ?? ''}${c.ticket ? ` (${c.ticket})` : ''}`,
+              })}
+            </b>
+            {c.note && <span className="text-ink-2 block text-[13px]">“{c.note}”</span>}
+          </span>
+          <span className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="success"
+              disabled={actions.respond.isPending}
+              onClick={async () => {
+                if (
+                  await confirm({
+                    title: t('confirm.desks.calls.accept', {
+                      name: c.fromName,
+                      patient: c.patientName ?? '',
+                    }),
+                    body: t('confirm.desks.calls.acceptBody'),
+                    confirmLabel: t('confirm.desks.calls.acceptYes'),
+                  })
+                )
+                  void answer(c.id, true)
+              }}
+            >
+              <Check size={14} aria-hidden="true" />
+              {t('calls.help.accept')}
+            </Button>
+            {c.target === 'person' && (
+              <Button
+                size="sm"
+                variant="tint-coral"
+                disabled={actions.respond.isPending}
+                onClick={async () => {
+                  if (
+                    await confirm({
+                      title: t('confirm.desks.calls.decline', { name: c.fromName }),
+                      body: t('confirm.desks.calls.declineBody'),
+                      confirmLabel: t('confirm.desks.calls.declineYes'),
+                    })
+                  )
+                    void answer(c.id, false)
+                }}
+              >
+                <X size={14} aria-hidden="true" />
+                {t('calls.help.decline')}
+              </Button>
+            )}
+          </span>
+        </div>
+      ))}
+    </>
+  )
+}
 
 /**
  * "Ask a colleague for help" on the visit screen: one colleague or every doctor, with what the

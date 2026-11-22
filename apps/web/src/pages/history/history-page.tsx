@@ -119,7 +119,7 @@ export function HistoryPage({ user }: { user: StaffUser }) {
                   label={t('history.person')}
                   value={actor}
                   onChange={(e) => setActor(e.target.value)}
-                  wrapperClassName="w-full max-w-64"
+                  wrapperClassName="w-full max-w-80"
                 >
                   <option value="">{t('history.everyone')}</option>
                   {employees.map((e) => (
@@ -197,7 +197,11 @@ export function HistoryPage({ user }: { user: StaffUser }) {
                         className={cn(tableRow, 'anim-enter align-top')}
                         style={{ '--i': Math.min(i, 12) } as CSSProperties}
                       >
-                        <td className={cn(tableFirstCell, 'whitespace-nowrap tabular-nums')}>
+                        {/* a time, not a name: no wider than its words, the room goes to
+                            what happened */}
+                        <td
+                          className={cn(tableFirstCell, 'min-w-0 whitespace-nowrap tabular-nums')}
+                        >
                           <span className="block">{formatTime(at)}</span>
                           <span className="text-ink-3 block text-[12px] font-normal">
                             {formatDate(at)}

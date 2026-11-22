@@ -181,15 +181,18 @@ export function NurseTaskCard({
         </form>
       )}
       {mine.map((x) => (
-        <Row key={x.id} className="gap-3 py-2 text-[13px]">
+        <Row key={x.id} className="flex-wrap gap-x-3 gap-y-1.5 py-2 text-[13px]">
           <span
             className={
-              x.overdue ? 'text-red font-semibold tabular-nums' : 'text-ink-2 tabular-nums'
+              x.overdue
+                ? 'text-red font-semibold whitespace-nowrap tabular-nums'
+                : 'text-ink-2 whitespace-nowrap tabular-nums'
             }
           >
             {x.dueAt ? formatTime(new Date(x.dueAt)) : '—'}
           </span>
-          <span className="flex-1">
+          {/* the buttons go under the task on a phone instead of crushing its words */}
+          <span className="min-w-0 flex-[1_1_12rem]">
             {x.title}
             <span className="text-ink-3 block text-xs">
               {[

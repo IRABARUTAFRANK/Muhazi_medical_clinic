@@ -306,7 +306,7 @@ export function PermissionsCard() {
           )}
           {matrix && matrix.exceptions.length > 0 && (
             <div className="flex flex-col">
-              <span className="text-ink-3 border-border flex h-10 items-center border-b text-[12px]">
+              <span className="text-ink-3 border-border flex min-h-10 items-center border-b py-1 text-[12px]">
                 {t('perms.current')}
               </span>
               {matrix.exceptions.map((x) => (

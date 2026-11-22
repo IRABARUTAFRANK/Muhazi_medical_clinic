@@ -83,7 +83,7 @@ export function ArrivalFileCard({
     <Reveal focus block="nearest" className="basis-full">
       <div className="border-primary/30 wash wash-teal rounded-lg2 flex flex-col gap-3 border p-3">
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <span className="min-w-0 flex-1">
+          <span className="min-w-0 flex-[1_1_12rem]">
             <span className="block text-[14px] font-semibold">
               {t('patientFields.arrival.noFile', { name: appt.name })}
             </span>
@@ -160,7 +160,7 @@ export function ArrivalFileCard({
           </p>
         )}
         <div className="border-grid flex flex-wrap items-center gap-2 border-t pt-3">
-          <span className="text-ink-2 min-w-0 flex-1 text-[13px]">
+          <span className="text-ink-2 min-w-0 flex-[1_1_12rem] text-[13px]">
             {t('patientFields.arrival.newLead')}
           </span>
           <Button size="sm" variant="primary" onClick={() => setStep('new')}>

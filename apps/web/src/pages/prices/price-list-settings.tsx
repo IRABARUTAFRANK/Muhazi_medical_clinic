@@ -94,7 +94,13 @@ export function BookSettingsPanel({
           <Button type="button" variant="ghost" onClick={onClose}>
             {t('staff.form.cancel')}
           </Button>
-          <Button type="submit" form="price-list-settings" variant="primary" loading={busy}>
+          <Button
+            type="submit"
+            form="price-list-settings"
+            variant="primary"
+            className="min-w-0 shrink"
+            loading={busy}
+          >
             <Save size={16} aria-hidden="true" />
             {t('prices.lists.saveSettings')}
           </Button>

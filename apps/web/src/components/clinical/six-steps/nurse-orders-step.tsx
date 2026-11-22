@@ -156,7 +156,11 @@ export function NurseOrdersStep({
   const notWhole = f.kind === 'drug' && (!Number.isInteger(here) || !Number.isInteger(home))
   const blocked =
     f.kind === 'drug' && (notWhole || summary.tone === 'short' || summary.tone === 'wholePacks')
-  const rest = f.where === 'both' && !notWhole ? restOfBox(here, pack?.size) : null
+  const restAll = f.where === 'both' && !notWhole ? restOfBox(here, pack?.size) : null
+  // offered only when the stock really holds the rest of the box (1 tablet left of a box of 100
+  // must not offer "the rest of the box goes home (99)")
+  const rest =
+    restAll != null && summary.left != null && here + restAll > summary.left ? null : restAll
   // the take-home pieces in boxes ("1 box of 20"), when they make one or more
   const homeBoxes =
     pack && home > 0 && !notWhole ? packsText(t, home, pack.size, pack.packUnit) : null
@@ -189,7 +193,7 @@ export function NurseOrdersStep({
               n == null
                 ? null
                 : n > 0
-                  ? t('nurseOrders.inStock', { count: n })
+                  ? t('nurseOrders.inStock', { count: n, unit: piece })
                   : t('nurseOrders.noStock'),
               p
                 ? t('nurseOrders.boxOf', {
@@ -469,7 +473,7 @@ export function NurseOrdersStep({
                       title={t('nurseOrders.howAtHome')}
                       hint={t('nurseOrders.howAtHomeHint')}
                     />
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
                       <Field
                         label={t('nurseOrders.homeDose')}
                         value={f.homeDose}

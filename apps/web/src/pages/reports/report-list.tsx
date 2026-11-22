@@ -13,7 +13,8 @@ import { GROUP_LOOK } from './report-look'
 
 /**
  * The reports the person may run, grouped (Patients, Finance, Pharmacy…) with each group's
- * icon, and a search box. On a phone and a tablet the list is one select above the report.
+ * icon, and a search box. Under 1280 px (a phone, a tablet, a small laptop beside the app's
+ * sidebar) the list is one select above the report.
  */
 export function ReportList({
   reports,
@@ -33,10 +34,10 @@ export function ReportList({
   })).filter((x) => x.items.length > 0)
   return (
     <>
-      {/* phones and tablets: one select */}
+      {/* under 1280 px: one select */}
       <Select
         label={t('reports.ui.chooseReport')}
-        wrapperClassName="lg:hidden"
+        wrapperClassName="xl:hidden"
         value={current ?? ''}
         onChange={(e) => e.target.value && onPick(e.target.value)}
       >
@@ -57,7 +58,7 @@ export function ReportList({
 
       <nav
         aria-label={t('reports.ui.listLabel')}
-        className={cn(card, 'sticky top-0 hidden gap-2 p-3 lg:flex')}
+        className={cn(card, 'sticky top-0 hidden gap-2 p-3 xl:flex')}
       >
         <label className="relative block">
           <span className="sr-only">{t('reports.ui.search')}</span>

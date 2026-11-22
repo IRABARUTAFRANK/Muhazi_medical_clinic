@@ -103,7 +103,7 @@ export function IdentityBanner({ user, greeting }: { user: StaffUser; greeting: 
           {user.name}
         </h1>
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-          <span className="inline-flex h-6 items-center gap-1 rounded border border-white/30 bg-white/25 px-2 text-[12px] leading-none font-semibold text-white">
+          <span className="inline-flex min-h-6 max-w-full items-center gap-1 rounded border border-white/30 bg-white/25 px-2 py-[3px] text-[12px] leading-[1.25] font-semibold text-white">
             <RoleIcon size={12} aria-hidden="true" />
             {roleLabel(user, t, specialty)}
           </span>

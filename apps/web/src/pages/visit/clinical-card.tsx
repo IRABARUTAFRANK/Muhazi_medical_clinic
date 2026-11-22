@@ -1561,7 +1561,7 @@ export function ClinicalCard({
             <legend className="text-ink-2 px-1 text-xs font-semibold">
               {t('clinical.medicineN', { n: i + 1 })}
             </legend>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
               <div className="col-span-2 flex min-w-0 flex-col gap-1.5">
                 <SearchSelect
                   label={t('clinical.medicine')}
@@ -1626,7 +1626,9 @@ export function ClinicalCard({
                 onChange={(e) => setLine(i, { days: e.target.value.replace(/[^\d]/g, '') })}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {/* the route and the frequency are sentences (“By mouth (oral)”, “Three times a day”): one
+                per line on a phone, two up to a wide screen, so the choice made is never cut */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <Field
                 label={t('clinical.dose')}
                 value={line.dose}
@@ -1685,7 +1687,9 @@ export function ClinicalCard({
                           if (refused?.key === line.key) setRefused(null)
                         }}
                         className={cn(
-                          'disabled:bg-hover disabled:text-ink-3 inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold disabled:cursor-not-allowed',
+                          // 22px corners: the same round ends on one line (36 px, 44 px on a touch screen), and room
+                          // for a long label on two
+                          'disabled:bg-hover disabled:text-ink-3 inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-[22px] border px-3 py-1 text-left text-[13px] leading-tight font-semibold disabled:cursor-not-allowed',
                           line.supply === k
                             ? k === 'outside'
                               ? 'border-orange bg-orange text-card'
@@ -1727,7 +1731,7 @@ export function ClinicalCard({
                 role="alert"
                 className="bg-red-bg text-red flex flex-wrap items-center gap-2 rounded-md px-3 py-2 text-[13px] font-semibold"
               >
-                <span className="min-w-0 flex-1">{refused.message}</span>
+                <span className="min-w-0 flex-[1_1_12rem]">{refused.message}</span>
                 <Button
                   size="sm"
                   onClick={() => {
@@ -1785,9 +1789,14 @@ export function ClinicalCard({
               const price = testPrice(s)
               const label = treatmentName(s, i18n.language)
               return (
-                <li key={s.id} className="anim-enter flex list-none items-center gap-3 px-3 py-2">
+                // on a phone the price and the cross go under the name (to the right) instead of
+                // squeezing it into a strip where a long word runs over the price
+                <li
+                  key={s.id}
+                  className="anim-enter flex list-none flex-wrap items-center gap-x-3 gap-y-0.5 px-3 py-2"
+                >
                   <FlaskConical size={15} aria-hidden="true" className="text-primary flex-none" />
-                  <span className="min-w-0 flex-1">
+                  <span className="min-w-0 flex-[1_1_9rem]">
                     <span className="block text-[14px] font-semibold">{label}</span>
                     <span className="text-ink-3 block text-xs">
                       {t(`register.stations.${s.orderStation}`, {
@@ -1795,7 +1804,7 @@ export function ClinicalCard({
                       })}
                     </span>
                   </span>
-                  <span className="text-ink-2 text-[13px] font-semibold whitespace-nowrap tabular-nums">
+                  <span className="text-ink-2 ml-auto text-[13px] font-semibold whitespace-nowrap tabular-nums">
                     {price != null ? formatRwf(price) : t('clinical.testNoPrice')}
                   </span>
                   <Button
@@ -2299,7 +2308,8 @@ export function ClinicalCard({
           {state === 'notGiven' && canOutside && !asking && (
             // the pharmacy could not give it: the patient may buy it outside
             <span className="bg-orange-bg text-orange border-orange/25 mt-1.5 flex flex-wrap items-center gap-2 rounded-md border px-2.5 py-1.5 text-[13px] font-semibold">
-              <span className="min-w-0 flex-1">{t('clinical.sendOutsideCall')}</span>
+              {/* the button goes under the sentence on a phone instead of squeezing it into a strip */}
+              <span className="min-w-0 flex-[1_1_12rem]">{t('clinical.sendOutsideCall')}</span>
               <Button
                 size="sm"
                 onClick={() => void decideSupply(r, 'outside')}
@@ -2389,80 +2399,92 @@ export function ClinicalCard({
             </Reveal>
           )}
         </span>
-        {canCancel && !asking && (
-          <Button
-            size="sm"
-            variant="danger"
-            title={t('clinical.cancelRxHint')}
-            onClick={() => {
-              setReasonFor({ id: r.id, kind: 'cancel' })
-              setReason('')
-            }}
-          >
-            <XCircle size={14} aria-hidden="true" />
-            {t('clinical.cancelRx')}
-          </Button>
-        )}
-        {state === 'waiting' && canOutside && !asking && (
-          <Button
-            size="sm"
-            variant="ghost"
-            title={t('clinical.buyOutsideHint')}
-            onClick={() => void decideSupply(r, 'outside')}
-          >
-            <Store size={14} aria-hidden="true" />
-            {t('clinical.buyOutside')}
-          </Button>
-        )}
-        {canClinic && !asking && (
-          <Button
-            size="sm"
-            variant="ghost"
-            title={t('clinical.giveAtClinicHint')}
-            onClick={() => void decideSupply(r, 'pharmacy')}
-          >
-            <Pill size={14} aria-hidden="true" />
-            {t('clinical.giveAtClinic')}
-          </Button>
-        )}
-        {canReturn && !asking && (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              setReasonFor({ id: r.id, kind: 'return' })
-              setReason('')
-            }}
-          >
-            {t('clinical.returnMedicine')}
-          </Button>
-        )}
-        {canUndo && !asking && (
-          <Button
-            size="sm"
-            variant="ghost"
-            title={t('clinical.undoHereHint')}
-            onClick={() => {
-              setReasonFor({ id: r.id, kind: 'undo' })
-              setReason('')
-            }}
-          >
-            {t('clinical.undoHere')}
-          </Button>
-        )}
+        {/* the line's buttons stay together: when the row is too narrow they go under the
+            medicine as one group (not one beside it and the other alone on the next line) */}
+        {!asking &&
+          (canCancel ||
+            (state === 'waiting' && canOutside) ||
+            canClinic ||
+            canReturn ||
+            canUndo) && (
+            <span className="flex max-w-full flex-wrap items-center gap-x-3 gap-y-2">
+              {canCancel && (
+                <Button
+                  size="sm"
+                  variant="danger"
+                  title={t('clinical.cancelRxHint')}
+                  onClick={() => {
+                    setReasonFor({ id: r.id, kind: 'cancel' })
+                    setReason('')
+                  }}
+                >
+                  <XCircle size={14} aria-hidden="true" />
+                  {t('clinical.cancelRx')}
+                </Button>
+              )}
+              {state === 'waiting' && canOutside && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  title={t('clinical.buyOutsideHint')}
+                  onClick={() => void decideSupply(r, 'outside')}
+                >
+                  <Store size={14} aria-hidden="true" />
+                  {t('clinical.buyOutside')}
+                </Button>
+              )}
+              {canClinic && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  title={t('clinical.giveAtClinicHint')}
+                  onClick={() => void decideSupply(r, 'pharmacy')}
+                >
+                  <Pill size={14} aria-hidden="true" />
+                  {t('clinical.giveAtClinic')}
+                </Button>
+              )}
+              {canReturn && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setReasonFor({ id: r.id, kind: 'return' })
+                    setReason('')
+                  }}
+                >
+                  {t('clinical.returnMedicine')}
+                </Button>
+              )}
+              {canUndo && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  title={t('clinical.undoHereHint')}
+                  onClick={() => {
+                    setReasonFor({ id: r.id, kind: 'undo' })
+                    setReason('')
+                  }}
+                >
+                  {t('clinical.undoHere')}
+                </Button>
+              )}
+            </span>
+          )}
       </Row>
     )
   }
   const renderOrder = (o: TestOrder) => (
-    <Row key={o.id} className="gap-3 py-2">
-      <Badge tone={o.result ? 'green' : 'blue'} dot={false}>
+    // wraps on a phone: the button goes under the test instead of crushing its words
+    <Row key={o.id} className="flex-wrap items-start gap-3 py-2">
+      <Badge tone={o.result ? 'green' : 'blue'} dot={false} className="mt-0.5">
         {o.station
           ? t(`register.stations.${o.station}`, { defaultValue: o.station })
           : o.category === 'imaging'
             ? t('register.stations.ultrasound')
             : t('register.stations.laboratory')}
       </Badge>
-      <span className="min-w-0 flex-1">
+      <span className="min-w-0 flex-[1_1_14rem]">
         <span className="block font-semibold">
           {o.test} <span className="text-ink-3 text-xs">· {t(`clinical.status.${o.status}`)}</span>
         </span>
@@ -2497,9 +2519,11 @@ export function ClinicalCard({
           patientName={patient?.name}
         />
         {o.result && (
-          <span className="bg-green-bg/60 mt-1 block rounded-md px-2.5 py-1.5 text-[13px]">
+          // "Open wide" at the top right; in a narrow box it takes its own line and the result
+          // keeps the whole width (it used to float, squeezing the words beside it letter by letter)
+          <span className="bg-green-bg/60 mt-1 flex flex-row-reverse flex-wrap items-start gap-x-2 gap-y-0.5 rounded-md px-2.5 py-1.5 text-[13px]">
             {/* 0150: the result at reading size, in a panel */}
-            <span className="float-right ml-2">
+            <span className="flex-none">
               <WideResult
                 result={{
                   test: o.test,
@@ -2522,26 +2546,28 @@ export function ClinicalCard({
                 }}
               />
             </span>
-            {o.result.detail?.region && (
-              <span className="text-ink-2 block text-xs font-semibold">
-                {t('clinical.region')}: {o.result.detail.region}
+            <span className="min-w-0 flex-[1_1_8rem]">
+              {o.result.detail?.region && (
+                <span className="text-ink-2 block text-xs font-semibold">
+                  {t('clinical.region')}: {o.result.detail.region}
+                </span>
+              )}
+              {o.result.findings && <span className="block">{o.result.findings}</span>}
+              {o.result.impression && (
+                <span className="block font-semibold">{o.result.impression}</span>
+              )}
+              <span className="text-ink-3 block text-xs">
+                {[
+                  o.result.verified ? t('clinical.verified') : t('clinical.notVerified'),
+                  o.result.corrected
+                    ? t('clinical.correctedWhy', { reason: o.result.correctionReason ?? '' })
+                    : null,
+                  o.result.by,
+                  o.result.at ? when(o.result.at) : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
               </span>
-            )}
-            {o.result.findings && <span className="block">{o.result.findings}</span>}
-            {o.result.impression && (
-              <span className="block font-semibold">{o.result.impression}</span>
-            )}
-            <span className="text-ink-3 block text-xs">
-              {[
-                o.result.verified ? t('clinical.verified') : t('clinical.notVerified'),
-                o.result.corrected
-                  ? t('clinical.correctedWhy', { reason: o.result.correctionReason ?? '' })
-                  : null,
-                o.result.by,
-                o.result.at ? when(o.result.at) : null,
-              ]
-                .filter(Boolean)
-                .join(' · ')}
             </span>
           </span>
         )}
@@ -2644,7 +2670,7 @@ export function ClinicalCard({
                   />
                 </label>
               )}
-              <span className="flex gap-2">
+              <span className="flex flex-wrap gap-2">
                 <Button
                   type="submit"
                   size="sm"

@@ -164,7 +164,9 @@ export function PatientFieldsCard() {
           <p className="text-ink-3 m-0 text-[13px]">{t('patientFields.settings.builtinHint')}</p>
           <div className="border-border bg-hover/50 text-ink-2 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-[14px]">
             <Lock size={14} aria-hidden="true" className="text-ink-3 flex-none" />
-            <span className="min-w-0 flex-1 font-medium">{t('patientFields.settings.core')}</span>
+            <span className="min-w-[min(12rem,100%)] flex-1 font-medium">
+              {t('patientFields.settings.core')}
+            </span>
             <span className="text-ink-3 text-[13px]">{t('patientFields.settings.coreState')}</span>
           </div>
           {shownStates && (
@@ -226,10 +228,10 @@ export function PatientFieldsCard() {
           {fields.map((f, i) => (
             <div
               key={i}
-              className="border-grid grid grid-cols-1 items-end gap-3 border-b pb-3 last-of-type:border-b-0 last-of-type:pb-0 sm:grid-cols-[auto_minmax(0,2fr)_minmax(0,1fr)_minmax(0,2fr)_auto]"
+              className="border-grid grid grid-cols-1 items-end gap-3 border-b pb-3 last-of-type:border-b-0 last-of-type:pb-0 @2xl:grid-cols-[auto_minmax(0,2fr)_minmax(9rem,1fr)_minmax(0,2fr)_auto]"
             >
               {/* the order the forms show the fields in */}
-              <span className="flex gap-1 sm:flex-col">
+              <span className="flex gap-1 @2xl:flex-col">
                 <Button
                   size="icon"
                   variant="ghost"
@@ -276,7 +278,7 @@ export function PatientFieldsCard() {
                   placeholder={t('settings.patientFields.optionsPh')}
                 />
               ) : (
-                <span className="text-ink-3 hidden text-xs sm:block">
+                <span className="text-ink-3 hidden text-xs @2xl:block">
                   {t(`settings.patientFields.hints.${f.type}`)}
                 </span>
               )}
@@ -290,7 +292,7 @@ export function PatientFieldsCard() {
               >
                 <Trash2 size={16} aria-hidden="true" />
               </Button>
-              <span className="flex flex-col gap-1.5 sm:col-span-5">
+              <span className="flex flex-col gap-1.5 @2xl:col-span-5">
                 <label className="text-ink-2 flex items-start gap-2 text-[14px]">
                   <input
                     type="checkbox"

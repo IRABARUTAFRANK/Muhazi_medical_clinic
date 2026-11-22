@@ -178,7 +178,8 @@ export function ReasonBox({
                 type="button"
                 onClick={() => setReason(c)}
                 className={cn(
-                  'inline-flex h-7 items-center rounded border px-2.5 text-[12px] font-medium transition-colors duration-120',
+                  // a reason can be a long sentence: the tag grows instead of letting it stick out
+                  'inline-flex min-h-7 items-center rounded border px-2.5 py-0.5 text-left text-[12px] leading-tight font-medium transition-colors duration-120',
                   reason === c
                     ? 'border-primary/30 bg-primary-tint text-primary'
                     : 'border-border text-ink-2 hover:bg-hover',

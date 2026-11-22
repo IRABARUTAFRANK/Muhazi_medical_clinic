@@ -57,7 +57,7 @@ export function QtyModeToggle({
       role="radiogroup"
       aria-label={tx(t, 'stockShared.packs.countIn', 'Count in')}
       className={cn(
-        'border-border bg-surface inline-flex h-8 flex-none items-center gap-0.5 rounded-md border p-0.5',
+        'border-border bg-surface coarse:h-auto inline-flex h-8 flex-none items-center gap-0.5 rounded-md border p-0.5',
         className,
       )}
     >

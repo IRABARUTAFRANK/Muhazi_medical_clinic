@@ -1,4 +1,11 @@
-import { createElement, useEffect, useRef, useState, type CSSProperties } from 'react'
+import {
+  createElement,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react'
 import { LogIn, Tv, AudioLines, Volume2, VolumeX, WifiOff } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
@@ -45,7 +52,9 @@ import './display.css'
  * call always shows where everyone looks. Reads the board every 3 seconds;
  * a new call flashes, dings (Web Audio, unlocked by the Start button once) and is said aloud
  * (0118); a result ready is announced after the calls. A strip of results ready and the
- * scrolling line close the page. The languages rotate every 6 seconds. Nothing scrolls on a TV.
+ * scrolling line close the page. The languages rotate every 6 seconds. Nothing scrolls on a TV,
+ * so what is shown has to fit: a long call wraps, and the desk under it then draws a little
+ * smaller (fitStage) and lists the patients that fit whole, the others counted in "and N more".
  */
 
 const LANG_EVERY_MS = 6_000
@@ -58,6 +67,10 @@ const FLASH_MS = 6_000
 const CHIME_MS = 1_100
 /** The scrolling line's speed. */
 const TICKER_PX_PER_S = 75
+/** A desk lists at most this many next patients (fewer when the screen has no room for them). */
+const MAX_ROWS = 6
+/** The smallest the call and the desk are drawn (× their normal size) to make room. */
+const MIN_FIT = 0.6
 const SOUND_KEY = 'mmc.display.sound'
 /** Intl locales for the clock and the date (Kinyarwanda falls back to the English pattern). */
 const LOCALE: Record<Lang, string> = { rw: 'rw-RW', en: 'en-GB', fr: 'fr-FR' }
@@ -456,6 +469,42 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
     month: 'long',
     timeZone: 'Africa/Kigali',
   }).format(now)
+  // the fonts of the screen arrive after the first paint: the sizes are measured again then
+  const [fonts, setFonts] = useState(0)
+  useEffect(() => {
+    const set = document.fonts
+    if (!set) return
+    let on = true
+    const loaded = () => {
+      if (on) setFonts((k) => k + 1)
+    }
+    void set.ready.then(loaded)
+    set.addEventListener?.('loadingdone', loaded)
+    return () => {
+      on = false
+      set.removeEventListener?.('loadingdone', loaded)
+    }
+  }, [])
+  // the window's size, so a resized window (a TV leaving full screen) is fitted again at once
+  const [box, setBox] = useState(() => `${window.innerWidth}x${window.innerHeight}`)
+  useEffect(() => {
+    const resized = () => setBox(`${window.innerWidth}x${window.innerHeight}`)
+    window.addEventListener('resize', resized)
+    return () => window.removeEventListener('resize', resized)
+  }, [])
+  // everything that changes what the middle of the page has to hold, or the room it has
+  const layoutKey = [
+    lang,
+    fonts,
+    box,
+    slides ? slide % slides : 0,
+    calls.map((c) => `${c.key}${c.n.started ? '+' : ''}`).join(','),
+    desks.map((d) => `${d.station}:${d.waiting}:${d.next.map((x) => x.id).join('.')}`).join(','),
+    results.length,
+    data?.ticker ? 1 : 0,
+    offline || stale ? 1 : 0,
+    speaking ? 1 : 0,
+  ].join('|')
 
   return (
     <div className="qd" lang={lang}>
@@ -536,17 +585,15 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
           …
         </p>
       ) : (
-        <main className="qd-stage">
-          <Banner calls={calls} fresh={freshKeys} t={t} lang={lang} />
-          {!busy ? (
-            <section className="qd-calm">
-              <h2>{t('display.noPatients')}</h2>
-              <p>{t('display.noPatientsLead')}</p>
-            </section>
-          ) : (
-            <SlideView desks={desks} index={slide % slides} t={t} />
-          )}
-        </main>
+        <Stage
+          calls={calls}
+          fresh={freshKeys}
+          desks={busy ? desks : []}
+          index={slides ? slide % slides : 0}
+          t={t}
+          lang={lang}
+          layoutKey={layoutKey}
+        />
       )}
 
       {data && <Foot data={data} t={t} />}
@@ -567,6 +614,109 @@ export function DisplayPage({ screenKey }: { screenKey: string }) {
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * Draws the call and the desk at the largest size, from 1 down to MIN_FIT, at which the desk's
+ * left part (the desk, the ticket being seen, the name) stays inside the slide and the list
+ * keeps room for a line. The sizes of display.css are multiplied by --qd-fit; at 1 (the usual
+ * case) nothing changes. A call that wraps over two lines, the earlier calls or two lines of
+ * results are what take the room away.
+ */
+function fitStage(stage: HTMLElement) {
+  const set = (v: number) => stage.style.setProperty('--qd-fit', String(v))
+  set(1)
+  const slide = stage.querySelector<HTMLElement>('.qd-slide')
+  const left = slide?.querySelector<HTMLElement>('.qd-slide-left')
+  if (!slide || !left) return
+  const list = slide.querySelector<HTMLElement>('.qd-slide-list')
+  const fits = () => {
+    const box = left.getBoundingClientRect()
+    const last = left.lastElementChild?.getBoundingClientRect()
+    const pad = parseFloat(getComputedStyle(left).paddingBottom) || 0
+    // the name under the ticket ends inside the part, and the part inside the slide
+    if (last && last.bottom + pad > box.bottom + 1) return false
+    if (box.bottom > slide.getBoundingClientRect().bottom + 1) return false
+    // the ticket and the desk's name are not wider than their column
+    for (const el of left.querySelectorAll<HTMLElement>('.qd-slide-ticket, .qd-slide-name'))
+      if (el.scrollWidth > el.clientWidth + 1) return false
+    // the list shows its first patient, and the line that counts the others
+    const first = list?.firstElementChild as HTMLElement | null | undefined
+    const end = list?.lastElementChild as HTMLElement | null | undefined
+    if (list && first && end) {
+      const need = first.offsetHeight + (end !== first ? end.offsetHeight : 0)
+      if (need > list.clientHeight + 1) return false
+    }
+    return true
+  }
+  if (fits()) return
+  let low = MIN_FIT
+  let high = 1
+  for (let i = 0; i < 6; i++) {
+    const mid = (low + high) / 2
+    set(mid)
+    if (fits()) low = mid
+    else high = mid
+  }
+  set(Math.round(low * 1000) / 1000)
+}
+
+/**
+ * The middle of the page: the call, then the desk of the slideshow (or "No patient waiting").
+ * After each change of what it shows, or of the window, it is fitted (fitStage) and the desk's
+ * list is shortened to the patients that fit whole: the others are counted in "and N more
+ * waiting", so no row is ever cut in half at the bottom of the card.
+ */
+function Stage({
+  calls,
+  fresh,
+  desks,
+  index,
+  t,
+  lang,
+  layoutKey,
+}: {
+  calls: Call[]
+  fresh: Set<string>
+  desks: BoardDesk[]
+  index: number
+  t: TFixed
+  lang: Lang
+  layoutKey: string
+}) {
+  const stage = useRef<HTMLElement>(null)
+  const fitted = useRef('')
+  const [shown, setShown] = useState({ key: '', rows: MAX_ROWS })
+  const rows = shown.key === layoutKey ? shown.rows : MAX_ROWS
+  useLayoutEffect(() => {
+    const el = stage.current
+    if (!el) return
+    // measured on the laid-out page before it is painted: one row fewer until the list fits
+    const measure = () => {
+      if (fitted.current !== layoutKey) {
+        fitted.current = layoutKey
+        fitStage(el)
+      }
+      const list = el.querySelector<HTMLElement>('.qd-slide-list')
+      const over = !!list && list.scrollHeight > list.clientHeight + 1
+      if (over && rows > 1) setShown({ key: layoutKey, rows: rows - 1 })
+      else if (shown.key !== layoutKey) setShown({ key: layoutKey, rows })
+    }
+    measure()
+  }, [layoutKey, rows, shown.key])
+  return (
+    <main className="qd-stage" ref={stage}>
+      <Banner calls={calls} fresh={fresh} t={t} lang={lang} />
+      {desks.length === 0 ? (
+        <section className="qd-calm">
+          <h2>{t('display.noPatients')}</h2>
+          <p>{t('display.noPatientsLead')}</p>
+        </section>
+      ) : (
+        <SlideView desks={desks} index={index} rows={rows} t={t} />
+      )}
+    </main>
   )
 }
 
@@ -609,9 +759,9 @@ function Banner({
           <>
             <div className="qd-banner-main">
               <p className="qd-banner-label">{t('display.nowCalling')}</p>
-              <p className="qd-banner-who">
-                {latest.n.ticket}
-                {latest.n.name ? ` · ${latest.n.name}` : ''}
+              <p className="qd-banner-who qd-pair">
+                <span>{latest.n.ticket}</span>
+                {latest.n.name && <span className="has-dot">{latest.n.name}</span>}
               </p>
             </div>
             <div className="qd-banner-to">
@@ -661,12 +811,12 @@ function NextRows({ desk, rows, t }: { desk: BoardDesk; rows: number; t: TFixed 
             <span className="qd-row-ticket num">{n.ticket}</span>
           </span>
           <span className="qd-row-name">
-            {n.name ?? ''}
+            {n.name && <span>{n.name}</span>}
             {n.priority < 3 && (
-              <>
-                {n.name ? ' · ' : ''}
+              <span className="qd-row-level">
+                {n.name ? '· ' : ''}
                 {t(`triage.levels.${n.priority === 1 ? 'red' : 'yellow'}`)}
-              </>
+              </span>
             )}
           </span>
         </li>
@@ -676,8 +826,18 @@ function NextRows({ desk, rows, t }: { desk: BoardDesk; rows: number; t: TFixed 
   )
 }
 
-/** One desk at a time, large: who is being seen, and up to six next. */
-function SlideView({ desks, index, t }: { desks: BoardDesk[]; index: number; t: TFixed }) {
+/** One desk at a time, large: who is being seen, and up to six next (`rows`: those that fit). */
+function SlideView({
+  desks,
+  index,
+  rows,
+  t,
+}: {
+  desks: BoardDesk[]
+  index: number
+  rows: number
+  t: TFixed
+}) {
   const d = desks[index] ?? desks[0]
   if (!d) return null
   const name = deskNameOf(d, t)
@@ -701,11 +861,14 @@ function SlideView({ desks, index, t }: { desks: BoardDesk[]; index: number; t: 
           <div>
             <div className="qd-label">{t('display.nowServing')}</div>
             {seen && <div className="qd-slide-ticket num">{seen.ticket}</div>}
-            <div className="qd-slide-who">
-              {seen ? (seen.name ?? '') : t('display.noOneCalled')}
+            <div className="qd-slide-who qd-pair">
+              {seen ? (
+                seen.name && <span>{seen.name}</span>
+              ) : (
+                <span>{t('display.noOneCalled')}</span>
+              )}
               {seen?.person && (
-                <span className="qd-serving-with">
-                  {seen.name ? ' · ' : ''}
+                <span className={cn('qd-serving-with', seen.name && 'has-dot')}>
                   {t('display.with', { person: seen.person })}
                 </span>
               )}
@@ -715,7 +878,7 @@ function SlideView({ desks, index, t }: { desks: BoardDesk[]; index: number; t: 
         <div className="qd-slide-right">
           <div className="qd-label">{t('display.waiting', { count: d.waiting })}</div>
           <ol className="qd-slide-list">
-            <NextRows desk={d} rows={6} t={t} />
+            <NextRows desk={d} rows={rows} t={t} />
           </ol>
         </div>
       </article>

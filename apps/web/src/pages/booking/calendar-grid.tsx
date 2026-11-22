@@ -72,13 +72,18 @@ function HourRow({
       {row.cells.map((cell) => {
         const selected = cell.id === selectedId
         const stateKey = selected ? 'selected' : cell.state
-        const label = selected
-          ? `✓ ${formatHour(cell.hour)}`
-          : cell.state === 'booked'
-            ? '—'
-            : cell.state === 'free'
-              ? formatHour(cell.hour)
-              : ''
+        const label = selected ? (
+          <>
+            <span aria-hidden="true">✓</span>
+            <span>{formatHour(cell.hour)}</span>
+          </>
+        ) : cell.state === 'booked' ? (
+          '—'
+        ) : cell.state === 'free' ? (
+          formatHour(cell.hour)
+        ) : (
+          ''
+        )
         return (
           <button
             key={cell.id}
@@ -94,7 +99,7 @@ function HourRow({
             })}
             // seven days share the width: no finger-size minimum width (each cell is 44 px high)
             className={cn(
-              'flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-md border px-0 text-[10px] font-semibold sm:text-xs',
+              'flex min-h-11 min-w-0 flex-col items-center justify-center gap-x-1 rounded-md border px-0 text-[10px] leading-tight font-semibold whitespace-nowrap sm:flex-row sm:text-xs',
               selected && 'border-primary bg-primary text-on-primary',
               !selected &&
                 cell.state === 'free' &&

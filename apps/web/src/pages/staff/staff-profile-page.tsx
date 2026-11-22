@@ -82,6 +82,9 @@ const NOTE_TONE: Record<NoteKind, 'blue' | 'green' | 'yellow' | 'red' | 'grey'> 
   leave: 'yellow',
   praise: 'green',
 }
+/* A card header's title with its button: side by side, the button under the title when both no
+   longer fit on one line (inside CardHeader's title span, which does not wrap by itself). */
+const headWrap = 'flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1'
 const errorBox =
   'bg-red-bg text-red m-0 border border-red/30 rounded-md px-3 py-2 text-[13px] font-semibold'
 const day = (iso: string | null | undefined) => (iso ? formatDate(new Date(iso)) : null)
@@ -215,7 +218,7 @@ export function StaffProfilePage({
                     aria-selected={tab === k}
                     onClick={() => setTab(k)}
                     className={cn(
-                      'inline-flex h-8 items-center gap-1.5 rounded border px-3 text-[14px] font-medium transition-colors duration-120',
+                      'inline-flex min-h-8 items-center gap-1.5 rounded border px-3 py-1 text-left text-[14px] leading-tight font-medium transition-colors duration-120',
                       tab === k
                         ? 'border-border bg-card text-primary'
                         : 'text-ink-2 hover:bg-hover border-transparent',
@@ -394,13 +397,15 @@ function Overview({ p, manager }: { p: StaffProfile; manager: boolean }) {
 
       <Card className="anim-enter" style={{ '--i': 1 } as CSSProperties}>
         <CardHeader icon={Phone} hue="teal">
-          <span>{t('staffProfile.sections.contact')}</span>
-          {p.canEdit && !editing && (
-            <Button size="sm" onClick={() => setEditing(true)}>
-              <Pencil size={14} aria-hidden="true" />
-              {t('staffProfile.edit')}
-            </Button>
-          )}
+          <span className={headWrap}>
+            <span>{t('staffProfile.sections.contact')}</span>
+            {p.canEdit && !editing && (
+              <Button size="sm" onClick={() => setEditing(true)}>
+                <Pencil size={14} aria-hidden="true" />
+                {t('staffProfile.edit')}
+              </Button>
+            )}
+          </span>
         </CardHeader>
         <CardBody className={grid}>
           <Info label={t('staffProfile.f.email')} value={p.email} />
@@ -626,10 +631,10 @@ function Work({ p }: { p: StaffProfile }) {
                   label: t('analytics.patient'),
                   cell: (r) => (
                     <span className="flex min-w-0 flex-col">
-                      <span className="[overflow-wrap:anywhere]">
+                      <span className="break-words">
                         {r.patientName ?? (r.patientId ? t('analytics.staff.hidden') : '—')}
                       </span>
-                      <span className="text-ink-3 text-[12px] [overflow-wrap:anywhere]">
+                      <span className="text-ink-3 text-[12px] break-words">
                         {[r.fileNumber, r.what].filter(Boolean).join(' · ')}
                       </span>
                     </span>
@@ -679,15 +684,17 @@ function Access({ p }: { p: StaffProfile }) {
       </div>
       <Card className="anim-enter">
         <CardHeader icon={ShieldCheck} hue="navy">
-          <span>{t('staffProfile.access.rights')}</span>
-          {p.canEdit && (
-            <StaffLink
-              to="/app/settings"
-              className={buttonVariants({ size: 'sm', variant: 'tint-grey' })}
-            >
-              {t('staffProfile.access.changeRights')}
-            </StaffLink>
-          )}
+          <span className={headWrap}>
+            <span>{t('staffProfile.access.rights')}</span>
+            {p.canEdit && (
+              <StaffLink
+                to="/app/settings"
+                className={buttonVariants({ size: 'sm', variant: 'tint-grey' })}
+              >
+                {t('staffProfile.access.changeRights')}
+              </StaffLink>
+            )}
+          </span>
         </CardHeader>
         {a.permissions.map((x) => (
           <Row key={x.key} className="flex-wrap gap-x-3 gap-y-1 py-2">

@@ -68,7 +68,7 @@ export function ReportLayout({
         .filter((c): c is ReportColumnDef<unknown> => !!c)
         .map((c) => ({ key: c.key, label: columnLabel(c, t) }))
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
       <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
         <legend className="sr-only">{t('reports.ui.columns')}</legend>
         <div className={cn(labelClass, 'flex-row flex-wrap items-center gap-2')}>
@@ -116,7 +116,9 @@ export function ReportLayout({
                     checked={on}
                     onChange={() => toggle(c.key)}
                   />
-                  <span className="min-w-0 truncate">{label}</span>
+                  <span className="min-w-0 truncate" title={label}>
+                    {label}
+                  </span>
                   {c.sensitive && (
                     <Lock
                       size={13}
@@ -179,7 +181,7 @@ export function ReportLayout({
                 // a summary sorted by a detail column makes no sense: back to the groups' order
                 set({ group, sort: group && choices.mode === 'summary' ? null : choices.sort })
               }}
-              wrapperClassName="min-w-[12rem] flex-1"
+              wrapperClassName="min-w-[min(12rem,100%)] flex-1"
             >
               <option value="">{t('reports.ui.noGroup')}</option>
               {groups.map((g) => (
@@ -216,7 +218,7 @@ export function ReportLayout({
                   : null,
               })
             }
-            wrapperClassName="min-w-[12rem] flex-1"
+            wrapperClassName="min-w-[min(12rem,100%)] flex-1"
           >
             <option value="">
               {summary ? t('reports.ui.groupOrder') : t('reports.ui.noSort')}

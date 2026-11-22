@@ -27,12 +27,15 @@ export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   icon?: ReactNode
 }
 
-/** 24 px tag (4 px corners, 12 px text) with a dot or icon. Triage, result flags, sync, appointment states. */
+/** 24 px tag (4 px corners, 12 px text) with a dot or icon. Triage, result flags, sync, appointment
+ *  states. It stays on one line while its container has the room and is the last thing to shrink
+ *  in a row; in a box narrower than its words it wraps and grows taller instead of sticking out
+ *  (.mmc-tag keeps it on one line inside a table cell, globals.css). */
 export function Badge({ tone, dot = true, icon, className, children, ...props }: BadgeProps) {
   return (
     <span
       className={cn(
-        'inline-flex h-6 items-center gap-1.5 rounded border px-2 text-[12px] leading-none font-medium whitespace-nowrap',
+        'mmc-tag inline-flex min-h-6 max-w-full shrink-[0.001] items-center gap-1.5 rounded border px-2 py-[3px] text-[12px] leading-[1.25] font-medium',
         toneClass[tone],
         className,
       )}

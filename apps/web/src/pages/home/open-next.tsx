@@ -59,7 +59,7 @@ export function OpenNextButton({
       >
         {!take.isPending && <ArrowRight size={16} aria-hidden="true" />}
         {t('home.actions.openNext')}
-        {next && <span className="font-normal opacity-80">· {next.ticket}</span>}
+        {next && <span className="font-normal whitespace-nowrap opacity-80">· {next.ticket}</span>}
       </Button>
       {message && (
         <span role="status" className="text-ink-2 text-[13px] font-medium">

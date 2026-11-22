@@ -149,7 +149,7 @@ export function BedsCard() {
 
         {beds.length > 0 && (
           <div className="flex flex-col">
-            <span className="text-ink-3 border-border flex h-10 items-center border-b text-[12px]">
+            <span className="text-ink-3 border-border flex min-h-10 items-center border-b py-1 text-[12px]">
               {t('settings.beds.each')}
             </span>
             {beds.map((b) => (

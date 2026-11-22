@@ -398,7 +398,7 @@ export function LabOrderRow({
                 type="button"
                 onClick={() => setWhy(t(`lab.cannotReasons.${r}`))}
                 className={cn(
-                  'inline-flex h-7 items-center rounded-md border px-2.5 text-[12px] font-medium transition-colors duration-120',
+                  'inline-flex min-h-7 max-w-full items-center rounded-md border px-2.5 py-1 text-left text-[12px] leading-tight font-medium transition-colors duration-120',
                   why === t(`lab.cannotReasons.${r}`)
                     ? tagClass.coral
                     : 'border-border bg-card text-ink-2 hover:bg-hover',
@@ -454,8 +454,10 @@ export function LabOrderRow({
       {(o.findings || o.impression) && !open && (
         <span className="border-green/30 bg-green-bg/60 flex gap-2 rounded-md border px-3 py-2 text-[13px]">
           <CircleCheck size={14} aria-hidden="true" className="text-green mt-0.5 flex-none" />
-          <span className="min-w-0 flex-1">
-            <span className="float-right ml-2">
+          {/* "Open wide" at the top right; in a narrow box it takes its own line and the result
+              keeps the whole width (it used to float, squeezing the words beside it) */}
+          <span className="flex min-w-0 flex-1 flex-row-reverse flex-wrap items-start gap-x-2 gap-y-0.5">
+            <span className="flex-none">
               <WideResult
                 result={{
                   test: o.test,
@@ -468,17 +470,19 @@ export function LabOrderRow({
                 }}
               />
             </span>
-            {o.findings && <span className="block">{o.findings}</span>}
-            {o.impression && <span className="block font-semibold">{o.impression}</span>}
-            {o.resultBy && o.resultAt && (
-              <span className="text-ink-3 block text-xs">
-                {[
-                  o.verified ? t('clinical.verified') : t('clinical.notVerified'),
-                  o.resultBy,
-                  when(o.resultAt),
-                ].join(' · ')}
-              </span>
-            )}
+            <span className="min-w-0 flex-[1_1_8rem]">
+              {o.findings && <span className="block">{o.findings}</span>}
+              {o.impression && <span className="block font-semibold">{o.impression}</span>}
+              {o.resultBy && o.resultAt && (
+                <span className="text-ink-3 block text-xs">
+                  {[
+                    o.verified ? t('clinical.verified') : t('clinical.notVerified'),
+                    o.resultBy,
+                    when(o.resultAt),
+                  ].join(' · ')}
+                </span>
+              )}
+            </span>
           </span>
         </span>
       )}

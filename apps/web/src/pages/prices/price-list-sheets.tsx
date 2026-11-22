@@ -240,7 +240,8 @@ function SheetCard({
                         </span>
                       )}
                     </td>
-                    <td className={cn(tableCell, 'text-ink-3 text-[12px]')}>
+                    {/* the sample values keep a readable width: the table scrolls in its box */}
+                    <td className={cn(tableCell, 'text-ink-3 min-w-[9rem] text-[12px]')}>
                       {c.samples.join(' · ') || '—'}
                     </td>
                     <td className={tableCell}>

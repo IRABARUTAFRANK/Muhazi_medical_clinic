@@ -14,6 +14,22 @@ interface TabletNavProps {
   onMore: () => void
 }
 
+/**
+ * A one-word label longer than its tab (Imbonerahamwe on a 360 px phone) would be broken at any
+ * letter. Kinyarwanda syllables end with a vowel, so a long word gets a soft hyphen after each
+ * vowel that a consonant follows (not in its first two or last three letters): the browser then
+ * breaks it at a syllable, with a hyphen (Imbonera-hamwe). English and French use the browser's
+ * own hyphenation (hyphens-auto on the label).
+ */
+const softBreaks = (label: string, lang: string): string =>
+  lang.startsWith('rw')
+    ? label.replace(/\p{L}{10,}/gu, (word) =>
+        word.replace(/[aeiou](?=[^aeiou])/gi, (v: string, at: number) =>
+          at >= 2 && at < word.length - 3 ? v + '\u00AD' : v,
+        ),
+      )
+    : label
+
 const tab =
   'flex min-h-13 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-md border-0 bg-transparent px-0 min-[400px]:px-1 text-[11px] min-[400px]:text-[12px] font-medium text-ink-2 no-underline transition-colors duration-120 hover:bg-hover hover:text-ink'
 
@@ -21,7 +37,7 @@ const tab =
  *  carries its count on the icon (0121); "More" carries what waits for the person inside it (the
  *  unread notices and the red counts of the entries that did not fit), added up. */
 export function TabletNav({ nav, activeId, onMore }: TabletNavProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { shown, rest } = splitNav(nav, useBarCount(), activeId)
   const moreActive = rest.some((n) => n.id === activeId)
   const { data: counts } = useNavCounts()
@@ -51,9 +67,9 @@ export function TabletNav({ nav, activeId, onMore }: TabletNavProps) {
           >
             <NavIcon id={n.id} name={n.icon} size={20} count={count} />
             {/* a two-word label (My prescriptions) wraps onto a second line; a word longer than the
-                tab (a very narrow phone) breaks rather than being cut off */}
-            <span className="line-clamp-2 max-w-full text-center leading-[1.15] wrap-break-word">
-              {t(n.labelKey)}
+                tab (a very narrow phone) breaks at a syllable, with a hyphen (softBreaks) */}
+            <span className="line-clamp-2 max-w-full text-center leading-[1.15] [text-wrap:balance] wrap-break-word hyphens-auto">
+              {softBreaks(t(n.labelKey), i18n.language)}
             </span>
           </StaffLink>
         )

@@ -92,26 +92,31 @@ export function TopBar({ user, sync, onOpenSheet, title, group }: TopBarProps) {
       <div className="pc:flex hidden h-12 items-center gap-3 px-4">
         {/* the breadcrumb takes the free space, so nothing is cut while there is room */}
         <span className="text-ink-3 flex min-w-0 flex-1 items-center gap-1.5 text-[14px]">
-          {/* the clinic's name is in the sidebar's header right beside it: on a small PC it gives
-              its room to the group and the page (long in Kinyarwanda) */}
-          <span className="hidden truncate xl:inline">{t('app.clinicName')}</span>
+          {/* the clinic's name is in the sidebar's header right beside it: it shows on a wide
+              screen only (1600 px) and is the first to be shortened, then the group; the page's
+              name is the last (long in Kinyarwanda) */}
+          <span className="wide:inline hidden min-w-0 shrink-[100] truncate">
+            {t('app.clinicName')}
+          </span>
           {group && group !== title && (
             <>
-              <span className="text-ink-4 hidden xl:inline" aria-hidden="true">
+              <span className="text-ink-4 wide:inline hidden" aria-hidden="true">
                 /
               </span>
-              <span className="truncate">{group}</span>
+              <span className="min-w-0 shrink-[10] truncate">{group}</span>
             </>
           )}
           {title && (
             <>
               <span
-                className={cn('text-ink-4', !(group && group !== title) && 'hidden xl:inline')}
+                className={cn('text-ink-4', !(group && group !== title) && 'wide:inline hidden')}
                 aria-hidden="true"
               >
                 /
               </span>
-              <span className="text-ink truncate font-medium">{title}</span>
+              <span className="text-ink min-w-0 truncate font-medium" title={title}>
+                {title}
+              </span>
             </>
           )}
         </span>

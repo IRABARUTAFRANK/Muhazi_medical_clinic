@@ -357,42 +357,44 @@ function Sales({ period }: { period: Period }) {
         {!data || data.byPerson.length === 0 ? (
           <Empty icon={Coins}>{t('stock.sales.none')}</Empty>
         ) : (
-          <table className="w-full border-collapse text-[14px]">
-            <thead className="bg-surface">
-              <tr className="border-border border-b">
-                <th className={tableHead}>{t('report.cols.by')}</th>
-                <th className={cn(tableHead, 'text-right')}>{t('stock.sales.cols.lines')}</th>
-                <th className={cn(tableHead, 'text-right')}>{t('stock.sales.units')}</th>
-                <th className={cn(tableHead, 'hidden text-right sm:table-cell')}>
-                  {t('stock.sales.kind.visit')}
-                </th>
-                <th className={cn(tableHead, 'hidden text-right sm:table-cell')}>
-                  {t('stock.sales.kind.walkin')}
-                </th>
-                <th className={cn(tableHead, 'text-right')}>{t('stock.sales.cols.amount')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.byPerson.map((x) => (
-                <tr key={x.id ?? x.name} className={tableRow}>
-                  <td className={tableFirstCell}>{x.name}</td>
-                  <td className={cn(tableCell, 'text-right tabular-nums')}>{x.lines}</td>
-                  <td className={cn(tableCell, 'text-right tabular-nums')}>
-                    {formatNumber(x.units)}
-                  </td>
-                  <td className={cn(tableCell, 'hidden text-right tabular-nums sm:table-cell')}>
-                    {formatNumber(x.given)}
-                  </td>
-                  <td className={cn(tableCell, 'hidden text-right tabular-nums sm:table-cell')}>
-                    {formatNumber(x.sold)}
-                  </td>
-                  <td className={cn(tableCell, 'text-right font-semibold tabular-nums')}>
-                    {formatNumber(x.amount)}
-                  </td>
+          <div className="overflow-x-auto overscroll-contain">
+            <table className="w-full border-collapse text-[14px]">
+              <thead className="bg-surface">
+                <tr className="border-border border-b">
+                  <th className={tableHead}>{t('report.cols.by')}</th>
+                  <th className={cn(tableHead, 'text-right')}>{t('stock.sales.cols.lines')}</th>
+                  <th className={cn(tableHead, 'text-right')}>{t('stock.sales.units')}</th>
+                  <th className={cn(tableHead, 'hidden text-right sm:table-cell')}>
+                    {t('stock.sales.kind.visit')}
+                  </th>
+                  <th className={cn(tableHead, 'hidden text-right sm:table-cell')}>
+                    {t('stock.sales.kind.walkin')}
+                  </th>
+                  <th className={cn(tableHead, 'text-right')}>{t('stock.sales.cols.amount')}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {data.byPerson.map((x) => (
+                  <tr key={x.id ?? x.name} className={tableRow}>
+                    <td className={tableFirstCell}>{x.name}</td>
+                    <td className={cn(tableCell, 'text-right tabular-nums')}>{x.lines}</td>
+                    <td className={cn(tableCell, 'text-right tabular-nums')}>
+                      {formatNumber(x.units)}
+                    </td>
+                    <td className={cn(tableCell, 'hidden text-right tabular-nums sm:table-cell')}>
+                      {formatNumber(x.given)}
+                    </td>
+                    <td className={cn(tableCell, 'hidden text-right tabular-nums sm:table-cell')}>
+                      {formatNumber(x.sold)}
+                    </td>
+                    <td className={cn(tableCell, 'text-right font-semibold tabular-nums')}>
+                      {formatNumber(x.amount)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </Panel>
       <Panel i={4} icon={Coins} tint="teal" title={t('stock.sales.lines')}>

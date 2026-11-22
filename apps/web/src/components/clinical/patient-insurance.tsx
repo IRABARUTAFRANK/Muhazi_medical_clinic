@@ -32,7 +32,7 @@ export function PayFields({
   const { t } = useTranslation()
   const { data: insurers = [] } = useInsurers(true)
   return (
-    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,220px)]">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,220px)]">
       <Select
         label={t('patientInsurance.who')}
         value={value.payerId}

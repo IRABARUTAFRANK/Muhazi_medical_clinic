@@ -207,12 +207,12 @@ export function StepSlide({
           {onPrev && prevTitle && (
             <Button variant="ghost" onClick={onPrev} className="min-w-0">
               <ChevronLeft size={16} aria-hidden="true" />
-              <span className="truncate">{t('sixSteps.previous', { title: prevTitle })}</span>
+              <span className="min-w-0">{t('sixSteps.previous', { title: prevTitle })}</span>
             </Button>
           )}
           {onNext && nextTitle && (
             <Button onClick={onNext} className="ml-auto min-w-0">
-              <span className="truncate">{t('sixSteps.next', { title: nextTitle })}</span>
+              <span className="min-w-0">{t('sixSteps.next', { title: nextTitle })}</span>
               <ChevronRight size={16} aria-hidden="true" />
             </Button>
           )}

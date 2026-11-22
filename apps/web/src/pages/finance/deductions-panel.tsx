@@ -80,15 +80,20 @@ export function DeductionsPanel({ i }: { i: number }) {
         {rules.length === 0 ? (
           <Empty icon={Scissors}>{t('accounts.deductions.none')}</Empty>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="@container overflow-x-auto">
             <table className="w-full border-collapse text-[14px]">
               <thead className="bg-surface">
                 <tr className="border-border border-b">
                   <th className={tableHead}>{t('accounts.deductions.cols.name')}</th>
-                  <th className={tableHead}>{t('accounts.deductions.cols.employee')}</th>
-                  <th className={tableHead}>{t('accounts.deductions.cols.employer')}</th>
+                  {/* the two shares hold a few figures: their headings wrap over them */}
+                  <th className={cn(tableHead, 'py-1.5 leading-tight whitespace-normal')}>
+                    {t('accounts.deductions.cols.employee')}
+                  </th>
+                  <th className={cn(tableHead, 'py-1.5 leading-tight whitespace-normal')}>
+                    {t('accounts.deductions.cols.employer')}
+                  </th>
                   <th className={tableHead}>{t('accounts.deductions.cols.default')}</th>
-                  <th className={tableHead}></th>
+                  <th className={cn(tableHead, '@max-[48rem]:hidden')}></th>
                 </tr>
               </thead>
               <tbody>
@@ -145,6 +150,18 @@ function RuleRow({
   }
   const agency = t(`accounts.deductions.agencies.${r.agency}`)
   const base = t(`accounts.deductions.bases.${r.base}`)
+  const actions = (
+    <>
+      <Button size="sm" variant="tint-blue" onClick={onChange}>
+        {t('accounts.salaries.edit')}
+      </Button>
+      {r.active && (
+        <Button size="sm" variant="ghost" onClick={() => void remove()}>
+          {t(r.code ? 'accounts.deductions.switchOff' : 'accounts.kinds.remove')}
+        </Button>
+      )}
+    </>
+  )
   return (
     <tr className={cn(tableRow, !r.active && 'opacity-60')}>
       <td className={tableFirstCell}>
@@ -160,6 +177,7 @@ function RuleRow({
             : ''}
           {r.note ? ` · ${r.note}` : ''}
         </span>
+        <span className="mt-1.5 hidden flex-wrap gap-1 @max-[48rem]:flex">{actions}</span>
       </td>
       <td className={cn(tableCell, 'whitespace-nowrap tabular-nums')}>
         {r.code === 'paye'
@@ -171,7 +189,7 @@ function RuleRow({
           ? '—'
           : rateWords(t, r.current?.employerRate ?? null, r.current?.employerAmount ?? null)}
       </td>
-      <td className={tableCell}>
+      <td className={cn(tableCell, 'min-w-36')}>
         {r.code === 'paye'
           ? t('accounts.deductions.payeOnSalary')
           : t(r.defaultOn ? 'accounts.deductions.defaultYes' : 'accounts.deductions.defaultNo')}
@@ -179,15 +197,8 @@ function RuleRow({
           {t('accounts.deductions.people', { count: r.people })}
         </span>
       </td>
-      <td className={cn(tableCell, 'text-right whitespace-nowrap')}>
-        <Button size="sm" variant="tint-blue" onClick={onChange}>
-          {t('accounts.salaries.edit')}
-        </Button>
-        {r.active && (
-          <Button size="sm" variant="ghost" className="ml-1" onClick={() => void remove()}>
-            {t(r.code ? 'accounts.deductions.switchOff' : 'accounts.kinds.remove')}
-          </Button>
-        )}
+      <td className={cn(tableCell, 'text-right whitespace-nowrap @max-[48rem]:hidden')}>
+        <span className="inline-flex gap-1">{actions}</span>
       </td>
     </tr>
   )
@@ -477,7 +488,7 @@ function PayeBandsForm({
           {rows.map((r, i) => (
             <div key={i} className="flex flex-wrap items-end gap-2">
               <Field
-                wrapperClassName="w-40"
+                wrapperClassName="min-w-0 flex-[2_1_5rem] sm:w-40 sm:flex-none"
                 label={t('accounts.deductions.bandFrom')}
                 inputMode="numeric"
                 value={r.lower}
@@ -490,7 +501,7 @@ function PayeBandsForm({
                 }
               />
               <Field
-                wrapperClassName="w-28"
+                wrapperClassName="min-w-0 flex-[1_1_3rem] sm:w-28 sm:flex-none"
                 label={t('accounts.deductions.bandRate')}
                 inputMode="decimal"
                 value={r.rate}

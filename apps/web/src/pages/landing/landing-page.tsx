@@ -30,6 +30,7 @@ import {
 import { ScheduleBoard } from '@/components/calendar/schedule-board'
 import { buttonVariants } from '@/components/ui/button'
 import { Icon } from '@/components/ui/icon'
+import { EmailText } from '@/components/public/email-text'
 import { SiteFooter } from '@/components/public/site-footer'
 import { SiteNav, Wrap } from '@/components/public/site-nav'
 import {
@@ -116,7 +117,7 @@ export function LandingPage() {
                 key={c}
                 to="/book"
                 search={{ category: c === 'all' ? undefined : c }}
-                className="border-border bg-card text-ink-2 hover:border-primary hover:bg-primary-tint hover:text-primary inline-flex min-h-10 items-center rounded-full border px-3.5 text-[13px] font-semibold no-underline transition-colors"
+                className="border-border bg-card text-ink-2 hover:border-primary hover:bg-primary-tint hover:text-primary inline-flex min-h-10 max-w-full items-center rounded-full border px-3.5 py-1 text-[13px] leading-tight font-semibold no-underline transition-colors"
               >
                 {t(`categories.${c}`)}
               </Link>
@@ -207,7 +208,7 @@ export function LandingPage() {
       {/* INSURANCE */}
       <section
         id="insurance"
-        className="band-gradient relative scroll-mt-[56px] overflow-hidden py-16 text-white"
+        className="band-gradient relative scroll-mt-[56px] overflow-clip py-16 text-white"
       >
         <div
           aria-hidden="true"
@@ -233,7 +234,11 @@ export function LandingPage() {
                       className="glass inline-flex min-h-12 items-center gap-2.5 rounded-full px-5 text-sm font-semibold whitespace-nowrap"
                       aria-hidden={i >= payers.length}
                     >
-                      <ShieldCheck size={16} className="text-[#7BD36A]" aria-hidden="true" />
+                      <ShieldCheck
+                        size={16}
+                        className="flex-none text-[#7BD36A]"
+                        aria-hidden="true"
+                      />
                       {name}
                     </span>
                   ))}
@@ -243,8 +248,8 @@ export function LandingPage() {
           ) : (
             <div className="flex flex-col gap-4" data-reveal>
               <span className="eyebrow !text-[#9FE39A]">{t('nav.insurance')}</span>
-              <span className="glass inline-flex w-fit items-center gap-2 rounded-full px-4 py-1.5 text-[13px] font-semibold">
-                <ShieldCheck size={16} className="text-[#7BD36A]" aria-hidden="true" />
+              <span className="glass inline-flex w-fit max-w-full items-center gap-2 rounded-full px-4 py-1.5 text-[13px] font-semibold">
+                <ShieldCheck size={16} className="flex-none text-[#7BD36A]" aria-hidden="true" />
                 {t('landing.insurance.soonPill')}
               </span>
               <h2 className={cn(h2, 'text-white')}>{t('landing.insurance.soonTitle')}</h2>
@@ -264,8 +269,11 @@ export function LandingPage() {
               {profile.sector}, {profile.district} · {profile.province}, {profile.country}
             </p>
           </div>
-          <div className="pc:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.3fr)] grid grid-cols-1 gap-4">
-            <div className="card-glow bg-card flex flex-col gap-3 rounded-2xl p-6" data-reveal>
+          <div className="pc:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.3fr)] grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div
+              className="card-glow bg-card flex min-w-0 flex-col gap-3 rounded-2xl p-6"
+              data-reveal
+            >
               <span className="icon-gradient inline-flex size-11 items-center justify-center rounded-xl text-white">
                 <Clock size={22} aria-hidden="true" />
               </span>
@@ -282,7 +290,7 @@ export function LandingPage() {
               <StatusPill status={status} />
             </div>
             <div
-              className="card-glow bg-card flex flex-col gap-3 rounded-2xl p-6"
+              className="card-glow bg-card flex min-w-0 flex-col gap-3 rounded-2xl p-6"
               data-reveal
               data-delay="1"
             >
@@ -303,7 +311,8 @@ export function LandingPage() {
                     href={telHref(profile.phone)}
                     className="inline-flex items-center gap-2 font-semibold no-underline hover:underline"
                   >
-                    <Phone size={16} aria-hidden="true" /> {formatPhone(profile.phone)}
+                    <Phone size={16} className="flex-none" aria-hidden="true" />{' '}
+                    {formatPhone(profile.phone)}
                   </a>
                 </li>
                 <li>
@@ -313,16 +322,21 @@ export function LandingPage() {
                     rel="noreferrer"
                     className="inline-flex items-center gap-2 font-semibold no-underline hover:underline"
                   >
-                    <MessageCircle size={16} aria-hidden="true" /> {t('landing.visit.whatsappUs')} ·{' '}
-                    {formatPhone(profile.whatsapp)}
+                    <MessageCircle size={16} className="flex-none" aria-hidden="true" />
+                    <span className="min-w-0">
+                      {t('landing.visit.whatsappUs')} · {formatPhone(profile.whatsapp)}
+                    </span>
                   </a>
                 </li>
                 <li>
                   <a
                     href={`mailto:${profile.email}`}
-                    className="inline-flex items-center gap-2 font-semibold break-all no-underline hover:underline"
+                    className="inline-flex max-w-full items-center gap-2 font-semibold no-underline hover:underline"
                   >
-                    <Mail size={16} aria-hidden="true" /> {profile.email}
+                    <Mail size={16} className="flex-none" aria-hidden="true" />
+                    <span className="min-w-0">
+                      <EmailText email={profile.email} />
+                    </span>
                   </a>
                 </li>
               </ul>
@@ -340,7 +354,7 @@ export function LandingPage() {
               </a>
             </div>
             <div
-              className="card-glow relative min-h-[300px] overflow-hidden rounded-2xl bg-[#E8EEF2]"
+              className="card-glow pc:col-span-1 relative min-h-[300px] overflow-hidden rounded-2xl bg-[#E8EEF2] sm:col-span-2"
               data-reveal
               data-delay="2"
             >
@@ -381,7 +395,7 @@ function Hero({
   // the insurance badge and count once the clinic works with insurers
   const insurance = useClinicInfo().data?.insurance ?? false
   return (
-    <section className="hero-photo relative overflow-hidden text-white">
+    <section className="hero-photo relative overflow-clip text-white">
       {/* The clinic's photo behind the whole slogan area: slow zoom, navy tint from the left
           so the text reads, the instruments visible on the right, a light sheen passing over. */}
       <picture aria-hidden="true">
@@ -473,14 +487,14 @@ function StatusPill({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-2.5 self-start rounded-full px-4 py-2 text-sm font-semibold',
+        'inline-flex max-w-full items-center gap-2.5 self-start rounded-full px-4 py-2 text-sm font-semibold',
         variant === 'glass' ? 'glass' : 'bg-green-bg text-green',
         variant === 'light' && !status.open && 'bg-hover text-ink-2',
       )}
     >
       <span
         className={cn(
-          'size-2.5 rounded-full',
+          'size-2.5 flex-none rounded-full',
           status.open ? 'pulse-ring bg-[#7BD36A] text-[#7BD36A]' : 'bg-ink-3 text-ink-3',
           variant === 'light' && status.open && 'bg-green-dot text-green-dot',
         )}
@@ -504,11 +518,11 @@ function FloatBadge({
   return (
     <span
       className={cn(
-        'glass anim-float inline-flex min-h-10 items-center gap-2 rounded-full px-3.5 text-[13px] font-semibold',
+        'glass anim-float inline-flex min-h-10 max-w-full items-center gap-2 rounded-full px-3.5 py-1.5 text-[13px] leading-tight font-semibold',
         className,
       )}
     >
-      <IconComponent size={16} className="text-[#7BD36A]" aria-hidden="true" />
+      <IconComponent size={16} className="flex-none text-[#7BD36A]" aria-hidden="true" />
       {label}
     </span>
   )
@@ -534,7 +548,7 @@ function Step({ n, title, body }: { n: number; title: string; body: string }) {
       <span className="step-gradient inline-flex size-10 flex-none items-center justify-center rounded-full font-bold text-white shadow-[0_6px_16px_rgba(29,79,174,.3)]">
         {n}
       </span>
-      <span>
+      <span className="min-w-0">
         <b className="block text-base">{title}</b>
         <span className="text-ink-2 text-[15px]">{body}</span>
       </span>

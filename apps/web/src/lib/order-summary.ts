@@ -115,7 +115,8 @@ export function summaryWords(
       : s.tone === 'noPrice'
         ? t('nurseOrders.summaryNoPrice')
         : t('nurseOrders.summaryAct', { act: c.act, count: c.actCount, amount })
-  if (s.tone === 'short') return t('nurseOrders.notEnough', { count: s.left ?? 0 })
+  if (s.tone === 'short')
+    return t('nurseOrders.notEnough', { count: s.left ?? 0, unit: c.unit, asked: s.pieces })
   if (s.tone === 'wholePacks')
     return t('nurseOrders.wholePacksNote', {
       pack: c.packUnit || t('nurseOrders.pack'),

@@ -398,7 +398,7 @@ function AccessLogPanel() {
             label={t('recordAccess.person')}
             value={actor}
             onChange={(e) => setActor(e.target.value)}
-            wrapperClassName="w-full sm:w-64"
+            wrapperClassName="w-full sm:w-80"
           >
             <option value="">{t('recordAccess.everyone')}</option>
             {employees.map((e) => (
@@ -425,15 +425,18 @@ function AccessLogPanel() {
               <span className="text-ink-2 text-[13px] font-medium">
                 {t('recordAccess.patient')}
               </span>
-              <span className="border-primary bg-primary-tint text-ink flex h-[38px] items-center gap-2 rounded-md border px-3 text-[14px]">
+              {/* grows with its button (44 px on a touch screen); the full name on hover */}
+              <span className="border-primary bg-primary-tint text-ink flex min-h-[38px] items-center gap-2 rounded-md border px-3 text-[14px]">
                 <UserRound size={16} aria-hidden="true" className="text-primary flex-none" />
-                <span className="min-w-0 flex-1 truncate">{patient.label}</span>
+                <span className="min-w-0 flex-1 truncate" title={patient.label}>
+                  {patient.label}
+                </span>
                 <button
                   type="button"
                   onClick={() => setPatient(null)}
                   aria-label={t('recordAccess.allPatients')}
                   title={t('recordAccess.allPatients')}
-                  className="text-ink-3 hover:text-ink hover:bg-hover inline-flex size-7 items-center justify-center rounded"
+                  className="text-ink-3 hover:text-ink hover:bg-hover inline-flex size-7 flex-none items-center justify-center rounded"
                 >
                   <X size={16} aria-hidden="true" />
                 </button>
@@ -560,9 +563,9 @@ function LogRow({
       )}
       style={{ '--i': i } as CSSProperties}
     >
-      <span className="text-ink-3 w-[92px] flex-none text-[13px] tabular-nums">
-        {formatDate(at)}
-        <br />
+      {/* a phone: date and time on one line above the words; wider: a column on the left */}
+      <span className="text-ink-3 w-full flex-none text-[13px] tabular-nums sm:w-[92px]">
+        {formatDate(at)} <br className="hidden sm:inline" />
         {formatTime(at)}
       </span>
       <span className="flex min-w-0 flex-[1_1_220px] flex-col gap-0.5">
@@ -602,14 +605,17 @@ function LogRow({
         {row.emergency && !row.reviewed && (
           <Pill tint="coral">{t('recordAccess.status.toReview')}</Pill>
         )}
-        <button type="button" onClick={onOpen} aria-expanded={selected} className={tableLink}>
-          <Info size={14} aria-hidden="true" />
-          {t('recordAccess.panel.details')}
-        </button>
-        <StaffLink to="/app/patient" search={{ id: row.patientId }} className={tableLink}>
-          <FolderOpen size={14} aria-hidden="true" />
-          {t('recordAccess.card.openFile')}
-        </StaffLink>
+        {/* the two links stay together: both drop under the tags when the row is narrow */}
+        <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+          <button type="button" onClick={onOpen} aria-expanded={selected} className={tableLink}>
+            <Info size={14} aria-hidden="true" />
+            {t('recordAccess.panel.details')}
+          </button>
+          <StaffLink to="/app/patient" search={{ id: row.patientId }} className={tableLink}>
+            <FolderOpen size={14} aria-hidden="true" />
+            {t('recordAccess.card.openFile')}
+          </StaffLink>
+        </span>
       </span>
     </li>
   )
@@ -670,7 +676,7 @@ function LogPanel({
             .map(([k, v]) => (
               <div key={k} className="contents">
                 <dt className="text-ink-3 text-[13px]">{k}</dt>
-                <dd className="text-ink m-0 text-[14px] font-medium">{v}</dd>
+                <dd className="text-ink m-0 min-w-0 text-[14px] font-medium break-words">{v}</dd>
               </div>
             ))}
         </dl>

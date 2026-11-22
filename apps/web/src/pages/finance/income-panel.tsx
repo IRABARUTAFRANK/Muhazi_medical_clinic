@@ -3,7 +3,7 @@ import { ArrowDownToLine } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatRwf } from '@mmc/shared'
 import { Empty, Panel } from '@/components/dash/kit'
-import { tableCell, tableFirstCell, tableHead, tableRow } from '@/components/dash/kit-style'
+import { tableCell, tableHead, tableRow } from '@/components/dash/kit-style'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { Select } from '@/components/ui/select'
@@ -12,7 +12,7 @@ import { useConfirm } from '@/lib/confirm'
 import { kigaliToday } from '@/lib/clock'
 import { cn } from '@/lib/utils'
 import { Note } from './accounts-kit'
-import { METHODS, errText, type Msg } from './accounts-tabs'
+import { METHODS, errText, figureAmount, figureLabel, type Msg } from './accounts-tabs'
 
 /**
  * Other money in (0185): what the clinic receives that is not a patient's bill nor a walk-in
@@ -97,7 +97,7 @@ export function IncomePanel({ i, from, to }: { i: number; from: string; to: stri
           <p className="text-ink-2 m-0 text-[14px]">{t('accounts.income.noKinds')}</p>
         ) : (
           <form onSubmit={submit} className="flex flex-col gap-3">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <Select
                 label={t('accounts.income.kind')}
                 value={kindId}
@@ -170,7 +170,7 @@ export function IncomePanel({ i, from, to }: { i: number; from: string; to: stri
           <Empty icon={ArrowDownToLine}>{t('accounts.income.none')}</Empty>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-[14px]">
+            <table className="w-full border-collapse text-[14px] [&_td]:px-2 [&_th]:px-2">
               <thead className="bg-surface">
                 <tr className="border-border border-b">
                   <th className={tableHead}>{t('accounts.income.receivedOn')}</th>
@@ -185,7 +185,7 @@ export function IncomePanel({ i, from, to }: { i: number; from: string; to: stri
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.id} className={cn(tableRow, r.voided && 'opacity-60')}>
-                    <td className={cn(tableFirstCell, 'whitespace-nowrap')}>
+                    <td className={cn(figureLabel, 'whitespace-nowrap')}>
                       {formatDate(new Date(r.receivedOn))}
                     </td>
                     <td className={tableCell}>
@@ -198,18 +198,17 @@ export function IncomePanel({ i, from, to }: { i: number; from: string; to: stri
                       )}
                     </td>
                     <td className={tableCell}>{r.from ?? '—'}</td>
-                    <td
-                      className={cn(
-                        tableCell,
-                        'text-right font-semibold tabular-nums',
-                        r.voided && 'line-through',
-                      )}
-                    >
+                    <td className={cn(figureAmount, 'font-semibold', r.voided && 'line-through')}>
                       {formatRwf(r.amount)}
                     </td>
                     <td className={tableCell}>
-                      {methodWord(r.method)}
-                      {r.reference ? ` · ${r.reference}` : ''}
+                      <span className="whitespace-nowrap">{methodWord(r.method)}</span>
+                      {r.reference && (
+                        <>
+                          {' · '}
+                          <span className="whitespace-nowrap">{r.reference}</span>
+                        </>
+                      )}
                     </td>
                     <td className={tableCell}>{r.recordedBy ?? '—'}</td>
                     <td className={cn(tableCell, 'text-right')}>

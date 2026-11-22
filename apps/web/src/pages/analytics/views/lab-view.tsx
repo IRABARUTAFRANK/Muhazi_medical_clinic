@@ -144,7 +144,7 @@ function LabPanels({
                 <StaffLink
                   to="/app/visit"
                   search={{ encounter: r.encounterId }}
-                  className="text-primary font-semibold [overflow-wrap:anywhere]"
+                  className="text-primary font-semibold break-words"
                 >
                   {r.patient}
                 </StaffLink>

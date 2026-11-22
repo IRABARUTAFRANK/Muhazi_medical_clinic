@@ -133,7 +133,9 @@ export function NoticesPanel({
                       <span className="min-w-0">{w.title}</span>
                     </span>
                     {w.body && (
-                      <span className="text-ink-2 block truncate text-[13px]">{w.body}</span>
+                      <span className="text-ink-2 block truncate text-[13px]" title={w.body}>
+                        {w.body}
+                      </span>
                     )}
                     <span className="text-ink-3 flex flex-wrap items-center gap-1.5 text-[12px]">
                       {!n.read && !n.today && <EarlierUnreadMark />}

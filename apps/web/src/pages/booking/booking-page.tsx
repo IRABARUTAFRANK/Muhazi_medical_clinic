@@ -261,7 +261,7 @@ export function BookingPage({ category, onCategoryChange, doctor }: BookingPageP
                     {range ? ` · ${range.start}–${range.end}` : ''}
                   </span>
                 </span>
-                <span className="flex items-center gap-1.5">
+                <span className="flex flex-none items-center gap-1.5">
                   <Button
                     size="icon"
                     aria-label={t('common.previousWeek')}
@@ -270,7 +270,7 @@ export function BookingPage({ category, onCategoryChange, doctor }: BookingPageP
                   >
                     <ChevronLeft size={18} aria-hidden="true" />
                   </Button>
-                  <span className="min-w-[170px] text-center font-semibold tabular-nums">
+                  <span className="min-w-[170px] text-center font-semibold whitespace-nowrap tabular-nums">
                     {formatDayMonth(weekStart)} – {formatDayMonth(weekEnd)}/{weekEnd.getFullYear()}
                   </span>
                   <Button
@@ -317,7 +317,7 @@ export function BookingPage({ category, onCategoryChange, doctor }: BookingPageP
                       {category === 'all' ? selected.title : t(`categories.${category}`)}
                     </span>
                   </span>
-                  <Chip className="h-7 text-xs">{t('common.notConfirmed')}</Chip>
+                  <Chip className="min-h-7 text-xs">{t('common.notConfirmed')}</Chip>
                 </div>
                 <form className="contents" onSubmit={onSend}>
                   {/* several slots in the hour (30-minute slots…): choose the exact time */}
@@ -344,7 +344,12 @@ export function BookingPage({ category, onCategoryChange, doctor }: BookingPageP
                       ))}
                     </div>
                   )}
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div
+                    className={cn(
+                      'grid grid-cols-1 gap-3 sm:grid-cols-2',
+                      insurance ? 'lg:grid-cols-4' : 'pc:grid-cols-3',
+                    )}
+                  >
                     <Field
                       label={t('booking.fullName')}
                       placeholder={t('booking.fullNamePh')}
@@ -365,7 +370,7 @@ export function BookingPage({ category, onCategoryChange, doctor }: BookingPageP
                       placeholder={t('booking.reasonPh')}
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
-                      wrapperClassName={insurance ? undefined : 'sm:col-span-1'}
+                      wrapperClassName={insurance ? undefined : 'pc:col-span-1 sm:col-span-2'}
                     />
                     {insurance && (
                       <Field

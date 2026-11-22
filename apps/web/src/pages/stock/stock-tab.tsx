@@ -449,7 +449,7 @@ function StockList({
                     >
                       {formatNumber(split.pharmacy)}
                       {packsText(t, split.pharmacy, i.packSize, i.packUnit) && (
-                        <span className="text-ink-3 block text-[12px] font-normal">
+                        <span className="text-ink-3 block text-[12px] font-normal whitespace-nowrap">
                           {packsText(t, split.pharmacy, i.packSize, i.packUnit)}
                         </span>
                       )}
@@ -462,7 +462,7 @@ function StockList({
                     >
                       {split.rooms ? formatNumber(split.rooms) : '—'}
                       {split.rooms > 0 && packsText(t, split.rooms, i.packSize, i.packUnit) && (
-                        <span className="text-ink-3 block text-[12px]">
+                        <span className="text-ink-3 block text-[12px] whitespace-nowrap">
                           {packsText(t, split.rooms, i.packSize, i.packUnit)}
                         </span>
                       )}
@@ -470,12 +470,12 @@ function StockList({
                     <td className={cn(tableCell, 'hidden text-right tabular-nums sm:table-cell')}>
                       {formatNumber(split.total)}
                       {packsText(t, split.total, i.packSize, i.packUnit) && (
-                        <span className="text-ink-3 block text-[12px]">
+                        <span className="text-ink-3 block text-[12px] whitespace-nowrap">
                           {packsText(t, split.total, i.packSize, i.packUnit)}
                         </span>
                       )}
                       {i.expiredUnits > 0 && (
-                        <span className="text-red block text-[12px] font-semibold">
+                        <span className="text-red block text-[12px] font-semibold whitespace-nowrap">
                           {t('stock.expired', { count: i.expiredUnits })}
                         </span>
                       )}

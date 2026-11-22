@@ -466,18 +466,21 @@ export function PriceListsSection({
   return (
     <Card className="overflow-hidden">
       <CardHeader icon={Library} hue="violet">
-        <span className="min-w-0 flex-1">{t('prices.lists.title')}</span>
-        {books.length > 0 && (
-          <Button
-            size="sm"
-            variant="tint-coral"
-            disabled={bookActions.removeBook.isPending}
-            onClick={() => void removeAll()}
-          >
-            <Trash2 size={14} aria-hidden="true" />
-            {t('prices.lists.dropAll.button')}
-          </Button>
-        )}
+        {/* the title keeps a readable width: on a phone the button goes under it */}
+        <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
+          <span className="min-w-[min(11rem,100%)] flex-1">{t('prices.lists.title')}</span>
+          {books.length > 0 && (
+            <Button
+              size="sm"
+              variant="tint-coral"
+              disabled={bookActions.removeBook.isPending}
+              onClick={() => void removeAll()}
+            >
+              <Trash2 size={14} aria-hidden="true" />
+              {t('prices.lists.dropAll.button')}
+            </Button>
+          )}
+        </span>
       </CardHeader>
       <CardBody className="flex flex-col gap-4">
         <p className="text-ink-2 m-0 text-[14px]">{t('prices.lists.lead')}</p>

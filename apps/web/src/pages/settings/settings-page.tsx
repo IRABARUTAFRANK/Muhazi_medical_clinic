@@ -264,7 +264,8 @@ export function SettingsPage({ user }: { user: StaffUser }) {
                   aria-current={on ? 'page' : undefined}
                   onClick={() => choose(sec.id)}
                   className={cn(
-                    'flex flex-[1_1_150px] items-center gap-3 rounded-md px-3 py-2 text-left transition-colors duration-120',
+                    // wide enough for a title on one line: two per row on a tablet, one on a phone
+                    'flex flex-[1_1_15rem] items-center gap-3 rounded-md px-3 py-2 text-left transition-colors duration-120',
                     !wide && 'pc:flex-none',
                     on ? 'bg-primary-tint text-primary' : 'text-ink hover:bg-hover',
                   )}
@@ -296,7 +297,9 @@ export function SettingsPage({ user }: { user: StaffUser }) {
             })}
           </nav>
 
-          <div className="flex min-w-0 flex-col gap-4">
+          {/* a container: what is inside folds by the room it really has (the menu beside it and
+              the text size make the window's width a poor guide) */}
+          <div className="@container flex min-w-0 flex-col gap-4">
             {section === 'clinic' && draft && (
               <form onSubmit={submit} className="flex flex-col gap-4">
                 <Card className="anim-enter">
@@ -309,7 +312,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
                   </CardHeader>
                   <CardBody className="gap-3">
                     <p className="text-ink-2 m-0 text-[14px]">{t('settings.profile.lead')}</p>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-3 @md:grid-cols-2 @3xl:grid-cols-3">
                       {PROFILE_FIELDS.map((k) => (
                         <Field
                           key={k}
@@ -374,7 +377,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
                   <CardBody className="gap-3">
                     <p className="text-ink-2 m-0 text-[14px]">{t('settings.hours.lead')}</p>
                     <div className="flex flex-col">
-                      <div className="text-ink-3 border-border hidden h-10 grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(96px,1fr)_minmax(96px,1fr)] items-center gap-2 border-b text-[12px] font-normal sm:grid">
+                      <div className="text-ink-3 border-border hidden min-h-10 grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(96px,1fr)_minmax(96px,1fr)] items-center gap-2 border-b text-[12px] font-normal @lg:grid">
                         <span>{t('settings.hours.day')}</span>
                         <span>{t('settings.hours.mode')}</span>
                         <span>{t('settings.hours.open')}</span>
@@ -437,7 +440,7 @@ export function SettingsPage({ user }: { user: StaffUser }) {
                       {t('settings.manage.title')}
                     </span>
                   </CardHeader>
-                  <CardBody className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <CardBody className="grid grid-cols-1 gap-2 @sm:grid-cols-2 @3xl:grid-cols-4">
                     <Shortcut
                       to="/app/dashboard"
                       icon={<LayoutDashboard size={18} />}
@@ -482,7 +485,7 @@ function Shortcut({ to, icon, label }: { to: string; icon: React.ReactNode; labe
       )}
     >
       {icon}
-      <span className="truncate">{label}</span>
+      <span className="min-w-0 leading-tight">{label}</span>
     </StaffLink>
   )
 }
@@ -500,7 +503,7 @@ function HoursRow({
   const { t } = useTranslation()
   const mode = modeOf(span)
   return (
-    <div className="border-grid hover:bg-hover grid min-h-10 grid-cols-[110px_minmax(0,1fr)] items-center gap-2 border-b py-1.5 transition-colors duration-120 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(96px,1fr)_minmax(96px,1fr)]">
+    <div className="border-grid hover:bg-hover grid min-h-10 grid-cols-[110px_minmax(0,1fr)] items-center gap-2 border-b py-1.5 transition-colors duration-120 last:border-b-0 @lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(96px,1fr)_minmax(96px,1fr)]">
       <span className="text-[14px] font-medium">{label}</span>
       <select
         aria-label={`${label} · ${t('settings.hours.mode')}`}
@@ -521,20 +524,20 @@ function HoursRow({
           <input
             type="time"
             aria-label={`${label} · ${t('settings.hours.open')}`}
-            className={cn(control, 'col-start-2 sm:col-start-auto')}
+            className={cn(control, 'col-start-2 @lg:col-start-auto')}
             value={span[0]}
             onChange={(e) => onChange('custom', [e.target.value, span[1]])}
           />
           <input
             type="time"
             aria-label={`${label} · ${t('settings.hours.close')}`}
-            className={cn(control, 'col-start-2 sm:col-start-auto')}
+            className={cn(control, 'col-start-2 @lg:col-start-auto')}
             value={span[1]}
             onChange={(e) => onChange('custom', [span[0], e.target.value])}
           />
         </>
       ) : (
-        <span className="text-ink-3 hidden text-[13px] sm:col-span-2 sm:block">
+        <span className="text-ink-3 hidden text-[13px] @lg:col-span-2 @lg:block">
           {mode === 'allDay' ? '00:00 – 24:00' : '—'}
         </span>
       )}

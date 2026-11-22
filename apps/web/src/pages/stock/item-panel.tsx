@@ -246,7 +246,7 @@ function Batches({
       )}
       {stores.map((s) => (
         <div key={s.storeId} className={cn(card, 'gap-0 overflow-hidden p-0')}>
-          <div className="bg-surface border-border flex items-center gap-2 border-b px-3 py-2 text-[14px] font-semibold">
+          <div className="bg-surface border-border flex flex-wrap items-center gap-x-2 gap-y-1 border-b px-3 py-2 text-[14px] font-semibold">
             {s.store}
             {s.isRoom && <Badge tone="blue">{t('stockPage.panel.roomStore')}</Badge>}
           </div>
@@ -267,7 +267,7 @@ function Batches({
                   const state = b.expired ? 'expired' : expiryState(b.expiry)
                   return (
                     <tr key={b.batchId} className={tableRow}>
-                      <td className={cn(tableCell, 'font-medium tabular-nums')}>
+                      <td className={cn(tableCell, 'font-medium whitespace-nowrap tabular-nums')}>
                         {b.batchNo ?? '—'}
                       </td>
                       <td className={cn(tableCell, 'tabular-nums')}>
@@ -366,7 +366,8 @@ function WriteOffForm({ item, locations }: { item: StockItem; locations: StockLo
   return (
     <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
       <p className="text-ink-2 m-0 text-[13px]">{t('stockShared.useLead')}</p>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {/* the reason is the longest of the three: it gets the widest column, the quantity the narrowest */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,0.7fr)]">
         <Select
           label={t('stock.fromStore')}
           value={from}

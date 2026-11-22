@@ -13,6 +13,13 @@ import '@fontsource-variable/sora'
 import '@fontsource-variable/manrope'
 import './display.css'
 
+/* One choice of the list. display.css draws it as a grid of two fixed columns (words | pill), which
+   cannot fold: on a phone the pill covered the words. Here the words keep a readable width and the
+   pill goes under them when both no longer fit on one line; a pill wider than the card wraps. */
+const CHOICE = 'qd-setup-choice flex! flex-wrap items-center justify-between gap-[0.6em_1em]!'
+const CHOICE_WORDS = 'flex min-w-[min(100%,11em)] flex-[1_1_11em] flex-col gap-[0.2em]'
+const CHOICE_GO = 'qd-setup-choice-go max-w-full text-center leading-tight whitespace-normal!'
+
 /**
  * 0158: the TV is set up by signing in on it. After the staff sign-in (started from the
  * waiting-room screen's "Set up this TV"), this page lists the clinic's screens; one tap gives
@@ -92,13 +99,15 @@ export function TvSetupPage({ user }: { user: StaffUser }) {
                 <p className="qd-setup-note">{t('tvSetup.noScreens')}</p>
                 <button
                   type="button"
-                  className="qd-setup-choice"
+                  className={CHOICE}
                   disabled={setup.isPending}
                   onClick={() => void use(null)}
                 >
-                  <span className="qd-setup-choice-name">{t('tvSetup.defaultScreen')}</span>
-                  <span className="qd-setup-choice-sub">{t('tvSetup.defaultScreenSub')}</span>
-                  <span className="qd-setup-choice-go">{t('tvSetup.useHere')}</span>
+                  <span className={CHOICE_WORDS}>
+                    <span className="qd-setup-choice-name">{t('tvSetup.defaultScreen')}</span>
+                    <span className="qd-setup-choice-sub">{t('tvSetup.defaultScreenSub')}</span>
+                  </span>
+                  <span className={CHOICE_GO}>{t('tvSetup.useHere')}</span>
                 </button>
               </div>
             )}
@@ -109,23 +118,25 @@ export function TvSetupPage({ user }: { user: StaffUser }) {
                     key={s.id}
                     type="button"
                     role="listitem"
-                    className="qd-setup-choice"
+                    className={CHOICE}
                     disabled={setup.isPending}
                     onClick={() => void use(s.id)}
                   >
-                    <span className="qd-setup-choice-name">{s.name}</span>
-                    <span className="qd-setup-choice-sub">
-                      {[
-                        s.desks.length
-                          ? s.desks
-                              .map((d) => t(`register.stations.${d}`, { defaultValue: d }))
-                              .join(', ')
-                          : t('displayScreens.allDesks'),
-                        s.languages.map((l) => l.toUpperCase()).join(' · '),
-                        t('tvSetup.devices', { count: s.devices }),
-                      ].join(' · ')}
+                    <span className={CHOICE_WORDS}>
+                      <span className="qd-setup-choice-name">{s.name}</span>
+                      <span className="qd-setup-choice-sub">
+                        {[
+                          s.desks.length
+                            ? s.desks
+                                .map((d) => t(`register.stations.${d}`, { defaultValue: d }))
+                                .join(', ')
+                            : t('displayScreens.allDesks'),
+                          s.languages.map((l) => l.toUpperCase()).join(' · '),
+                          t('tvSetup.devices', { count: s.devices }),
+                        ].join(' · ')}
+                      </span>
                     </span>
-                    <span className="qd-setup-choice-go">{t('tvSetup.useHere')}</span>
+                    <span className={CHOICE_GO}>{t('tvSetup.useHere')}</span>
                   </button>
                 ))}
               </div>

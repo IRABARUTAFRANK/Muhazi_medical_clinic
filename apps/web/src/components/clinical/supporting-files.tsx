@@ -176,7 +176,7 @@ export function PatientFilesSection({
                     aria-pressed={kind === k}
                     onClick={() => setKind(k)}
                     className={cn(
-                      'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold',
+                      'inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-[22px] border px-3 py-1 text-left text-[13px] leading-tight font-semibold',
                       kind === k
                         ? 'border-primary bg-primary text-on-primary'
                         : 'border-border bg-card text-ink-2 hover:bg-hover',
@@ -365,8 +365,8 @@ export function TestFilesPanel({
   return (
     <div className="border-border bg-card flex flex-col gap-2 rounded-md border p-3">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-ink-2 inline-flex flex-1 items-center gap-1.5 text-[13px] font-semibold">
-          <Paperclip size={14} aria-hidden="true" />
+        <span className="text-ink-2 inline-flex min-w-0 flex-[1_1_12rem] items-center gap-1.5 text-[13px] font-semibold">
+          <Paperclip size={14} aria-hidden="true" className="flex-none" />
           {t('supportingFiles.titleTest', { test })}
         </span>
         {data?.canAttach && !attaching && (
@@ -532,23 +532,28 @@ function FileGrid({
                   {f.title}
                 </span>
               ) : (
-                // the whole card opens the file (the button's area covers it)
-                <button
-                  type="button"
-                  onClick={() => {
-                    setErr(null)
-                    onMessage(null)
-                    setViewing(f.id)
-                  }}
-                  title={f.title}
-                  aria-label={t('supportingFiles.viewer.openFile', { title: f.title })}
-                  className="text-ink line-clamp-2 w-full text-left text-[14px] leading-snug font-semibold wrap-break-word outline-none after:absolute after:inset-0 after:content-['']"
-                >
-                  {f.title}
-                </button>
+                // the whole card opens the file: a clear button laid over the card (the words stay
+                // plain text under it, so nothing is hidden behind a control's own words)
+                <>
+                  <span className="text-ink line-clamp-2 text-[14px] leading-snug font-semibold wrap-break-word">
+                    {f.title}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErr(null)
+                      onMessage(null)
+                      setViewing(f.id)
+                    }}
+                    title={f.title}
+                    aria-label={t('supportingFiles.viewer.openFile', { title: f.title })}
+                    className="absolute inset-0 size-full cursor-pointer bg-transparent outline-none"
+                  />
+                </>
               )}
               <span className="flex flex-wrap items-center gap-1">
-                <span className="bg-violet-bg text-violet max-w-full truncate rounded-full px-2 py-0.5 text-[11px] font-semibold">
+                {/* a long kind on a narrow card wraps inside its tag (the same round ends on one line) */}
+                <span className="bg-violet-bg text-violet max-w-full rounded-[10px] px-2 py-0.5 text-[11px] font-semibold wrap-break-word">
                   {t(`supportingFiles.kinds.${f.kind}`)}
                 </span>
               </span>
@@ -565,7 +570,7 @@ function FileGrid({
                   when: when(f.uploadedAt),
                 })}
               >
-                <span className="text-ink-2 truncate font-medium">
+                <span className="text-ink-2 font-medium wrap-break-word">
                   {f.uploadedBy ?? t('supportingFiles.someone')}
                 </span>
                 <span className="tabular-nums">{when(f.uploadedAt)}</span>
@@ -805,7 +810,7 @@ function AttachForm({
                 aria-pressed={kind === k}
                 onClick={() => chooseKind(k)}
                 className={cn(
-                  'min-h-9 rounded-full border px-3 text-[13px] font-semibold',
+                  'min-h-9 max-w-full rounded-[22px] border px-3 py-1 text-[13px] leading-tight font-semibold',
                   kind === k
                     ? 'border-primary bg-primary text-on-primary'
                     : 'border-border bg-card text-ink-2 hover:bg-hover',

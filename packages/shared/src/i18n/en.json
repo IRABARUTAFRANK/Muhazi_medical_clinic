@@ -7425,7 +7425,8 @@
       "payments": "Payments",
       "refunds": "Refunds",
       "voided": "Payments cancelled",
-      "handovers": "Counter sales handed over"
+      "handovers": "Counter sales handed over",
+      "bookings": "Bookings"
     },
     "revenue": {
       "collected": "Collected",
@@ -11008,7 +11009,7 @@
     "whereHome": "At home",
     "whereBoth": "Both: some here, the rest at home",
     "medicineHint": "From the clinic’s stock: how many it holds and the price. A medicine the clinic does not have is prescribed to buy outside (above).",
-    "inStock": "{{count}} in stock",
+    "inStock": "{{count}} {{unit}} in stock",
     "noStock": "none in stock",
     "groupInStock": "In the clinic’s stock",
     "groupNoStock": "Not in the clinic’s stock: prescribe it to buy outside",
@@ -11049,7 +11050,7 @@
     "summaryAct": "{{act}} × {{count}} goes on the bill: {{amount}} at the cash price.",
     "summaryTyped": "Not in the price list: nothing goes on the bill.",
     "summaryNoPrice": "No price is set for it: nothing goes on the bill. Ask the manager to set the price.",
-    "notEnough": "Only {{count}} in the clinic’s stock: give less, or prescribe it to buy outside.",
+    "notEnough": "The clinic’s stock holds only {{count}} {{unit}} and this order asks for {{asked}}: give less, or prescribe it to buy outside. If more arrived, record the delivery first under Stock › Add stock.",
     "wholePacksNote": "Sold only by the whole {{pack}} of {{size}}: make the total {{next}}.",
     "sendOnce": "It is given at once: one press of “Given” records everything and ends the order.",
     "sendOnceHand": "It is handed over at once: one press of “Handed over” records everything and ends the order.",

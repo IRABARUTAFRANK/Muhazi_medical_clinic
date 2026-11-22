@@ -13,6 +13,7 @@ import {
   whatsappHref,
 } from '@mmc/shared'
 import { useClinicInfo, useClinicStatus } from '@/lib/api/public'
+import { EmailText } from './email-text'
 import { Wrap } from './site-nav'
 
 // on a touch screen each link is a 44 px row (the lists drop their gap so the footer keeps its rhythm)
@@ -31,16 +32,16 @@ export function SiteFooter() {
   return (
     <footer className="footer-gradient relative mt-auto text-sm text-white/80">
       <div className="brand-bar h-1" aria-hidden="true" />
-      <Wrap className="grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)]">
+      <Wrap className="grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,1.5fr)] lg:gap-x-6 xl:gap-x-10">
         {/* ABOUT + CONTACT */}
         <div className="flex flex-col gap-4 sm:col-span-2 lg:col-span-1">
           <div className="flex items-center gap-3">
             <img
               src="/logo.jpg"
               alt=""
-              className="size-12 rounded-full object-cover ring-2 ring-white/20"
+              className="size-12 flex-none rounded-full object-cover ring-2 ring-white/20"
             />
-            <span>
+            <span className="min-w-0">
               <span className="block text-base font-bold text-white">{profile.name}</span>
               <span className="text-white/70">{t('app.tagline')}</span>
             </span>
@@ -48,7 +49,7 @@ export function SiteFooter() {
           <p className="m-0 max-w-[420px] leading-relaxed">{t('landing.footer.about')}</p>
           <ul className="coarse:gap-0 m-0 flex list-none flex-col gap-2 p-0">
             <li className="flex items-start gap-2.5">
-              <MapPin size={16} className="mt-0.5 text-[#7BD36A]" aria-hidden="true" />
+              <MapPin size={16} className="mt-0.5 flex-none text-[#7BD36A]" aria-hidden="true" />
               <span>
                 {profile.sector}, {profile.district}
                 <br />
@@ -56,13 +57,13 @@ export function SiteFooter() {
               </span>
             </li>
             <li className="flex items-center gap-2.5">
-              <Phone size={16} className="text-[#7BD36A]" aria-hidden="true" />
+              <Phone size={16} className="flex-none text-[#7BD36A]" aria-hidden="true" />
               <a href={telHref(profile.phone)} className={link}>
                 {formatPhone(profile.phone)}
               </a>
             </li>
             <li className="flex items-center gap-2.5">
-              <MessageCircle size={16} className="text-[#7BD36A]" aria-hidden="true" />
+              <MessageCircle size={16} className="flex-none text-[#7BD36A]" aria-hidden="true" />
               <a
                 href={whatsappHref(profile.whatsapp)}
                 target="_blank"
@@ -73,9 +74,9 @@ export function SiteFooter() {
               </a>
             </li>
             <li className="flex items-center gap-2.5">
-              <Mail size={16} className="text-[#7BD36A]" aria-hidden="true" />
-              <a href={`mailto:${profile.email}`} className={`${link} break-all`}>
-                {profile.email}
+              <Mail size={16} className="flex-none text-[#7BD36A]" aria-hidden="true" />
+              <a href={`mailto:${profile.email}`} className={`${link} min-w-0`}>
+                <EmailText email={profile.email} />
               </a>
             </li>
           </ul>
@@ -183,16 +184,16 @@ export function SiteFooter() {
             ))}
           </dl>
           {status && (
-            <p className="mt-4 mb-0 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white">
+            <p className="mt-4 mb-0 inline-flex max-w-full items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold [text-wrap:balance] text-white">
               <span
                 className={
                   status.open
-                    ? 'pulse-ring size-2 rounded-full bg-[#7BD36A] text-[#7BD36A]'
-                    : 'size-2 rounded-full bg-white/50'
+                    ? 'pulse-ring size-2 flex-none rounded-full bg-[#7BD36A] text-[#7BD36A]'
+                    : 'size-2 flex-none rounded-full bg-white/50'
                 }
                 aria-hidden="true"
               />
-              <Clock size={14} aria-hidden="true" />
+              <Clock size={14} className="flex-none" aria-hidden="true" />
               {status.open
                 ? status.closesAt === '24:00'
                   ? t('landing.status.open24')
@@ -206,8 +207,8 @@ export function SiteFooter() {
       <div className="border-t border-white/10">
         <Wrap className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 py-5 text-xs text-white/60">
           <span>{t('landing.footer.rights')}</span>
-          <span id="privacy" className="inline-flex items-center gap-1.5">
-            <ShieldCheck size={14} className="text-[#7BD36A]" aria-hidden="true" />
+          <span id="privacy" className="inline-flex min-w-0 items-center gap-1.5">
+            <ShieldCheck size={14} className="flex-none text-[#7BD36A]" aria-hidden="true" />
             {t('landing.footer.law')}
           </span>
           <span className="tabular-nums">{t('landing.footer.version')}</span>

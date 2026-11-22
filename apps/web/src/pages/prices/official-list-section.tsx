@@ -399,9 +399,11 @@ function PreviewPanel({
           <Button type="button" variant="ghost" onClick={onClose}>
             {t('staff.form.cancel')}
           </Button>
+          {/* a long label: this button gives way in the panel foot, so Cancel stays in view */}
           <Button
             type="button"
             variant="primary"
+            className="min-w-0 shrink"
             disabled={busy || preview.rows === 0}
             onClick={onUse}
           >

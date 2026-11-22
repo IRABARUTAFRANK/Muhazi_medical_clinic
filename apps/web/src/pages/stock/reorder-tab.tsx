@@ -161,7 +161,7 @@ export function ReorderTab({
                           : t('stockReorder.neverReceived')}
                       </span>
                     </span>
-                    <span className="text-right tabular-nums">
+                    <span className="tabular-nums sm:text-right">
                       <span className="text-red block font-semibold">
                         {[
                           t('stockReorder.onHand', { count: x.onHand }),

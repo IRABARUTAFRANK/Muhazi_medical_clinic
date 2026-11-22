@@ -69,7 +69,7 @@ export function FlowCard() {
       </CardHeader>
       <CardBody className="gap-3">
         <p className="text-ink-2 m-0 text-[14px]">{t('settings.flow.lead')}</p>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 @md:grid-cols-2">
           {([false, true] as const).map((v) => {
             const on = current === v
             return (
@@ -161,7 +161,7 @@ function ColleagueBookings() {
         {t('settings.colleague.title')}
       </h3>
       <p className="text-ink-2 m-0 text-[14px]">{t('settings.colleague.lead')}</p>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 @md:grid-cols-2">
         {([true, false] as const).map((v) => {
           const on = current === v
           return (
@@ -254,7 +254,7 @@ function HistoryForTreatingDoctor() {
         {t('settings.pastForDoctor.title')}
       </h3>
       <p className="text-ink-2 m-0 text-[14px]">{t('settings.pastForDoctor.lead')}</p>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 @md:grid-cols-2">
         {([true, false] as const).map((v) => {
           const on = current === v
           return (

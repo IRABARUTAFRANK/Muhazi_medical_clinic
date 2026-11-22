@@ -7434,7 +7434,8 @@
       "payments": "Ubwishyu",
       "refunds": "Amafaranga yasubijwe",
       "voided": "Ubwishyu bwahagaritswe",
-      "handovers": "Amagurisha yo ku irembo yatanzwe"
+      "handovers": "Amagurisha yo ku irembo yatanzwe",
+      "bookings": "Gahunda"
     },
     "revenue": {
       "collected": "Ayakiriwe",
@@ -11017,7 +11018,7 @@
     "whereHome": "Mu rugo",
     "whereBoth": "Byombi: bimwe hano, ibisigaye mu rugo",
     "medicineHint": "Bivuye mu bubiko bw’ivuriro: umubare uhari n’igiciro. Umuti ivuriro ridafite wandikirwa kugurwa hanze (haruguru).",
-    "inStock": "{{count}} mu bubiko",
+    "inStock": "{{count}} {{unit}} mu bubiko",
     "noStock": "nta na kimwe mu bubiko",
     "groupInStock": "Biri mu bubiko bw’ivuriro",
     "groupNoStock": "Ntibiri mu bubiko bw’ivuriro: wandike kugurwa hanze",
@@ -11058,7 +11059,7 @@
     "summaryAct": "{{act}} × {{count}} bijya kuri fagitire: {{amount}} ku giciro gisanzwe.",
     "summaryTyped": "Ntikiri ku rutonde rw’ibiciro: nta kijya kuri fagitire.",
     "summaryNoPrice": "Nta giciro cyashyizweho: nta kijya kuri fagitire. Saba umuyobozi gushyiraho igiciro.",
-    "notEnough": "Mu bubiko bw’ivuriro harimo {{count}} gusa: tanga bike, cyangwa wandike kugurwa hanze.",
+    "notEnough": "Mu bubiko bw’ivuriro harimo {{count}} {{unit}} gusa, naho iri tegeko risaba {{asked}}: tanga bike, cyangwa wandike kugurwa hanze. Niba hari ibindi byaje, banza ubyandike muri Ububiko › Injiza mu bubiko.",
     "wholePacksNote": "Bigurishwa gusa ari {{pack}} yuzuye ya {{size}}: shyira igiteranyo kuri {{next}}.",
     "sendOnce": "Utangwa icyarimwe: gukanda “Byatanzwe” rimwe byandika byose kandi bigasoza itegeko.",
     "sendOnceHand": "Uhabwa umurwayi icyarimwe: gukanda “Yahawe umurwayi” rimwe byandika byose kandi bigasoza itegeko.",

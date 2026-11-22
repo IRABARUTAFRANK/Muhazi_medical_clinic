@@ -330,7 +330,7 @@ export function VitalsCard() {
 
         {/* Add a measurement of the clinic's own, or change a custom one */}
         {editing ? (
-          <div className="border-primary/40 bg-primary-tint/40 grid grid-cols-1 gap-3 rounded-md border p-3 sm:grid-cols-2">
+          <div className="border-primary/40 bg-primary-tint/40 grid grid-cols-1 gap-3 rounded-md border p-3 @md:grid-cols-2">
             <span className="text-ink-2 col-span-full text-[13px] font-semibold">
               {editing.code
                 ? t('settings.vitals.manage.editTitle', { name: nameOf(editing.code) })

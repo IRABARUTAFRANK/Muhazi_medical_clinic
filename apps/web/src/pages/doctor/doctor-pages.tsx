@@ -74,7 +74,7 @@ function Tabs<K extends string>({
           aria-selected={value === x.id}
           onClick={() => onChange(x.id)}
           className={cn(
-            'focus-visible:ring-primary/20 inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-[13px] font-medium transition-colors duration-120 outline-none focus-visible:ring-2',
+            'focus-visible:ring-primary/20 inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-md border px-3 py-1 text-left text-[13px] leading-tight font-medium transition-colors duration-120 outline-none focus-visible:ring-2',
             value === x.id
               ? 'border-primary/30 bg-primary-tint text-primary'
               : 'border-border bg-card text-ink-2 hover:bg-hover',
@@ -83,7 +83,7 @@ function Tabs<K extends string>({
           {x.label}
           <span
             className={cn(
-              'rounded px-1.5 text-[12px] tabular-nums',
+              'flex-none rounded px-1.5 text-[12px] leading-normal tabular-nums',
               value === x.id ? 'bg-card' : 'bg-hover',
             )}
           >
@@ -314,8 +314,10 @@ export function ResultsPage({ user }: { user: StaffUser }) {
                       />
                     </div>
                     {(o.findings || o.impression) && (
-                      <span className="border-border bg-card border-l-green-dot block rounded-md border border-l-2 px-3 py-2 text-[13px]">
-                        <span className="float-right ml-2">
+                      // "Open wide" at the top right; in a narrow box it takes its own line and the
+                      // result keeps the whole width (it used to float, squeezing the words beside it)
+                      <span className="border-border bg-card border-l-green-dot flex flex-row-reverse flex-wrap items-start gap-x-2 gap-y-0.5 rounded-md border border-l-2 px-3 py-2 text-[13px]">
+                        <span className="flex-none">
                           <WideResult
                             result={{
                               test: o.test,
@@ -333,18 +335,20 @@ export function ResultsPage({ user }: { user: StaffUser }) {
                             }}
                           />
                         </span>
-                        {o.findings && <span className="block">{o.findings}</span>}
-                        {o.impression && (
-                          <span className="block font-semibold">{o.impression}</span>
-                        )}
-                        <span className="text-ink-3 block text-xs">
-                          {[
-                            o.verified ? t('clinical.verified') : t('clinical.notVerified'),
-                            o.resultBy,
-                            o.resultAt && when(o.resultAt),
-                          ]
-                            .filter(Boolean)
-                            .join(' · ')}
+                        <span className="min-w-0 flex-[1_1_8rem]">
+                          {o.findings && <span className="block">{o.findings}</span>}
+                          {o.impression && (
+                            <span className="block font-semibold">{o.impression}</span>
+                          )}
+                          <span className="text-ink-3 block text-xs">
+                            {[
+                              o.verified ? t('clinical.verified') : t('clinical.notVerified'),
+                              o.resultBy,
+                              o.resultAt && when(o.resultAt),
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </span>
                         </span>
                       </span>
                     )}
