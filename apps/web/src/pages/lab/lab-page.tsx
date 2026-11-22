@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { CircleCheck, Clock, FlaskConical, Hourglass, TestTubes, TriangleAlert } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { CLINIC_PROFILE, type StaffUser } from '@mmc/shared'
-import { Empty, Kpi, Panel, SectionTitle } from '@/components/dash/kit'
+import { Empty, Hint, Kpi, Panel, SectionTitle } from '@/components/dash/kit'
 import { ActionRow, ActionRowEnd, BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { PeriodFilter } from '@/components/dash/period-filter'
+import { Button } from '@/components/ui/button'
+import { Flash } from '@/components/ui/flash'
 import { Seg } from '@/components/ui/seg'
 import { ListBar, Pager } from '@/components/ui/list-tools'
 import { StaffShell } from '@/components/staff/staff-shell'
@@ -73,7 +75,19 @@ function LabWorklist({ user }: { user: StaffUser }) {
   const doneAll = done?.rows ?? []
   // an older database gives today's results only (said under the period)
   const periodWord = t(`dashboard.period.${done?.todayOnly ? 'today' : period.range}`)
-  const orders = tab === 'open' ? openAll : doneAll
+  // the results given: everyone's, or only those this person signed
+  const [who, setWho] = useState<'all' | 'mine'>('all')
+  const byMe = (o: LabOrder) =>
+    o.resultByPerson?.id ? o.resultByPerson.id === user.id : o.resultBy === user.name
+  const doneShown = who === 'mine' ? doneAll.filter(byMe) : doneAll
+  const orders = tab === 'open' ? openAll : doneShown
+  // the verified results of one visit signed by the same person print together on one report
+  const sameVisit = (o: LabOrder) =>
+    doneAll.filter(
+      (x) => x.encounterId === o.encounterId && x.verified && x.resultBy === o.resultBy,
+    )
+  // where the result just saved went (said once, with the way to it)
+  const [saved, setSaved] = useState<'open' | 'done' | null>(null)
   const { data: summary } = useLabSummary()
   const { data: info } = useClinicInfo()
   const [query, setQuery] = useState('')
@@ -88,7 +102,11 @@ function LabWorklist({ user }: { user: StaffUser }) {
     orders.filter((o) => inFilter(o) && matches(query, o.patient, o.test, o.fileNumber, o.ticket)),
     sort,
   )
-  const paged = usePaged(shown, 15, `${tab}|${filter}|${query}|${sort}|${period.from}|${period.to}`)
+  const paged = usePaged(
+    shown,
+    15,
+    `${tab}|${filter}|${who}|${query}|${sort}|${period.from}|${period.to}`,
+  )
   const count = (f: Filter) => orders.filter((o) => (f === 'all' ? true : inFilterOf(f, o))).length
   // the bench at a glance, from the lists already on the page
   const openCount = (f: Filter) => openAll.filter((o) => inFilterOf(f, o)).length
@@ -129,6 +147,29 @@ function LabWorklist({ user }: { user: StaffUser }) {
         </ActionRow>
 
         {!can('orders.write') && <NotAllowedNotice feature="orders.write" />}
+
+        {saved && (
+          <Flash key={saved} onClose={() => setSaved(null)}>
+            <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <span className="min-w-0 flex-[1_1_16rem]">
+                {t(saved === 'done' ? 'lab.savedDone' : 'lab.savedOpen')}
+              </span>
+              {saved === 'done' && tab !== 'done' && (
+                <Button
+                  size="sm"
+                  variant="tint-mint"
+                  onClick={() => {
+                    setTab('done')
+                    setSaved(null)
+                  }}
+                >
+                  <CircleCheck size={14} aria-hidden="true" />
+                  {t('lab.seeDone')}
+                </Button>
+              )}
+            </span>
+          </Flash>
+        )}
 
         <section className="flex flex-col gap-3">
           <SectionTitle icon={TestTubes}>{t('lab.section')}</SectionTitle>
@@ -186,6 +227,24 @@ function LabWorklist({ user }: { user: StaffUser }) {
             placeholderKey="lab.search"
           />
           {tab === 'done' && <PeriodFilter period={period} />}
+          {tab === 'done' && (
+            <>
+              <Seg<'all' | 'mine'>
+                className="self-start"
+                label={t('lab.doneBy.label')}
+                value={who}
+                onChange={setWho}
+                options={[
+                  { value: 'all', label: `${t('lab.doneBy.all')} (${doneAll.length})` },
+                  {
+                    value: 'mine',
+                    label: `${t('lab.doneBy.mine')} (${doneAll.filter(byMe).length})`,
+                  },
+                ]}
+              />
+              <Hint>{t('lab.doneHint')}</Hint>
+            </>
+          )}
           {tab === 'done' && done?.todayOnly && (
             <p className="border-amber/30 bg-amber-bg text-amber m-0 flex items-start gap-2 rounded-md border px-3 py-2.5 text-[14px] font-medium">
               <TriangleAlert size={16} aria-hidden="true" className="mt-0.5 flex-none" />
@@ -211,7 +270,14 @@ function LabWorklist({ user }: { user: StaffUser }) {
           ) : (
             <div className="flex flex-col">
               {paged.slice.map((o, i) => (
-                <LabOrderRow key={o.id} order={o} i={i} now={now} />
+                <LabOrderRow
+                  key={o.id}
+                  order={o}
+                  i={i}
+                  now={now}
+                  visitResults={tab === 'done' ? sameVisit(o) : undefined}
+                  onSaved={setSaved}
+                />
               ))}
             </div>
           )}

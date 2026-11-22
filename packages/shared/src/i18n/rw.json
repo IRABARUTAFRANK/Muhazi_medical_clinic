@@ -4369,7 +4369,18 @@
     "resultsGivenIn": "Ibisubizo byatanzwe {{period}}",
     "noneDoneIn": "Nta gisubizo cyatanzwe {{period}}.",
     "periodNeedsUpdate": "Ibindi bihe bisaba ivugurura rishya rya sisitemu. Ibisubizo biri hasi ni iby’uyu munsi.",
-    "callHint": "Mugaragaza y’aho bategerereza ibwira umurwayi kuza muri laboratwari"
+    "callHint": "Mugaragaza y’aho bategerereza ibwira umurwayi kuza muri laboratwari",
+    "printVisit": "Cyapa ibisubizo byose by’uku kwivuza ({{count}})",
+    "printVisitHint": "Raporo imwe iriho ibisubizo byose byemejwe by’uku kwivuza k’uyu murwayi wasinye",
+    "doneBy": {
+      "label": "Ibisubizo bya nde",
+      "all": "Byose",
+      "mine": "Ibyo nakoze"
+    },
+    "savedDone": "Igisubizo cyabitswe kandi cyemejwe. Ubu kiri munsi ya “Byakozwe” hepfo: gifungure aho kugira ngo ugicape cyangwa ugikosore.",
+    "savedOpen": "Igisubizo cyabitswe. Kiguma kuri uru rutonde kugeza cyemejwe.",
+    "seeDone": "Reba ibizamini byakozwe",
+    "doneHint": "Ibisubizo byose byatanzwe muri icyo gihe. Buri kimwe gishobora gufungurwa cyose, gucapwa, no gukosorwa utanze impamvu."
   },
   "finance": {
     "desk": "Aho bakira ubwishyu",
@@ -10909,7 +10920,7 @@
     "openVisit": "Fungura kwivuza",
     "homeHint": "Amategeko woherejwe mu izina ryawe n’ayoherejwe abaforomo bose b’aho ukorera. Kanda rimwe “Byatanzwe” (cyangwa “Byakozwe”) iyo byarangiye, cyangwa “Ntibizakorwa” n’impamvu: muganga ahita abibona.",
     "title": "Amategeko: ibitangirwa hano cyangwa ibyo gutahana (n’umuforomo, cyangwa nanjye)",
-    "add": "Itegeko rishya",
+    "add": "Imiti n’ibikorwa by’ubuvuzi",
     "none": "Nta tegeko riraba: nta kintu cyatangiwe hano cyangwa cyo gutahana.",
     "kindLabel": "Ubwoko bw’itegeko",
     "kindDrug": "Umuti",

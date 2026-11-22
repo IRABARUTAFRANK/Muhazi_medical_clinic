@@ -4360,7 +4360,18 @@
     "resultsGivenIn": "Results given {{period}}",
     "noneDoneIn": "No result given {{period}}.",
     "periodNeedsUpdate": "Other periods need the latest database update. The results below are today's.",
-    "callHint": "The waiting-room screen tells the patient to come to the laboratory"
+    "callHint": "The waiting-room screen tells the patient to come to the laboratory",
+    "printVisit": "Print all results of this visit ({{count}})",
+    "printVisitHint": "One report with every verified result of this patient’s visit that you signed",
+    "doneBy": {
+      "label": "Whose results",
+      "all": "Everyone",
+      "mine": "Done by me"
+    },
+    "savedDone": "Result saved and verified. It is now under “Done” below: open it there to print it or to correct it.",
+    "savedOpen": "Result saved. It stays in this list until it is checked and verified.",
+    "seeDone": "Show the tests done",
+    "doneHint": "Every result given in the period. Each one can be opened in full, printed, and corrected with the reason."
   },
   "finance": {
     "desk": "Cash desk",
@@ -10900,7 +10911,7 @@
     "openVisit": "Open the visit",
     "homeHint": "The orders sent to you by name and those sent to all the nurses of your desk. Press Given (or Done) once when it is done, or Will not be done with the reason: the doctor sees it at once.",
     "title": "Orders: given here or to take home (by a nurse, or by me)",
-    "add": "New order",
+    "add": "Medication and medical acts",
     "none": "No order yet: nothing given here or to take home.",
     "kindLabel": "Kind of order",
     "kindDrug": "Medicine",

@@ -357,5 +357,33 @@ export function useLabActions() {
     },
     onSuccess: refresh,
   })
-  return { setStatus, result }
+  // A verified result changed afterwards: the first report and the reason are kept (0104); the
+  // doctor who ordered the test is told.
+  const correct = useMutation({
+    mutationFn: async (i: { id: string; findings: string; impression: string; reason: string }) => {
+      if (!supabase) {
+        sampleDone = sampleDone.map((o) =>
+          o.id === i.id
+            ? {
+                ...o,
+                findings: i.findings,
+                impression: i.impression,
+                corrected: true,
+                resultAt: new Date().toISOString(),
+              }
+            : o,
+        )
+        return
+      }
+      const { error } = await supabase.rpc('correct_result', {
+        p_request_id: i.id,
+        p_findings: i.findings || null,
+        p_impression: i.impression || null,
+        p_reason: i.reason.trim(),
+      })
+      if (error) throw apiError(error)
+    },
+    onSuccess: refresh,
+  })
+  return { setStatus, result, correct }
 }

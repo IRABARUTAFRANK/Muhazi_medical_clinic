@@ -8,6 +8,7 @@ import {
   FlaskConical,
   Hourglass,
   Paperclip,
+  PencilLine,
   Printer,
   Siren,
   TestTube,
@@ -66,12 +67,19 @@ export function LabOrderRow({
   i = 0,
   now,
   desk = false,
+  visitResults,
+  onSaved,
 }: {
   order: LabOrder
   i?: number
   now: number
   /** An order done at another desk (Nursing…): no sample steps. */
   desk?: boolean
+  /** The verified results of the same visit signed by the same person (this one included): with
+   *  two or more, one report prints them together. */
+  visitResults?: LabOrder[]
+  /** A result was just saved: it stays in the open list (not verified) or went to the done one. */
+  onSaved?: (where: 'open' | 'done') => void
 }) {
   const { t } = useTranslation()
   const actions = useLabActions()
@@ -89,7 +97,11 @@ export function LabOrderRow({
     findings: o.findings ?? '',
     impression: o.impression ?? '',
     verify: true,
+    // why a verified result is corrected (kept with the first report)
+    reason: '',
   })
+  // a verified result is not typed over: it is corrected, with the reason
+  const correcting = o.status === 'verified'
   const [error, setError] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState(false)
   const [why, setWhy] = useState('')
@@ -108,8 +120,18 @@ export function LabOrderRow({
   const letterhead = useLetterhead()
   const labels = useMedicalReportLabels()
   const printedBy = usePrintedBy()
-  // The result slip the patient (or the doctor) takes away: the result report of this test only.
-  const printSlip = () => {
+  // The result report the patient (or the doctor) takes away: of this test only, or of every
+  // verified result of the visit signed by the same person, on one report.
+  const printReport = (list: LabOrder[]) => {
+    const requested = list.map((x) => x.orderedAt).sort()[0] ?? o.orderedAt
+    const reported =
+      list
+        .map((x) => x.resultAt)
+        .filter((x): x is string => !!x)
+        .sort()
+        .pop() ?? o.resultAt
+    const allVerified = list.every((x) => x.verified)
+    const reasons = [...new Set(list.map((x) => x.reason).filter((x): x is string => !!x))]
     // who entered (or validated) the result, with title and registration (0084; absent before)
     const person = o.resultByPerson ?? null
     // An order done at another desk (Nursing, Dental…) is that desk's report, signed with the
@@ -155,16 +177,14 @@ export function LabOrderRow({
             // "Requested by" on the result report
             doctor: o.orderedBy,
             vitals: [],
-            notes: o.reason ? [o.reason] : [],
+            notes: reasons,
             diagnoses: [],
-            tests: [
-              {
-                name: o.test,
-                findings: o.findings,
-                impression: o.impression,
-                verified: o.verified,
-              },
-            ],
+            tests: list.map((x) => ({
+              name: x.test,
+              findings: x.findings,
+              impression: x.impression,
+              verified: x.verified,
+            })),
             treatments: [],
             medicines: [],
           },
@@ -176,29 +196,32 @@ export function LabOrderRow({
         },
         printedBy: printedBy || null,
         lab: {
-          reason: o.reason,
-          requestedAt: o.orderedAt,
-          reportedAt: o.resultAt,
-          performedAt: o.resultAt,
+          reason: reasons.join(' · ') || null,
+          requestedAt: requested,
+          reportedAt: reported,
+          performedAt: reported,
           // a result not verified yet prints as preliminary, with "Validated by" left blank
           validatedBy:
-            o.verified && (person || o.resultBy)
+            allVerified && (person || o.resultBy)
               ? {
                   name: person?.name ?? o.resultBy ?? '',
                   title: personTitle,
                   registrationNo: registrationText(person),
                 }
               : null,
-          validatedAt: o.verified ? o.resultAt : null,
+          validatedAt: allVerified ? reported : null,
           // a verified result corrected afterwards prints with the "Amended report" banner (the
           // worklist says only that it was corrected, not when the first report was issued)
-          amended: o.corrected === true,
+          amended: list.some((x) => x.corrected === true),
         },
       },
       labels,
     )
     if (!ok) setError(t('report.popupBlocked'))
   }
+  const printSlip = () => printReport([o])
+  // the other verified results of this visit that the same person signed
+  const together = o.verified && visitResults && visitResults.length > 1 ? visitResults : null
   const look = STATUS_LOOK[o.status]
   const urgent = o.priority <= 2
   const confirm = useConfirm()
@@ -247,6 +270,7 @@ export function LabOrderRow({
         <Pill tint={look.tint} icon={look.icon}>
           {t(`lab.status.${o.status}`)}
         </Pill>
+        {o.corrected && <Pill tint="amber">{t('home.correctedResult')}</Pill>}
         <span className="flex flex-wrap gap-1">
           {mayWork && o.status === 'ordered' && !desk && (
             <Button
@@ -343,10 +367,29 @@ export function LabOrderRow({
               {t(o.status === 'resulted' ? 'lab.verify' : 'lab.enterResult')}
             </Button>
           )}
+          {/* a verified result is not typed over: it is corrected, with the reason (the first
+              report is kept and the doctor who ordered the test is told) */}
+          {mayWork && correcting && !open && (
+            <Button size="sm" variant="tint-amber" onClick={() => setOpen(true)}>
+              <PencilLine size={14} aria-hidden="true" />
+              {t('clinical.correctResult')}
+            </Button>
+          )}
           {(o.status === 'verified' || o.status === 'resulted') && (
             <Button size="sm" variant="tint-grey" onClick={printSlip} title={t('lab.slipHint')}>
               <Printer size={14} aria-hidden="true" />
               {t('lab.printSlip')}
+            </Button>
+          )}
+          {together && (
+            <Button
+              size="sm"
+              variant="tint-grey"
+              onClick={() => printReport(together)}
+              title={t('lab.printVisitHint')}
+            >
+              <Printer size={14} aria-hidden="true" />
+              {t('lab.printVisit', { count: together.length })}
             </Button>
           )}
           {mayWork &&
@@ -489,8 +532,38 @@ export function LabOrderRow({
       {open && mayWork && (
         <form
           className={cn(card, 'p-3', focusedForm)}
+          // Enter in a one-line field does not save the result (it used to send the form and the
+          // result was verified before it was read again): only the button saves
+          onKeyDown={(e) => {
+            if (
+              e.key === 'Enter' &&
+              e.target instanceof HTMLInputElement &&
+              e.target.type !== 'checkbox'
+            )
+              e.preventDefault()
+          }}
           onSubmit={async (e) => {
             e.preventDefault()
+            if (correcting) {
+              if (
+                !(await confirm({
+                  title: t('confirm.visit.resultCorrect', { test: o.test, name: o.patient }),
+                  body: t('confirm.visit.resultCorrectBody'),
+                  confirmLabel: t('confirm.visit.resultCorrectYes'),
+                }))
+              )
+                return
+              void run(async () => {
+                await actions.correct.mutateAsync({
+                  id: o.id,
+                  findings: form.findings,
+                  impression: form.impression,
+                  reason: form.reason,
+                })
+                setForm((f) => ({ ...f, reason: '' }))
+              })
+              return
+            }
             if (
               !(await confirm({
                 title: t(
@@ -502,7 +575,15 @@ export function LabOrderRow({
               }))
             )
               return
-            void run(() => actions.result.mutateAsync({ id: o.id, ...form }))
+            void run(async () => {
+              await actions.result.mutateAsync({
+                id: o.id,
+                findings: form.findings,
+                impression: form.impression,
+                verify: form.verify,
+              })
+              onSaved?.(form.verify ? 'done' : 'open')
+            })
           }}
         >
           <label className={labelClass}>
@@ -523,19 +604,42 @@ export function LabOrderRow({
               onChange={(e) => setForm({ ...form, impression: e.target.value })}
             />
           </label>
-          <label className="text-ink-2 flex items-center gap-2 text-[13px] font-medium">
-            <input
-              type="checkbox"
-              className="accent-primary size-4"
-              checked={form.verify}
-              onChange={(e) => setForm({ ...form, verify: e.target.checked })}
-            />
-            {t('clinical.verifyNow')}
-          </label>
+          {correcting ? (
+            <label className={labelClass}>
+              {t('clinical.correctionWhy')}
+              <input
+                required
+                minLength={3}
+                className={controlClass}
+                placeholder={t('clinical.correctionPh')}
+                value={form.reason}
+                onChange={(e) => setForm({ ...form, reason: e.target.value })}
+              />
+            </label>
+          ) : (
+            <label className="text-ink-2 flex items-center gap-2 text-[13px] font-medium">
+              <input
+                type="checkbox"
+                className="accent-primary size-4"
+                checked={form.verify}
+                onChange={(e) => setForm({ ...form, verify: e.target.checked })}
+              />
+              {t('clinical.verifyNow')}
+            </label>
+          )}
           <span className="flex flex-wrap gap-2">
-            <Button type="submit" size="sm" variant="primary" loading={actions.result.isPending}>
-              <CircleCheck size={14} aria-hidden="true" />
-              {t('clinical.saveResult')}
+            <Button
+              type="submit"
+              size="sm"
+              variant="primary"
+              loading={actions.result.isPending || actions.correct.isPending}
+            >
+              {correcting ? (
+                <PencilLine size={14} aria-hidden="true" />
+              ) : (
+                <CircleCheck size={14} aria-hidden="true" />
+              )}
+              {t(correcting ? 'clinical.correctResult' : 'clinical.saveResult')}
             </Button>
             <Button type="button" size="sm" variant="tint-grey" onClick={() => setOpen(false)}>
               <Undo2 size={14} aria-hidden="true" />

@@ -4360,7 +4360,18 @@
     "resultsGivenIn": "Résultats rendus {{period}}",
     "noneDoneIn": "Aucun résultat rendu {{period}}.",
     "periodNeedsUpdate": "Les autres périodes demandent la dernière mise à jour de la base de données. Les résultats ci-dessous sont ceux d’aujourd’hui.",
-    "callHint": "L’écran de la salle d’attente dit au patient de venir au laboratoire"
+    "callHint": "L’écran de la salle d’attente dit au patient de venir au laboratoire",
+    "printVisit": "Imprimer tous les résultats de cette visite ({{count}})",
+    "printVisitHint": "Un seul rapport avec tous les résultats validés de la visite de ce patient que vous avez signés",
+    "doneBy": {
+      "label": "Les résultats de qui",
+      "all": "Tous",
+      "mine": "Faits par moi"
+    },
+    "savedDone": "Résultat enregistré et validé. Il est maintenant sous « Faits » ci-dessous : ouvrez-le là pour l’imprimer ou le corriger.",
+    "savedOpen": "Résultat enregistré. Il reste dans cette liste jusqu’à sa validation.",
+    "seeDone": "Voir les examens faits",
+    "doneHint": "Tous les résultats rendus pendant la période. Chacun peut être ouvert en entier, imprimé, et corrigé en donnant le motif."
   },
   "finance": {
     "desk": "Caisse",
@@ -10900,7 +10911,7 @@
     "openVisit": "Ouvrir la visite",
     "homeHint": "Les ordres envoyés à vous par nom et ceux envoyés à tous les infirmiers de votre poste. Appuyez une fois sur « Donné » (ou « Fait ») quand c’est fait, ou « Ne sera pas fait » avec la raison : le médecin le voit aussitôt.",
     "title": "Ordres : donné ici ou à emporter (par un infirmier, ou par moi)",
-    "add": "Nouvel ordre",
+    "add": "Médicaments et actes médicaux",
     "none": "Pas encore d’ordre : rien donné ici ni à emporter.",
     "kindLabel": "Type de prescription",
     "kindDrug": "Médicament",
