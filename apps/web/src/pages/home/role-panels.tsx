@@ -42,7 +42,14 @@ import { triageIcon, type Tint } from '@/components/dash/kit-style'
 import { Button, actionLink, buttonVariants } from '@/components/ui/button'
 import { ShownList } from '@/components/ui/list-tools'
 import { StaffLink } from '@/components/staff/staff-link'
-import { useHomeActions, useHomeSummary, type HomeBed, type HomeSummary } from '@/lib/api/home'
+import {
+  useHomeActions,
+  useHomeSummary,
+  type HomeBed,
+  type HomeResult,
+  type HomeSummary,
+} from '@/lib/api/home'
+import { visitBlocks, type VisitBlock } from '@/lib/visit-blocks'
 import { focusAttr, useFocusFirst } from '@/lib/notice-focus'
 import { FOCUS_PANEL } from '@/lib/notice-target'
 import { navForUser } from '@/lib/nav'
@@ -617,11 +624,156 @@ function NursePanels({ data, onError }: PanelProps) {
   )
 }
 
+/** One result of the inbox: verified or not, seen or not, the test, its conclusion, "Seen".
+ *  Inside the block of its patient's visit (`grouped`) the patient and "Open" are on the heading. */
+function InboxResult({
+  result: r,
+  i,
+  grouped = false,
+  onError,
+}: {
+  result: HomeResult
+  i: number
+  grouped?: boolean
+  onError: (message: string | null) => void
+}) {
+  const { t } = useTranslation()
+  const actions = useHomeActions()
+  const confirm = useConfirm()
+  return (
+    <div
+      className={cn(rowClass, grouped && 'px-3 last:rounded-b-[7px]')}
+      style={{ '--i': i } as CSSProperties}
+    >
+      <Pill
+        tint={!r.verified ? 'amber' : r.reviewed ? 'teal' : 'mint'}
+        icon={r.verified ? CircleCheck : Hourglass}
+      >
+        {t(!r.verified ? 'home.unverified' : r.reviewed ? 'home.seen' : 'home.verified')}
+      </Pill>
+      <span className="min-w-[min(160px,100%)] flex-1">
+        <span className="block font-semibold">{grouped ? r.test : `${r.test} · ${r.name}`}</span>
+        <span className="text-ink-3 block text-[13px] tabular-nums">
+          {r.impression} · {r.at}
+          {r.corrected ? ` · ${t('home.correctedResult')}` : ''}
+        </span>
+      </span>
+      {r.verified && !r.reviewed && (
+        <Button
+          size="sm"
+          variant="tint-mint"
+          onClick={async () => {
+            if (
+              !(await confirm({
+                title: t('confirm.desks.result.seen', { test: r.test, name: r.name }),
+                body: t('confirm.desks.result.seenBody'),
+                confirmLabel: t('confirm.desks.result.seenYes'),
+              }))
+            )
+              return
+            void actions.markReviewed.mutateAsync(r.id).catch((e: unknown) => onError(describe(e)))
+          }}
+        >
+          <Check size={14} aria-hidden="true" />
+          {t('home.markSeen')}
+        </Button>
+      )}
+      {!grouped && (
+        <StaffLink
+          to="/app/visit"
+          search={{ encounter: r.encounterId }}
+          className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
+        >
+          <FileText size={14} aria-hidden="true" />
+          {t('common.open')}
+        </StaffLink>
+      )}
+    </div>
+  )
+}
+
+/**
+ * The results of one patient's visit together ("the file of that patient"): the patient once,
+ * how many results, the visit one press away, and "seen" for all of them with one press. A
+ * single result stays the plain row.
+ */
+function ResultsBlock({
+  block,
+  i,
+  onError,
+}: {
+  block: VisitBlock<HomeResult>
+  i: number
+  onError: (message: string | null) => void
+}) {
+  const { t } = useTranslation()
+  const actions = useHomeActions()
+  const confirm = useConfirm()
+  const [busy, setBusy] = useState(false)
+  const { rows } = block
+  const first = rows[0]
+  if (!first) return null
+  if (rows.length === 1) return <InboxResult result={first} i={i} onError={onError} />
+  const toRead = rows.filter((r) => r.verified && !r.reviewed)
+  const seenAll = async () => {
+    if (
+      !(await confirm({
+        title: t('confirm.desks.result.seenAll', { count: toRead.length, name: first.name }),
+        body: `${toRead.map((r) => r.test).join(' · ')}. ${t('confirm.desks.result.seenAllBody')}`,
+        confirmLabel: t('confirm.desks.result.seenYes'),
+      }))
+    )
+      return
+    setBusy(true)
+    try {
+      for (const r of toRead) await actions.markReviewed.mutateAsync(r.id)
+    } catch (e) {
+      onError(describe(e))
+    }
+    setBusy(false)
+  }
+  return (
+    <section
+      aria-label={t('lab.block.aria', { patient: first.name })}
+      className="border-border my-1.5 flex min-w-0 flex-col rounded-lg border text-[14px] first:mt-0 last:mb-0"
+    >
+      <header className="border-border bg-hover flex flex-wrap items-center gap-x-2.5 gap-y-1.5 rounded-t-[7px] border-b px-3 py-2">
+        <span className="min-w-[min(160px,100%)] flex-1">
+          <span className="block font-semibold break-words">{first.name}</span>
+          <span className="text-ink-3 block text-[13px]">
+            {t('home.resultsCount', { count: rows.length })}
+          </span>
+        </span>
+        {toRead.length > 1 && (
+          <Button size="sm" variant="tint-mint" loading={busy} onClick={() => void seenAll()}>
+            <Check size={14} aria-hidden="true" />
+            {t('home.markAllSeen', { count: toRead.length })}
+          </Button>
+        )}
+        <StaffLink
+          to="/app/visit"
+          search={{ encounter: first.encounterId }}
+          className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
+        >
+          <FileText size={14} aria-hidden="true" />
+          {t('common.open')}
+        </StaffLink>
+      </header>
+      <div className="flex flex-col">
+        {rows.map((r, n) => (
+          <InboxResult key={r.id} result={r} i={i + n} grouped onError={onError} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
 function DoctorPanels({ data, onError }: PanelProps) {
   const { t } = useTranslation()
   const mine = data.appointments.filter((a) => a.mine)
-  const actions = useHomeActions()
-  const confirm = useConfirm()
+  // "Tests & results" for whoever has the page in their menu: every result in full
+  const user = useSession((u) => u.user)
+  const seeAll = !!user && navForUser(user).some((n) => n.to === '/app/results')
   return (
     <>
       <Panel
@@ -630,61 +782,17 @@ function DoctorPanels({ data, onError }: PanelProps) {
         tint="violet"
         title={t('home.resultsInbox')}
         right={t('home.resultsCount', { count: data.results.length })}
+        // every test requested, with its result in full
+        to={seeAll ? '/app/results' : undefined}
+        toLabel={t('doctorLists.resultsTitle')}
       >
         {data.results.length === 0 && <Empty>{t('home.noResults')}</Empty>}
-        <ShownList items={data.results} step={5}>
+        {/* the results of one patient's visit together, the patient named once */}
+        <ShownList items={visitBlocks(data.results)} step={5}>
           {(shown) => (
             <div className="flex flex-col">
-              {shown.map((r, i) => (
-                <div key={r.id} className={rowClass} style={{ '--i': i } as CSSProperties}>
-                  <Pill
-                    tint={!r.verified ? 'amber' : r.reviewed ? 'teal' : 'mint'}
-                    icon={r.verified ? CircleCheck : Hourglass}
-                  >
-                    {t(
-                      !r.verified ? 'home.unverified' : r.reviewed ? 'home.seen' : 'home.verified',
-                    )}
-                  </Pill>
-                  <span className="min-w-[160px] flex-1">
-                    <span className="block font-semibold">
-                      {r.test} · {r.name}
-                    </span>
-                    <span className="text-ink-3 block text-[13px] tabular-nums">
-                      {r.impression} · {r.at}
-                      {r.corrected ? ` · ${t('home.correctedResult')}` : ''}
-                    </span>
-                  </span>
-                  {r.verified && !r.reviewed && (
-                    <Button
-                      size="sm"
-                      variant="tint-mint"
-                      onClick={async () => {
-                        if (
-                          !(await confirm({
-                            title: t('confirm.desks.result.seen', { test: r.test, name: r.name }),
-                            body: t('confirm.desks.result.seenBody'),
-                            confirmLabel: t('confirm.desks.result.seenYes'),
-                          }))
-                        )
-                          return
-                        void actions.markReviewed
-                          .mutateAsync(r.id)
-                          .catch((e: unknown) => onError(describe(e)))
-                      }}
-                    >
-                      <Check size={14} aria-hidden="true" />
-                      {t('home.markSeen')}
-                    </Button>
-                  )}
-                  <StaffLink
-                    to="/app/visit"
-                    search={{ encounter: r.encounterId }}
-                    className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
-                  >
-                    <FileText size={14} aria-hidden="true" />
-                    {t('common.open')}
-                  </StaffLink>
-                </div>
+              {shown.map((b, i) => (
+                <ResultsBlock key={b.key} block={b} i={i} onError={onError} />
               ))}
             </div>
           )}

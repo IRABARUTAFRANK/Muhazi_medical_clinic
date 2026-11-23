@@ -118,7 +118,8 @@
     "myBookings": "Mes rendez-vous",
     "documents": "Documents des patients",
     "priceLists": "Listes de prix et assureurs",
-    "finance": "Finances"
+    "finance": "Finances",
+    "patientsInBeds": "Hospitalisés"
   },
   "roles": {
     "receptionist": "Réceptionniste",
@@ -510,7 +511,8 @@
     "markSeen": "Vu",
     "otherTime": "Autre heure",
     "newTime": "Nouvelle heure",
-    "acceptAt": "Accepter à cette heure"
+    "acceptAt": "Accepter à cette heure",
+    "markAllSeen": "Tous vus ({{count}})"
   },
   "dashboard": {
     "title": "Tableau de bord de la clinique",
@@ -2374,7 +2376,7 @@
       "medicine": "Médicament ou fourniture",
       "pickItem": "Choisissez un médicament ou une fourniture",
       "searchItemPh": "amoxicilline, gants, SRO…",
-      "medicinesElsewhere": "Les médicaments se prescrivent dans le dossier clinique (Ordonnance) ; ici vous ajoutez les soins et services.",
+      "medicinesElsewhere": "Ici vous ajoutez les soins et services donnés au patient. Un médicament ne s’ajoute pas ici : le médecin le prescrit, ou donne l’ordre de le donner, dans le dossier de la visite.",
       "otherWarning": "Ce soin appartient à un autre département. Ajoutez-le seulement si vous le donnez vraiment ici (par exemple quand personne de ce département n’est libre).",
       "otherGroup": "Autres actes et services",
       "notCoveredGroup": "Non couvert par {{insurer}} — le patient paie",
@@ -2920,10 +2922,8 @@
     "possibleDx": "Diagnostic possible"
   },
   "clinical": {
-    "title": "Dossier clinique",
     "readOnly": "Seuls les médecins, infirmiers et le gestionnaire peuvent écrire dans le dossier clinique.",
     "addNote": "Note",
-    "addDx": "Diagnostic",
     "addRx": "Ordonnance",
     "addTest": "Examens et demandes",
     "note": "Note",
@@ -2938,8 +2938,6 @@
       "secondary": "Secondaire"
     },
     "provisional": "Provisoire",
-    "saveDx": "Enregistrer le diagnostic",
-    "dxSaved": "Diagnostic enregistré.",
     "medicine": "Médicament",
     "quantity": "Quantité",
     "days": "Jours",
@@ -2964,7 +2962,6 @@
       "cancelled": "annulé",
       "in_process": "en analyse"
     },
-    "empty": "Rien d’enregistré pour cette visite.",
     "finish": "Clôturer la visite",
     "finishHint": "Un diagnostic principal est requis. S’il reste un solde, le patient est envoyé à la caisse.",
     "finishConfirm": "Clôturer cette visite ? Les examens en cours restent ouverts ; une facture impayée envoie le patient à la caisse.",
@@ -3030,8 +3027,6 @@
     "enterResult": "Saisir le résultat",
     "editResult": "Modifier le résultat",
     "resultSaved": "Résultat enregistré ; le médecin prescripteur est prévenu.",
-    "icdHint": "La CIM-10 est le code international de la maladie (B54 = paludisme, A01.0 = typhoïde). Facultatif ; avec lui, les rapports comptent les maladies comme le Ministère de la Santé.",
-    "provisionalHint": "Cochez « Provisoire » quand vous soupçonnez la maladie sans l’avoir confirmée (par exemple en attendant un examen). Laissez décoché quand le diagnostic est confirmé.",
     "testHint": "Aucun diagnostic n’est requis. Un examen va au poste qui le fait et son résultat revient ici ; tout autre acte choisi ici va directement sur la facture.",
     "noTests": "Aucun acte n’est encore dans le catalogue (Prix › Actes, ou une liste du Ministère).",
     "reasonPh": "ex. fièvre depuis 5 jours, cause non trouvée",
@@ -3156,7 +3151,6 @@
     "noteUpdated": "Note modifiée.",
     "noDeskForTest": "Personne ne tient encore le poste {{desk}} : donnez le poste {{desk}} à un service dans Paramètres.",
     "splitLine": "{{given}} donnés · {{outside}} à l’extérieur",
-    "dxHintAuto": "Le diagnostic est la maladie ou le problème trouvé après l’examen du patient, ex. « Paludisme simple ». Le premier inscrit est le diagnostic principal, les suivants sont secondaires. Cochez « provisoire » si vous attendez encore des résultats.",
     "testPick": "Examen ou acte",
     "testPickEmpty": "Choisir un examen ou un acte…",
     "testPickHint": "Tapez quelques lettres pour le trouver ; choisissez-en autant qu’il faut. Ceux de vos services d’abord, puis les examens du Laboratoire et de l’Échographie, puis tous les autres actes de la clinique. Les médicaments sont dans l’Ordonnance.",
@@ -3254,7 +3248,10 @@
       "unpaid": "{{amount}} RWF restent dus : envoyez le patient au caissier. Quelqu’un qui a « Laisser partir un patient qui doit de l’argent » (le gérant, le caissier, la réception) peut clore la visite avec une dette.",
       "owingBody": "La visite se ferme ; le montant reste sur le patient comme une dette à encaisser à son retour. C’est écrit dans le journal d’audit avec votre nom.",
       "doneOwing": "{{name}} est parti en devant {{amount}} RWF : la visite est close, la dette est sur son dossier."
-    }
+    },
+    "inBeds": "Restent dans un lit",
+    "inBedsHint": "Ils restent à la clinique quelques jours. Les autres viennent, sont soignés et rentrent le jour même.",
+    "inBedsLink": "Patients hospitalisés →"
   },
   "desk": {
     "today": "Aujourd'hui",
@@ -3795,7 +3792,12 @@
     "taxOverdue_other": "Impôt {{name}} en retard de {{count}} jours",
     "taxBodyNoAmount": "Montant à calculer · échéance {{date}}",
     "nurseOrderHome": "Médicament à remettre (à emporter) : {{title}}",
-    "withHome": "et une partie à emporter"
+    "withHome": "et une partie à emporter",
+    "bedStay": {
+      "given": "{{name}} reçoit le lit {{bed}}",
+      "moved": "{{name}} change du lit {{from}} au lit {{bed}}",
+      "ended": "Le séjour de {{name}} dans le lit {{bed}} est terminé : le lit est à nettoyer"
+    }
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
@@ -3994,7 +3996,7 @@
       "billNew": "A ouvert une facture pour {{patient}}.",
       "billPosted": "A réglé et clôturé la facture {{number}} de {{patient}} : total {{total}}.",
       "billEdit": "A mis à jour la facture {{number}} de {{patient}}.",
-      "dx": "A posé le diagnostic « {{text}} » (CIM-10 {{code}}, {{type}}) pour {{patient}}.",
+      "dx": "A posé le diagnostic « {{text}} » ({{type}}) pour {{patient}}.",
       "dxDel": "A retiré le diagnostic « {{text}} » de la visite de {{patient}}.",
       "rx": "A prescrit {{item}} à {{patient}}.",
       "rxEdit": "A modifié la prescription de {{item}} pour {{patient}}.",
@@ -4163,7 +4165,6 @@
       "consent_messages": "Consentement aux messages",
       "type": "Type",
       "provisional": "Provisoire",
-      "icd10_code": "Code CIM-10",
       "text": "Diagnostic",
       "referral_note": "Note de référence",
       "return_station": "Revenir à",
@@ -4371,7 +4372,30 @@
     "savedDone": "Résultat enregistré et validé. Il est maintenant sous « Faits » ci-dessous : ouvrez-le là pour l’imprimer ou le corriger.",
     "savedOpen": "Résultat enregistré. Il reste dans cette liste jusqu’à sa validation.",
     "seeDone": "Voir les examens faits",
-    "doneHint": "Tous les résultats rendus pendant la période. Chacun peut être ouvert en entier, imprimé, et corrigé en donnant le motif."
+    "doneHint": "Tous les résultats rendus pendant la période. Chacun peut être ouvert en entier, imprimé, et corrigé en donnant le motif.",
+    "block": {
+      "tests_one": "{{count}} examen",
+      "tests_other": "{{count}} examens",
+      "requests_one": "{{count}} demande",
+      "requests_other": "{{count}} demandes",
+      "patients_one": "{{count}} patient",
+      "patients_other": "{{count}} patients",
+      "orderedBy": "demandés par {{name}}",
+      "orderedAt": "demandés {{when}}",
+      "sampleAll": "Prélèvement fait pour les {{count}}",
+      "sampleAllHint": "Un seul prélèvement sert à ces examens : marquez-les tous comme prélevés en une fois",
+      "printAll": "Imprimer tous les résultats ({{count}})",
+      "printAllBy": "Imprimer les {{count}} résultats signés par {{name}}",
+      "printAllHint": "Un seul rapport avec tous les résultats validés de cette visite signés par la même personne",
+      "hits": "{{hits}} sur {{count}} correspondent à ce que vous cherchez",
+      "hitTag": "correspond à ce que vous cherchez",
+      "alsoDone_one": "{{count}} autre examen de cette visite est déjà fait",
+      "alsoDone_other": "{{count}} autres examens de cette visite sont déjà faits",
+      "alsoOpen_one": "{{count}} autre examen de cette visite reste à faire",
+      "alsoOpen_other": "{{count}} autres examens de cette visite restent à faire",
+      "notMarked": "Non marqués comme prélevés : {{list}}",
+      "aria": "Les examens de {{patient}}"
+    }
   },
   "finance": {
     "desk": "Caisse",
@@ -5056,6 +5080,7 @@
       "button": "Ordonnance vierge",
       "hint": "Imprimer une ordonnance avec des lignes vides, pour écrire les médicaments à la main.",
       "lead": "La feuille porte l’en-tête de la clinique, le patient, des lignes vides numérotées et votre nom, votre numéro d’ordre et votre signature : pour les médicaments que vous écrivez au stylo.",
+      "leadToSign": "La feuille porte l’en-tête de la clinique et des lignes vides pour le patient, les médicaments, et le nom, le numéro d’ordre et la signature du prescripteur : le médecin la remplit au stylo.",
       "patient": "Patient (facultatif)",
       "noPatient": "Aucun patient choisi : le nom et le dossier restent vides, à écrire.",
       "rows": "Lignes à remplir",
@@ -5235,7 +5260,6 @@
       "attending": "Clinicien traitant",
       "referredBy": "Référé par",
       "diagnosis": "Diagnostic",
-      "icd10": "CIM-10",
       "status": "Statut",
       "statusPrimary": "Principal",
       "statusSecondary": "Secondaire",
@@ -5822,7 +5846,8 @@
     "found_other": "{{count}} résultats",
     "none": "Aucun résultat pour « {{query}} »",
     "writeGroup": "Pas dans la liste",
-    "noneWrite": "Aucun résultat pour « {{query}} » : vous pouvez l’écrire ci-dessous."
+    "noneWrite": "Aucun résultat pour « {{query}} » : vous pouvez l’écrire ci-dessous.",
+    "clear": "Retirer ce choix"
   },
   "session": {
     "duration": {
@@ -5891,7 +5916,9 @@
       "result": {
         "seen": "Marquer le résultat {{test}} de {{name}} comme vu ?",
         "seenBody": "Il quitte votre boîte de résultats. Vous le retrouvez toujours dans la visite.",
-        "seenYes": "Oui, marquer comme vu"
+        "seenYes": "Oui, marquer comme vu",
+        "seenAll": "Marquer les {{count}} résultats de {{name}} comme vus ?",
+        "seenAllBody": "Ils quittent votre boîte de résultats. Vous les retrouvez toujours dans la visite."
       },
       "appointment": {
         "accept": "Accepter le rendez-vous de {{name}} le {{when}} ?",
@@ -5989,7 +6016,9 @@
       "resultBody": "Le médecin qui l'a demandé peut le voir. Il reste à le vérifier.",
       "resultVerifyTitle": "Enregistrer et vérifier le résultat de {{test}} pour {{patient}} ?",
       "resultVerifyBody": "Le résultat est marqué comme vérifié et le médecin qui l'a demandé le voit.",
-      "resultYes": "Oui, enregistrer"
+      "resultYes": "Oui, enregistrer",
+      "sampleAllTitle": "Marquer les échantillons des {{count}} examens de {{patient}} comme prélevés ?",
+      "sampleAllYes": "Oui, tous prélevés"
     },
     "finance": {
       "voidTitle": "Annuler le paiement de {{amount}} de {{patient}} ?",
@@ -6127,7 +6156,6 @@
       "leftYes": "Oui, le patient est parti",
       "note": "Enregistrer cette note dans le dossier de {{name}} ?",
       "recordBody": "Cela reste dans le dossier du patient, à votre nom.",
-      "dx": "Enregistrer le diagnostic « {{dx}} » pour {{name}} ?",
       "rx": "Prescrire ces médicaments à {{name}} ?",
       "rxBody": "{{list}}. Les médicaments pour la pharmacie y attendent ; ceux donnés ici sont facturés et sortis du stock maintenant.",
       "rxYes": "Oui, prescrire",
@@ -8663,7 +8691,11 @@
     "0b8d9c3f": "Le pourcentage doit être supérieur à 0 et au plus 100.",
     "825d1537": "Un pourcentage porte sur l’argent entré, le résultat avant impôts ou un montant saisi au paiement.",
     "ce374193": "Saisissez le montant sur lequel porte le pourcentage.",
-    "5987f22e": "Le montant sur lequel porte le pourcentage doit être zéro ou plus."
+    "5987f22e": "Le montant sur lequel porte le pourcentage doit être zéro ou plus.",
+    "f870e47f": "Ce patient est encore dans un lit : terminez d’abord le séjour (le lit est libéré et aucun jour n’est plus ajouté).",
+    "6186abac": "Non autorisé : un lit est donné par le médecin traitant, une infirmière des soins infirmiers ou le gestionnaire.",
+    "f114260a": "Le patient est déjà dans ce lit.",
+    "ed42d244": "Ce patient n’est pas dans un lit."
   },
   "panel": {
     "close": "Fermer",
@@ -9881,9 +9913,9 @@
         "note3": "Issue : orienté vers un autre poste ou collègue, encore à la clinique, parti avant la fin (sans diagnostic, ou le patient est parti), ou terminé."
       },
       "dx": {
-        "title": "Diagnostics (CIM-10)",
+        "title": "Diagnostics",
         "description": "Cas par diagnostic, nouveaux et de suivi, par sexe et tranche d’âge.",
-        "note1": "Un cas est une visite avec ce diagnostic (son code CIM-10, sinon son libellé), parmi les visites arrivées sur la période.",
+        "note1": "Un cas est une visite avec ce diagnostic (les mêmes mots, avec ou sans majuscules), parmi les visites arrivées sur la période.",
         "note2": "Nouveau : le patient ne l’avait pas eu lors d’une visite précédente ; suivi : il l’avait eu.",
         "note3": "Âge le jour de la visite. Vous voyez les visites de vos services (chefs) ou les diagnostics que vous avez écrits.",
         "note4": "Par défaut, ce sont les diagnostics définitifs (étape 5) qui sont comptés ; choisissez Différentiels pour les diagnostics possibles de l’étape 3.",
@@ -9969,7 +10001,6 @@
         "left": "Parti avant la fin",
         "open": "Encore à la clinique"
       },
-      "noCode": "Sans code CIM-10",
       "supply": {
         "pharmacy": "Pharmacie de la clinique",
         "room": "Donné ici",
@@ -10031,7 +10062,6 @@
         "tests": "Examens demandés",
         "outcome": "Issue",
         "day": "Jour",
-        "icd10": "CIM-10",
         "cases": "Cas",
         "newCases": "Nouveaux",
         "followUp": "Suivi",
@@ -10039,7 +10069,6 @@
         "male": "Hommes",
         "patients": "Patients",
         "primary": "Diagnostic principal",
-        "chapter": "Chapitre CIM-10",
         "prescribedAt": "Prescrit le",
         "medicine": "Médicament",
         "quantity": "Quantité",
@@ -10093,7 +10122,6 @@
         "sex": "Par sexe",
         "ageBand": "Par tranche d’âge",
         "day": "Par jour",
-        "chapter": "Par chapitre CIM-10",
         "medicine": "Par médicament",
         "prescriber": "Par prescripteur",
         "supply": "Par fourniture",
@@ -10212,6 +10240,14 @@
       "lab": "Laboratoire",
       "reception": "Accueil",
       "staff": "Employés"
+    },
+    "sheets": {
+      "group": "Feuilles à remplir à la main",
+      "blankRx": {
+        "title": "Ordonnance vierge",
+        "description": "Une ordonnance avec l’en-tête de la clinique et des lignes vides, pour écrire le patient et les médicaments à la main. Aucun patient à choisir.",
+        "withPatient": "Pour l’imprimer avec le nom d’un patient déjà écrit, ouvrez la visite du patient et appuyez sur « Ordonnance vierge »."
+      }
     },
     "pat": {
       "visited": {
@@ -10755,8 +10791,7 @@
     "confirmBody": "Gardé sur la visite et dans les rapports : {{reason}}. Un diagnostic écrit plus tard le remplace.",
     "finished": "Visite terminée sans diagnostic.",
     "line": "Aucun diagnostic — {{reason}}",
-    "clearsHint": "Écrire plus tard un diagnostic principal remplace ceci.",
-    "finishHint": "Un diagnostic principal, ou « Aucun diagnostic trouvé » avec le motif, est nécessaire pour terminer."
+    "clearsHint": "Écrire plus tard un diagnostic principal remplace ceci."
   },
   "staffProfile": {
     "open": "Ouvrir le profil complet",
@@ -11019,11 +11054,11 @@
     "whereHere": "Ici, maintenant",
     "whereHome": "À la maison",
     "whereBoth": "Les deux : une partie ici, le reste à la maison",
-    "medicineHint": "Depuis le stock de la clinique : combien il en reste et le prix. Un médicament que la clinique n’a pas est prescrit pour être acheté dehors (plus haut).",
+    "medicineHint": "Tous les médicaments et produits que la clinique connaît : les siens et ceux des listes importées. Ceux qui sont en stock viennent d’abord, avec la quantité et le prix ; eux seuls peuvent être donnés ici. Pour changer le choix, appuyez de nouveau sur le champ ; le × le retire.",
     "inStock": "{{count}} {{unit}} en stock",
     "noStock": "aucun en stock",
     "groupInStock": "Dans le stock de la clinique",
-    "groupNoStock": "Pas dans le stock de la clinique : à prescrire pour achat dehors",
+    "groupNoStock": "Pas dans le stock de la clinique : ne peut pas être donné ici",
     "piecePrice": "{{price}} par {{unit}}",
     "packPrice": "{{price}} par {{pack}} de {{size}}",
     "boxOf": "{{pack}} de {{size}}",
@@ -11134,7 +11169,11 @@
     "billOnlyQ": "Retirer {{item}} de la facture seulement ?",
     "billOnlyBody": "Il reste noté comme donné et rien ne retourne au stock (il est donné gratuitement). Pour tout défaire, utilisez « Défaire ».",
     "openShort": "à faire",
-    "openHomeShort": "à emporter, pas remis : pas sur la facture"
+    "openHomeShort": "à emporter, pas remis : pas sur la facture",
+    "notInStock": "{{name}} ne peut pas être donné ici : la clinique ne l’a pas en stock.",
+    "notInStockWays": "Deux solutions : enregistrer sa livraison sous Stock › Ajouter du stock, puis donner l’ordre ici ; ou le prescrire pour que le patient l’achète dehors (Médicaments › Ordonnance, juste au-dessus).",
+    "prescribeOutside": "Le prescrire pour achat dehors",
+    "removeMedicine": "Retirer ce médicament"
   },
   "sixSteps": {
     "cardTitle": "La consultation en six étapes",
@@ -11846,5 +11885,102 @@
     "confirmed": "Confirmé",
     "not_confirmed": "Non confirmé",
     "not_decided": "Non décidé"
+  },
+  "deskPart": {
+    "title": "Votre travail sur cette visite",
+    "nurseNotes": "Notes infirmières",
+    "notes": "Vos notes",
+    "nurseNote": "Note infirmière",
+    "note": "Votre note",
+    "addNurseNote": "Écrire une note infirmière",
+    "addNote": "Écrire une note",
+    "notePh": "Ce que vous avez vu, ce que vous avez fait pour le patient, comment il va maintenant…",
+    "noteHint": "Ce que vous avez vu ou fait pour ce patient. Le médecin le lit dans le dossier du patient ; ici vous voyez vos propres notes.",
+    "noNotes": "Aucune note de votre part sur cette visite pour l’instant.",
+    "tests": "Examens et analyses",
+    "addTest": "Ajouter un examen",
+    "noTests": "Aucun examen pour votre poste sur cette visite pour l’instant.",
+    "myDiagnoses": "Diagnostics que vous avez écrits",
+    "empty": "Rien pour votre poste sur cette visite pour l’instant.",
+    "finishByDoctor": "C’est le médecin qui clôture cette visite : le motif de consultation et le diagnostic sont écrits par le médecin, et ils ne sont pas encore tous là. Quand votre part est faite, envoyez le patient plus loin sous « Prochaine étape pour ce patient ».",
+    "finishHint": "Le médecin a écrit le motif et le diagnostic : clôturez la visite quand les soins sont faits.",
+    "testPickHint": "Tapez quelques lettres pour le trouver ; choisissez-en autant qu’il faut. Ceux de vos services d’abord, puis les examens du Laboratoire et de l’Échographie, puis tous les autres actes de la clinique."
+  },
+  "beds": {
+    "title": "Patients hospitalisés",
+    "lead": "Les patients qui restent à la clinique dans un lit, à part de ceux qui rentrent le jour même. Un jour de lit est ajouté à la facture le jour où le patient reçoit le lit, puis un de plus chaque nouveau jour jusqu’à la fin du séjour.",
+    "inBedsCount_one": "{{count}} dans un lit",
+    "inBedsCount_other": "{{count}} dans un lit",
+    "freeCount_one": "{{count}} lit libre",
+    "freeCount_other": "{{count}} lits libres",
+    "now": "Dans un lit maintenant",
+    "nowHint": "Chaque nouveau jour ajoute de lui-même un jour de lit à la facture.",
+    "none": "Aucun patient n’est dans un lit.",
+    "panelHint": "Un jour de lit est ajouté à la facture le jour où le patient reçoit le lit, puis un de plus chaque nouveau jour jusqu’à la fin du séjour. Le médecin peut aussi donner un lit depuis la visite (étape 6).",
+    "step": {
+      "title": "Lit à la clinique",
+      "hint": "Si le patient doit rester à la clinique, donnez un lit libre : un jour de lit est ajouté à la facture aujourd’hui, puis un de plus chaque nouveau jour jusqu’à la fin du séjour."
+    },
+    "keep": "Garder dans un lit",
+    "keepBtn": "Donner le lit",
+    "bed": "Lit",
+    "pickBed": "Choisir un lit libre",
+    "noFree": "Aucun lit libre maintenant",
+    "noFreeHint": "Un lit en nettoyage redevient libre quand une infirmière le marque prêt.",
+    "bedOption": "{{bed}} · {{price}} par jour",
+    "perDay": "{{price}} par jour",
+    "days": "Jours prévus",
+    "daysPlaceholder": "Pas encore décidé",
+    "daysHint": "Laissez vide si vous ne savez pas encore. La facture suit les jours vraiment passés.",
+    "daysBad": "Écrivez un nombre de jours de 1 à 365, ou laissez vide.",
+    "reason": "Pourquoi le patient reste",
+    "reasonHint": "Pour les infirmières, par exemple « Paludisme grave : traitement par perfusion ».",
+    "moveReason": "Pourquoi ce changement (si besoin)",
+    "billNote": "Un jour ({{price}}) est ajouté à la facture maintenant, puis un de plus chaque nouveau jour jusqu’à la fin du séjour, selon l’assurance de la visite.",
+    "inBed": "Dans le lit {{bed}}",
+    "since": "Depuis le {{date}}",
+    "daysSoFar_one": "{{count}} jour jusqu’ici",
+    "daysSoFar_other": "{{count}} jours jusqu’ici",
+    "expected_one": "{{count}} jour prévu",
+    "expected_other": "{{count}} jours prévus",
+    "notDecided": "jours pas encore décidés",
+    "amount": "Jours de lit sur la facture : {{amount}}",
+    "owed": "Reste à payer sur la facture : {{amount}}",
+    "why": "Pourquoi : {{reason}}",
+    "move": "Changer de lit",
+    "moveBtn": "Changer de lit",
+    "extend": "Prolonger",
+    "extendBtn": "Enregistrer les jours",
+    "end": "Terminer le séjour",
+    "confirm": {
+      "keepTitle": "Garder {{name}} dans le lit {{bed}} ?",
+      "keepBody": "Un jour de lit ({{price}}) est ajouté à la facture maintenant, puis un de plus chaque nouveau jour jusqu’à la fin du séjour. Les infirmières sont prévenues.",
+      "keepYes": "Oui, donner le lit",
+      "moveTitle": "Faire passer {{name}} du lit {{from}} au lit {{to}} ?",
+      "moveBody": "Aujourd’hui reste au prix du lit {{from}} ; dès demain chaque jour est au prix du lit {{to}} ({{price}} par jour). Le lit {{from}} passe en nettoyage.",
+      "moveYes": "Oui, changer de lit",
+      "endTitle": "Terminer le séjour de {{name}} dans le lit {{bed}} ?",
+      "endBody_one": "{{count}} jour est sur la facture ({{amount}}). Le lit passe en nettoyage et aucun jour n’est plus ajouté.",
+      "endBody_other": "{{count}} jours sont sur la facture ({{amount}}). Le lit passe en nettoyage et aucun jour n’est plus ajouté.",
+      "endYes": "Oui, terminer le séjour",
+      "finishBody": "{{name}} est encore dans le lit {{bed}} : terminer la visite termine d’abord le séjour (le lit passe en nettoyage et aucun jour n’est plus ajouté).",
+      "finishYes": "Terminer le séjour et la visite"
+    },
+    "done": {
+      "keep": "{{name}} est dans le lit {{bed}}. Les infirmières sont prévenues.",
+      "move": "{{name}} est maintenant dans le lit {{bed}}.",
+      "days_one": "{{name}} : {{count}} jour prévu.",
+      "days_other": "{{name}} : {{count}} jours prévus.",
+      "daysOpen": "{{name}} : les jours ne sont pas encore décidés.",
+      "end": "Le séjour de {{name}} dans le lit {{bed}} est terminé : le lit passe en nettoyage."
+    },
+    "history": {
+      "title": "Qui est resté dans un lit",
+      "hint": "Les visites avec des jours de lit dans la période : les lits, les jours et leur prix.",
+      "none": "Personne n’est resté dans un lit pendant cette période.",
+      "still": "encore dans un lit",
+      "days_one": "{{count}} jour · {{amount}}",
+      "days_other": "{{count}} jours · {{amount}}"
+    }
   }
 }

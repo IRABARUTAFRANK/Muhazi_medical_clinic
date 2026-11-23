@@ -118,7 +118,8 @@
     "myBookings": "My bookings",
     "documents": "Patients’ documents",
     "priceLists": "Price lists & insurers",
-    "finance": "Finance"
+    "finance": "Finance",
+    "patientsInBeds": "Patients in beds"
   },
   "roles": {
     "receptionist": "Receptionist",
@@ -510,7 +511,8 @@
     "markSeen": "Seen",
     "otherTime": "Another time",
     "newTime": "New time",
-    "acceptAt": "Accept at this time"
+    "acceptAt": "Accept at this time",
+    "markAllSeen": "All {{count}} seen"
   },
   "dashboard": {
     "title": "Clinic dashboard",
@@ -2374,7 +2376,7 @@
       "medicine": "Medicine or supply",
       "pickItem": "Choose a medicine or supply",
       "searchItemPh": "amoxicillin, gloves, ORS…",
-      "medicinesElsewhere": "Medicines are prescribed in the clinical record (Prescription); here you add treatments and services.",
+      "medicinesElsewhere": "Here you add the treatments and services given to the patient. A medicine is not added here: the doctor prescribes it, or orders it to be given, in the visit’s record.",
       "otherWarning": "This treatment belongs to another department. Add it only if you really give it here (for example when nobody from that department is free).",
       "otherGroup": "Other treatments and services",
       "notCoveredGroup": "Not covered by {{insurer}} — the patient pays",
@@ -2920,10 +2922,8 @@
     "possibleDx": "Possible diagnosis"
   },
   "clinical": {
-    "title": "Clinical record",
     "readOnly": "Only doctors, nurses and the manager can write in the clinical record.",
     "addNote": "Note",
-    "addDx": "Diagnosis",
     "addRx": "Prescription",
     "addTest": "Tests & exams",
     "note": "Note",
@@ -2938,8 +2938,6 @@
       "secondary": "Secondary"
     },
     "provisional": "Provisional",
-    "saveDx": "Save diagnosis",
-    "dxSaved": "Diagnosis saved.",
     "medicine": "Medicine",
     "quantity": "Quantity",
     "days": "Days",
@@ -2964,7 +2962,6 @@
       "cancelled": "cancelled",
       "in_process": "analysing"
     },
-    "empty": "Nothing recorded for this visit yet.",
     "finish": "Finish visit",
     "finishHint": "A primary diagnosis is required. If money is still due the patient is sent to the cashier.",
     "finishConfirm": "Close this visit? Open test requests stay open; an unpaid bill sends the patient to the cashier.",
@@ -3030,8 +3027,6 @@
     "enterResult": "Enter result",
     "editResult": "Edit result",
     "resultSaved": "Result saved; the person who requested it is told.",
-    "icdHint": "ICD-10 is the international code of the disease (B54 = malaria, A01.0 = typhoid). It is optional; with it, reports count diseases the same way as the Ministry of Health.",
-    "provisionalHint": "Tick “Provisional” when you suspect the disease but have not confirmed it yet (for example while waiting for a test). Leave it unticked when the diagnosis is confirmed.",
     "testHint": "No diagnosis is needed. A test goes to the desk that does it and its result comes back here; any other treatment chosen here goes straight on the bill.",
     "noTests": "No treatment is in the catalogue yet (Prices › Treatments, or a Ministry list).",
     "reasonPh": "e.g. fever for 5 days, cause not found yet",
@@ -3156,7 +3151,6 @@
     "noteUpdated": "Note changed.",
     "noDeskForTest": "No one holds the {{desk}} desk yet: give a department the {{desk}} desk in Settings.",
     "splitLine": "{{given}} given · {{outside}} outside",
-    "dxHintAuto": "The diagnosis is the disease or problem you found after examining the patient, e.g. “Uncomplicated malaria”. The first one written is the primary diagnosis, the next ones are secondary. Tick “provisional” when you are still waiting for results.",
     "testPick": "Test, exam or treatment",
     "testPickEmpty": "Choose a test, exam or treatment…",
     "testPickHint": "Type a few letters to find it; pick as many as you need. Your departments’ come first, then the Laboratory and Ultrasound tests, then every other treatment of the clinic. Medicines are in the Prescription.",
@@ -3254,7 +3248,10 @@
       "unpaid": "{{amount}} RWF is still due: send the patient to the cashier. Someone with “Let a patient go with money due” (the manager, the cashier, reception) may close the visit with a debt.",
       "owingBody": "The visit closes; the amount stays on the patient as a debt to collect when they come back. It is written in the audit log with your name.",
       "doneOwing": "{{name}} has left owing {{amount}} RWF: the visit is closed, the debt is on their file."
-    }
+    },
+    "inBeds": "Staying in a bed",
+    "inBedsHint": "They stay at the clinic for some days. The others come, are treated and go home the same day.",
+    "inBedsLink": "Patients in beds →"
   },
   "desk": {
     "today": "Today",
@@ -3795,7 +3792,12 @@
     "taxOverdue_other": "Tax {{name}} overdue by {{count}} days",
     "taxBodyNoAmount": "Amount to work out · pay date {{date}}",
     "nurseOrderHome": "Medicine to hand over (to take home): {{title}}",
-    "withHome": "and some to take home"
+    "withHome": "and some to take home",
+    "bedStay": {
+      "given": "{{name}} is given {{bed}}",
+      "moved": "{{name}} moved from {{from}} to {{bed}}",
+      "ended": "The stay of {{name}} in {{bed}} has ended: the bed is to be cleaned"
+    }
   },
   "identity": {
     "aria": "Signed in: {{name}}"
@@ -3994,7 +3996,7 @@
       "billNew": "Opened a bill for {{patient}}.",
       "billPosted": "Settled and closed bill {{number}} of {{patient}}: total {{total}}.",
       "billEdit": "Updated bill {{number}} of {{patient}}.",
-      "dx": "Recorded the diagnosis “{{text}}” (ICD-10 {{code}}, {{type}}) for {{patient}}.",
+      "dx": "Recorded the diagnosis “{{text}}” ({{type}}) for {{patient}}.",
       "dxDel": "Removed the diagnosis “{{text}}” from the visit of {{patient}}.",
       "rx": "Prescribed {{item}} to {{patient}}.",
       "rxEdit": "Changed the prescription of {{item}} for {{patient}}.",
@@ -4163,7 +4165,6 @@
       "consent_messages": "Consent to messages",
       "type": "Type",
       "provisional": "Provisional",
-      "icd10_code": "ICD-10 code",
       "text": "Diagnosis",
       "referral_note": "Referral note",
       "return_station": "Come back to",
@@ -4371,7 +4372,30 @@
     "savedDone": "Result saved and verified. It is now under “Done” below: open it there to print it or to correct it.",
     "savedOpen": "Result saved. It stays in this list until it is checked and verified.",
     "seeDone": "Show the tests done",
-    "doneHint": "Every result given in the period. Each one can be opened in full, printed, and corrected with the reason."
+    "doneHint": "Every result given in the period. Each one can be opened in full, printed, and corrected with the reason.",
+    "block": {
+      "tests_one": "{{count}} test",
+      "tests_other": "{{count}} tests",
+      "requests_one": "{{count}} request",
+      "requests_other": "{{count}} requests",
+      "patients_one": "{{count}} patient",
+      "patients_other": "{{count}} patients",
+      "orderedBy": "requested by {{name}}",
+      "orderedAt": "requested {{when}}",
+      "sampleAll": "Sample taken for all {{count}}",
+      "sampleAllHint": "One sample serves these tests: mark them all as taken with one press",
+      "printAll": "Print all results ({{count}})",
+      "printAllBy": "Print the {{count}} results signed by {{name}}",
+      "printAllHint": "One report with every verified result of this visit signed by the same person",
+      "hits": "{{hits}} of the {{count}} match what you are looking for",
+      "hitTag": "matches what you are looking for",
+      "alsoDone_one": "{{count}} other test of this visit is already done",
+      "alsoDone_other": "{{count}} other tests of this visit are already done",
+      "alsoOpen_one": "{{count}} other test of this visit is still to do",
+      "alsoOpen_other": "{{count}} other tests of this visit are still to do",
+      "notMarked": "Not marked as taken: {{list}}",
+      "aria": "The tests of {{patient}}"
+    }
   },
   "finance": {
     "desk": "Cash desk",
@@ -5056,6 +5080,7 @@
       "button": "Blank prescription",
       "hint": "Print a prescription sheet with empty lines, to write the medicines by hand.",
       "lead": "The sheet carries the clinic’s letterhead, the patient, numbered empty lines and your name, registration and signature: for the medicines you write with a pen.",
+      "leadToSign": "The sheet carries the clinic’s letterhead and empty lines for the patient, the medicines and the prescriber’s name, registration number and signature: the doctor fills it with a pen.",
       "patient": "Patient (optional)",
       "noPatient": "No patient chosen: the name and file are left blank, to write.",
       "rows": "Lines to write on",
@@ -5235,7 +5260,6 @@
       "attending": "Attending clinician",
       "referredBy": "Referred by",
       "diagnosis": "Diagnosis",
-      "icd10": "ICD-10",
       "status": "Status",
       "statusPrimary": "Primary",
       "statusSecondary": "Secondary",
@@ -5822,7 +5846,8 @@
     "found_other": "{{count}} matches",
     "none": "Nothing matches “{{query}}”",
     "writeGroup": "Not in the list",
-    "noneWrite": "Nothing matches “{{query}}”: you can write it below."
+    "noneWrite": "Nothing matches “{{query}}”: you can write it below.",
+    "clear": "Remove this choice"
   },
   "session": {
     "duration": {
@@ -5891,7 +5916,9 @@
       "result": {
         "seen": "Mark the {{test}} result of {{name}} as seen?",
         "seenBody": "It leaves your results inbox. You can still find it in the visit.",
-        "seenYes": "Yes, mark as seen"
+        "seenYes": "Yes, mark as seen",
+        "seenAll": "Mark the {{count}} results of {{name}} as seen?",
+        "seenAllBody": "They leave your results inbox. You can still find them in the visit."
       },
       "appointment": {
         "accept": "Accept the booking of {{name}} on {{when}}?",
@@ -5989,7 +6016,9 @@
       "resultBody": "The doctor who ordered it can see it. It still needs to be verified.",
       "resultVerifyTitle": "Save and verify the result of {{test}} for {{patient}}?",
       "resultVerifyBody": "The result is marked as verified and the doctor who ordered it sees it.",
-      "resultYes": "Yes, save"
+      "resultYes": "Yes, save",
+      "sampleAllTitle": "Mark the samples for the {{count}} tests of {{patient}} as taken?",
+      "sampleAllYes": "Yes, all taken"
     },
     "finance": {
       "voidTitle": "Cancel the payment of {{amount}} from {{patient}}?",
@@ -6127,7 +6156,6 @@
       "leftYes": "Yes, the patient has left",
       "note": "Save this note in the record of {{name}}?",
       "recordBody": "It stays in the patient file under your name.",
-      "dx": "Save the diagnosis “{{dx}}” for {{name}}?",
       "rx": "Prescribe these medicines for {{name}}?",
       "rxBody": "{{list}}. Medicines for the pharmacy wait there; medicines given here are charged and taken from stock now.",
       "rxYes": "Yes, prescribe",
@@ -8663,7 +8691,11 @@
     "0b8d9c3f": "The percentage must be more than 0 and at most 100.",
     "825d1537": "A percentage is of the money in, of the result before tax, or of an amount typed when paying.",
     "ce374193": "Type the amount the percentage is calculated on.",
-    "5987f22e": "The amount the percentage is calculated on must be zero or more."
+    "5987f22e": "The amount the percentage is calculated on must be zero or more.",
+    "f870e47f": "This patient is still in a bed: end the stay first (the bed is freed and no more days are added).",
+    "6186abac": "Not allowed: a bed is given by the treating doctor, a nurse of the nursing desk or the manager.",
+    "f114260a": "The patient is already in this bed.",
+    "ed42d244": "This patient is not in a bed."
   },
   "panel": {
     "close": "Close",
@@ -9881,9 +9913,9 @@
         "note3": "Outcome: referred on to another desk or colleague, still in the clinic, left before the end (no diagnosis, or the patient left), or finished."
       },
       "dx": {
-        "title": "Diagnoses (ICD-10)",
+        "title": "Diagnoses",
         "description": "Cases per diagnosis, new and follow-up, by sex and age band.",
-        "note1": "A case is a visit with that diagnosis (its ICD-10 code, else its words), in the visits that arrived in the period.",
+        "note1": "A case is a visit with that diagnosis (the same words, whatever the capitals), in the visits that arrived in the period.",
         "note2": "New: the patient had not had it in an earlier visit; follow-up: they had.",
         "note3": "Age on the day of the visit. You see your departments’ visits (heads) or the diagnoses you wrote.",
         "note4": "By default the definitive diagnoses (step 5) are counted; choose Differential for the possible diagnoses of step 3.",
@@ -9969,7 +10001,6 @@
         "left": "Left before the end",
         "open": "Still in the clinic"
       },
-      "noCode": "No ICD-10 code",
       "supply": {
         "pharmacy": "Clinic pharmacy",
         "room": "Given here",
@@ -10031,7 +10062,6 @@
         "tests": "Tests asked",
         "outcome": "Outcome",
         "day": "Day",
-        "icd10": "ICD-10",
         "cases": "Cases",
         "newCases": "New",
         "followUp": "Follow-up",
@@ -10039,7 +10069,6 @@
         "male": "Male",
         "patients": "Patients",
         "primary": "As main diagnosis",
-        "chapter": "ICD-10 chapter",
         "prescribedAt": "Prescribed",
         "medicine": "Medicine",
         "quantity": "Quantity",
@@ -10093,7 +10122,6 @@
         "sex": "By sex",
         "ageBand": "By age band",
         "day": "By day",
-        "chapter": "By ICD-10 chapter",
         "medicine": "By medicine",
         "prescriber": "By prescriber",
         "supply": "By supply",
@@ -10212,6 +10240,14 @@
       "lab": "Laboratory",
       "reception": "Reception",
       "staff": "Employees"
+    },
+    "sheets": {
+      "group": "Sheets to write by hand",
+      "blankRx": {
+        "title": "Blank prescription",
+        "description": "A prescription sheet with the clinic’s letterhead and empty lines, to write the patient and the medicines by hand. No patient to choose.",
+        "withPatient": "To print it with a patient’s name already on it, open the patient’s visit and press “Blank prescription”."
+      }
     },
     "pat": {
       "visited": {
@@ -10755,8 +10791,7 @@
     "confirmBody": "Kept on the visit and in the reports: {{reason}}. A diagnosis written later replaces it.",
     "finished": "Visit finished with no diagnosis found.",
     "line": "No diagnosis — {{reason}}",
-    "clearsHint": "Writing a primary diagnosis later replaces this.",
-    "finishHint": "A primary diagnosis, or “No diagnosis found” with the reason, is needed to finish."
+    "clearsHint": "Writing a primary diagnosis later replaces this."
   },
   "staffProfile": {
     "open": "Open the full profile",
@@ -11019,11 +11054,11 @@
     "whereHere": "Here, now",
     "whereHome": "At home",
     "whereBoth": "Both: some here, the rest at home",
-    "medicineHint": "From the clinic’s stock: how many it holds and the price. A medicine the clinic does not have is prescribed to buy outside (above).",
+    "medicineHint": "Every medicine and product the clinic knows: its own and those of the uploaded lists. Those in the clinic’s stock come first, with how many it holds and the price; only they can be given here. To change the choice, press the field again; the × removes it.",
     "inStock": "{{count}} {{unit}} in stock",
     "noStock": "none in stock",
     "groupInStock": "In the clinic’s stock",
-    "groupNoStock": "Not in the clinic’s stock: prescribe it to buy outside",
+    "groupNoStock": "Not in the clinic’s stock: cannot be given here",
     "piecePrice": "{{price}} a {{unit}}",
     "packPrice": "{{price}} a {{pack}} of {{size}}",
     "boxOf": "{{pack}} of {{size}}",
@@ -11134,7 +11169,11 @@
     "billOnlyQ": "Remove {{item}} from the bill only?",
     "billOnlyBody": "It stays recorded as given and nothing goes back to the stock (it is given free). To undo it completely, use Undo.",
     "openShort": "to do",
-    "openHomeShort": "to take home, not handed over: not on the bill"
+    "openHomeShort": "to take home, not handed over: not on the bill",
+    "notInStock": "{{name}} cannot be given here: the clinic does not have it in stock.",
+    "notInStockWays": "Two ways out: add its delivery under Stock › Add stock, then order it here; or prescribe it for the patient to buy outside (Medicines › Prescription, just above).",
+    "prescribeOutside": "Prescribe it to buy outside",
+    "removeMedicine": "Remove this medicine"
   },
   "sixSteps": {
     "cardTitle": "The visit, in six steps",
@@ -11846,5 +11885,102 @@
     "confirmed": "Confirmed",
     "not_confirmed": "Not confirmed",
     "not_decided": "Not decided"
+  },
+  "deskPart": {
+    "title": "Your work on this visit",
+    "nurseNotes": "Nursing notes",
+    "notes": "Your notes",
+    "nurseNote": "Nursing note",
+    "note": "Your note",
+    "addNurseNote": "Write a nursing note",
+    "addNote": "Write a note",
+    "notePh": "What you saw, what you did for the patient, how the patient is now…",
+    "noteHint": "What you saw or did for this patient. The doctor reads it in the patient’s record; here you see your own notes.",
+    "noNotes": "No note from you on this visit yet.",
+    "tests": "Tests and exams",
+    "addTest": "Add a test",
+    "noTests": "No test for your desk on this visit yet.",
+    "myDiagnoses": "Diagnoses you wrote",
+    "empty": "Nothing for your desk on this visit yet.",
+    "finishByDoctor": "The doctor finishes this visit: the main complaint and the diagnosis are written by the doctor, and they are not all there yet. When your part is done, send the patient on under “Next step for this patient”.",
+    "finishHint": "The doctor has written the complaint and the diagnosis: finish the visit when the care is done.",
+    "testPickHint": "Type a few letters to find it; pick as many as you need. Your departments’ come first, then the Laboratory and Ultrasound tests, then every other treatment of the clinic."
+  },
+  "beds": {
+    "title": "Patients in beds",
+    "lead": "Patients who stay at the clinic in a bed, apart from those who go home the same day. One bed day goes on the bill on the day the patient is given the bed, and one more each new day until the stay ends.",
+    "inBedsCount_one": "{{count}} in a bed",
+    "inBedsCount_other": "{{count}} in beds",
+    "freeCount_one": "{{count}} free bed",
+    "freeCount_other": "{{count}} free beds",
+    "now": "In beds now",
+    "nowHint": "Each new day adds one bed day to the bill by itself.",
+    "none": "No patient is staying in a bed.",
+    "panelHint": "One bed day goes on the bill on the day the patient is given the bed, and one more each new day until the stay ends. The doctor can also give a bed from the visit (step 6).",
+    "step": {
+      "title": "Bed in the clinic",
+      "hint": "If the patient must stay at the clinic, give a free bed: one bed day goes on the bill today and one more each new day until the stay ends."
+    },
+    "keep": "Keep in a bed",
+    "keepBtn": "Give the bed",
+    "bed": "Bed",
+    "pickBed": "Choose a free bed",
+    "noFree": "No bed is free now",
+    "noFreeHint": "A bed being cleaned becomes free when a nurse marks it ready.",
+    "bedOption": "{{bed}} · {{price}} a day",
+    "perDay": "{{price}} a day",
+    "days": "Days expected",
+    "daysPlaceholder": "Not decided yet",
+    "daysHint": "Leave it empty if you do not know yet. The bill follows the days really spent.",
+    "daysBad": "Write a number of days from 1 to 365, or leave it empty.",
+    "reason": "Why the patient stays",
+    "reasonHint": "For the nurses, for example “Severe malaria: treatment by drip”.",
+    "moveReason": "Why the move (if needed)",
+    "billNote": "One day ({{price}}) goes on the bill now, then one more each new day until the stay ends, under the visit’s insurance.",
+    "inBed": "In {{bed}}",
+    "since": "Since {{date}}",
+    "daysSoFar_one": "{{count}} day so far",
+    "daysSoFar_other": "{{count}} days so far",
+    "expected_one": "{{count}} day expected",
+    "expected_other": "{{count}} days expected",
+    "notDecided": "days not decided yet",
+    "amount": "Bed days on the bill: {{amount}}",
+    "owed": "Still to pay on the bill: {{amount}}",
+    "why": "Why: {{reason}}",
+    "move": "Move to another bed",
+    "moveBtn": "Move",
+    "extend": "Extend",
+    "extendBtn": "Save the days",
+    "end": "End the stay",
+    "confirm": {
+      "keepTitle": "Keep {{name}} in {{bed}}?",
+      "keepBody": "One bed day ({{price}}) goes on the bill now, and one more each new day until the stay ends. The nurses are told.",
+      "keepYes": "Yes, give the bed",
+      "moveTitle": "Move {{name}} from {{from}} to {{to}}?",
+      "moveBody": "Today stays at the price of {{from}}; from tomorrow each day is at the price of {{to}} ({{price}} a day). {{from}} goes to cleaning.",
+      "moveYes": "Yes, move",
+      "endTitle": "End the stay of {{name}} in {{bed}}?",
+      "endBody_one": "{{count}} day is on the bill ({{amount}}). The bed goes to cleaning and no more days are added.",
+      "endBody_other": "{{count}} days are on the bill ({{amount}}). The bed goes to cleaning and no more days are added.",
+      "endYes": "Yes, end the stay",
+      "finishBody": "{{name}} is still in {{bed}}: finishing the visit first ends the stay (the bed goes to cleaning and no more days are added).",
+      "finishYes": "End the stay and finish"
+    },
+    "done": {
+      "keep": "{{name}} is in {{bed}}. The nurses are told.",
+      "move": "{{name}} is now in {{bed}}.",
+      "days_one": "{{name}}: {{count}} day expected.",
+      "days_other": "{{name}}: {{count}} days expected.",
+      "daysOpen": "{{name}}: the days are not decided yet.",
+      "end": "The stay of {{name}} in {{bed}} has ended: the bed goes to cleaning."
+    },
+    "history": {
+      "title": "Who stayed in a bed",
+      "hint": "The visits with days in a bed in the period: the beds, the days and what they cost.",
+      "none": "Nobody stayed in a bed in this period.",
+      "still": "still in a bed",
+      "days_one": "{{count}} day · {{amount}}",
+      "days_other": "{{count}} days · {{amount}}"
+    }
   }
 }

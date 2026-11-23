@@ -5,7 +5,8 @@ import { ShownList } from '@/components/ui/list-tools'
 import { useDeskOrders } from '@/lib/api/lab'
 import type { Station } from '@/lib/api/visits'
 import { useNow } from '@/lib/hooks'
-import { LabOrderRow } from '../lab/lab-parts'
+import { visitBlocks } from '@/lib/visit-blocks'
+import { LabVisitBlock } from '../lab/lab-visit-block'
 
 /**
  * Orders sent to a desk that is not the laboratory (Nursing, Dental, Minor surgery,
@@ -38,11 +39,12 @@ export function DeskOrdersPanel({
       {orders.length === 0 ? (
         <Empty>{empty}</Empty>
       ) : (
-        <ShownList items={orders} step={5}>
+        // several orders for one patient's visit stand together, the patient named once
+        <ShownList items={visitBlocks(orders)} step={5}>
           {(shown) => (
             <div className="flex flex-col">
-              {shown.map((o, i) => (
-                <LabOrderRow key={o.id} order={o} i={i} now={now} desk />
+              {shown.map((b, i) => (
+                <LabVisitBlock key={b.key} block={b} i={i} now={now} desk />
               ))}
             </div>
           )}

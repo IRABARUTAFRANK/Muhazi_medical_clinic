@@ -4,63 +4,41 @@ import {
   Ban,
   BellRing,
   CircleCheck,
-  Clock,
   FlaskConical,
-  Hourglass,
   Paperclip,
   PencilLine,
   Printer,
+  Search,
   Siren,
   TestTube,
   Undo2,
-  type LucideIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDuration } from '@/lib/duration'
 import { formatDate, formatTime } from '@mmc/shared'
 import { Pill } from '@/components/dash/kit'
-import { card, focusedForm, tagClass, type Tint } from '@/components/dash/kit-style'
+import { card, focusedForm, tagClass } from '@/components/dash/kit-style'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { WideResult } from '@/components/clinical/wide-result'
 import { controlClass, labelClass } from '@/components/ui/field'
 import { StaffLink } from '@/components/staff/staff-link'
-import { useLabActions, type LabOrder, type TestStatus } from '@/lib/api/lab'
+import { useLabActions, type LabOrder } from '@/lib/api/lab'
 import { useCallPatient } from '@/lib/api/display'
 import { cn } from '@/lib/utils'
 import { useConfirm } from '@/lib/confirm'
-import { openMedicalReport } from '@/lib/medical-report'
-import { useLetterhead, useMedicalReportLabels, usePrintedBy } from '@/lib/report-parts'
-import { allergiesForDoc } from '@/lib/api/patients'
-import { registrationText } from '@/lib/api/staff'
 import { deskOfRequest } from '@/lib/api/desks'
 import { useSessionCan, useSessionCanDesk } from '@/components/clinical/session-desks'
 import { TestFilesPanel } from '@/components/clinical/supporting-files'
 import { useVisitFiles } from '@/lib/api/files'
+import { STATUS_LOOK, ageOf, minutesSince, sexLetterOf, useLabReport } from './lab-report'
 
-const STATUS_LOOK: Record<TestStatus, { tint: Tint; icon: LucideIcon }> = {
-  ordered: { tint: 'amber', icon: Hourglass },
-  collected: { tint: 'teal', icon: TestTube },
-  in_process: { tint: 'violet', icon: FlaskConical },
-  resulted: { tint: 'navy', icon: Clock },
-  verified: { tint: 'mint', icon: CircleCheck },
-  cancelled: { tint: 'coral', icon: Siren },
-}
-
-const ageOf = (birth: string | null) => {
-  if (!birth) return ''
-  const b = new Date(birth)
-  const now = new Date()
-  let y = now.getFullYear() - b.getFullYear()
-  if (now < new Date(now.getFullYear(), b.getMonth(), b.getDate())) y -= 1
-  return String(y)
-}
-const minutesSince = (iso: string, now: number) =>
-  Math.max(0, Math.round((now - new Date(iso).getTime()) / 60_000))
 const when = (iso: string) => `${formatDate(new Date(iso))} ${formatTime(new Date(iso))}`
 
 /**
  * One test on the bench: priority, patient, test and why, who ordered it and how long ago, the
  * status, and the next step (sample taken → enter result → verify) with the visit one click away.
+ * Inside the block of its patient's visit (`grouped`, lab-visit-block.tsx) the row is the test
+ * alone: the ticket, the patient, Call and "Work on" are on the block's heading, once.
  */
 export function LabOrderRow({
   order: o,
@@ -69,6 +47,9 @@ export function LabOrderRow({
   desk = false,
   visitResults,
   onSaved,
+  grouped,
+  hit = null,
+  note = null,
 }: {
   order: LabOrder
   i?: number
@@ -80,6 +61,14 @@ export function LabOrderRow({
   visitResults?: LabOrder[]
   /** A result was just saved: it stays in the open list (not verified) or went to the done one. */
   onSaved?: (where: 'open' | 'done') => void
+  /** One test inside the block of its patient's visit; what the row still says itself because
+   *  the tests of the block differ on it (who requested it, since when it waits). */
+  grouped?: { orderedBy: boolean; waiting: boolean }
+  /** The search or the filter keeps the block for some of its tests only: this one (true) or
+   *  not this one (false). Nothing to point out: null. */
+  hit?: boolean | null
+  /** Said after the details: the other tests of the visit that are in the other list. */
+  note?: string | null
 }) {
   const { t } = useTranslation()
   const actions = useLabActions()
@@ -117,107 +106,11 @@ export function LabOrderRow({
   const filesCount = filesKnown?.available
     ? filesKnown.files.filter((f) => !f.removed).length
     : null
-  const letterhead = useLetterhead()
-  const labels = useMedicalReportLabels()
-  const printedBy = usePrintedBy()
   // The result report the patient (or the doctor) takes away: of this test only, or of every
   // verified result of the visit signed by the same person, on one report.
+  const openReport = useLabReport(desk)
   const printReport = (list: LabOrder[]) => {
-    const requested = list.map((x) => x.orderedAt).sort()[0] ?? o.orderedAt
-    const reported =
-      list
-        .map((x) => x.resultAt)
-        .filter((x): x is string => !!x)
-        .sort()
-        .pop() ?? o.resultAt
-    const allVerified = list.every((x) => x.verified)
-    const reasons = [...new Set(list.map((x) => x.reason).filter((x): x is string => !!x))]
-    // who entered (or validated) the result, with title and registration (0084; absent before)
-    const person = o.resultByPerson ?? null
-    // An order done at another desk (Nursing, Dental…) is that desk's report, signed with the
-    // role of whoever wrote it; the bench title is only the fallback for an older row.
-    const deskName =
-      desk && o.station ? t(`register.stations.${o.station}`, { defaultValue: o.station }) : null
-    const benchTitle =
-      deskName ??
-      (o.category === 'imaging' ? t('staff.roles.sonographer') : t('staff.roles.lab_tech'))
-    const personTitle = person
-      ? person.specialty?.trim() || t(`staff.roles.${person.role}`, { defaultValue: benchTitle })
-      : benchTitle
-    const ok = openMedicalReport(
-      {
-        kind: 'visit',
-        title: deskName
-          ? t('lab.slipTitleDesk', { desk: deskName })
-          : o.category === 'imaging'
-            ? t('lab.slipTitleImaging')
-            : t('lab.slipTitle'),
-        clinic: letterhead,
-        patient: {
-          name: o.patient,
-          fileNumber: o.fileNumber,
-          // only read when the birth date and sex are missing
-          ageSex: [ageOf(o.birthDate), o.sex === 'female' ? 'F' : o.sex === 'male' ? 'M' : '']
-            .filter(Boolean)
-            .join(' '),
-          birthDate: o.birthDate,
-          sex: t(`register.sexes.${o.sex}`),
-          phone: o.phone ?? null,
-          insurer: o.insurer ?? null,
-          memberNo: o.memberNo ?? null,
-          weightKg: o.weightKg ?? null,
-          allergies: allergiesForDoc(o),
-          bloodGroup: o.bloodGroup ?? null,
-        },
-        visits: [
-          {
-            date: formatDate(new Date(o.visitAt ?? o.orderedAt)),
-            at: o.visitAt ?? null,
-            reference: o.visitReference ?? null,
-            // "Requested by" on the result report
-            doctor: o.orderedBy,
-            vitals: [],
-            notes: reasons,
-            diagnoses: [],
-            tests: list.map((x) => ({
-              name: x.test,
-              findings: x.findings,
-              impression: x.impression,
-              verified: x.verified,
-            })),
-            treatments: [],
-            medicines: [],
-          },
-        ],
-        author: {
-          name: person?.name ?? o.resultBy ?? '',
-          title: personTitle,
-          registrationNo: registrationText(person),
-        },
-        printedBy: printedBy || null,
-        lab: {
-          reason: reasons.join(' · ') || null,
-          requestedAt: requested,
-          reportedAt: reported,
-          performedAt: reported,
-          // a result not verified yet prints as preliminary, with "Validated by" left blank
-          validatedBy:
-            allVerified && (person || o.resultBy)
-              ? {
-                  name: person?.name ?? o.resultBy ?? '',
-                  title: personTitle,
-                  registrationNo: registrationText(person),
-                }
-              : null,
-          validatedAt: allVerified ? reported : null,
-          // a verified result corrected afterwards prints with the "Amended report" banner (the
-          // worklist says only that it was corrected, not when the first report was issued)
-          amended: list.some((x) => x.corrected === true),
-        },
-      },
-      labels,
-    )
-    if (!ok) setError(t('report.popupBlocked'))
+    if (!openReport(list)) setError(t('report.popupBlocked'))
   }
   const printSlip = () => printReport([o])
   // the other verified results of this visit that the same person signed
@@ -235,37 +128,56 @@ export function LabOrderRow({
       setError(e instanceof Error ? e.message : String(e))
     }
   }
-  const sexLetter = o.sex === 'female' ? 'F' : o.sex === 'male' ? 'M' : ''
+  // the patient's part is on the block's heading when the test stands in a block
+  const details = [
+    grouped ? null : [ageOf(o.birthDate), sexLetterOf(o)].filter(Boolean).join(' '),
+    grouped ? null : o.fileNumber,
+    o.reason,
+    o.orderedBy && (!grouped || grouped.orderedBy)
+      ? t('lab.orderedBy', { name: o.orderedBy })
+      : null,
+    o.status === 'verified' || o.status === 'resulted' || (grouped && !grouped.waiting)
+      ? null
+      : t('lab.waitingFor', { time: formatDuration(minutesSince(o.orderedAt, now), t) }),
+    note,
+  ]
+    .filter(Boolean)
+    .join(' · ')
   return (
     <div
       className={cn(
-        'border-grid anim-enter -mx-2 flex flex-col gap-2 rounded-md border-b px-2 py-3 text-[14px] transition-colors duration-120 last:border-b-0',
-        urgent && o.status !== 'verified' ? 'bg-red-bg/40' : 'hover:bg-hover',
+        'border-grid anim-enter flex flex-col gap-2 border-b py-3 text-[14px] transition-colors duration-120 last:border-b-0',
+        grouped ? 'px-3 last:rounded-b-[7px]' : '-mx-2 rounded-md px-2',
+        // the test the search or the filter asked for, among the tests of its block
+        hit === true && 'border-l-primary border-l-[3px] pl-[9px]',
+        urgent && o.status !== 'verified'
+          ? 'bg-red-bg/40'
+          : hit === true
+            ? 'bg-primary-tint/50'
+            : 'hover:bg-hover',
       )}
       style={{ '--i': Math.min(i, 12) } as CSSProperties}
     >
       <div className="flex flex-wrap items-center gap-3">
-        <Pill tint={urgent ? 'coral' : 'violet'} icon={urgent ? Siren : FlaskConical}>
-          {o.ticket ?? '—'}
-        </Pill>
-        <span className="min-w-[180px] flex-1">
-          <span className="block font-medium">
+        {!grouped && (
+          <Pill tint={urgent ? 'coral' : 'violet'} icon={urgent ? Siren : FlaskConical}>
+            {o.ticket ?? '—'}
+          </Pill>
+        )}
+        <span className={cn('flex-1', grouped ? 'min-w-[min(180px,100%)]' : 'min-w-[180px]')}>
+          <span className={cn('block font-medium', hit === false && 'text-ink-2')}>
+            {hit === true && (
+              <Search
+                size={13}
+                aria-hidden="true"
+                className="text-primary mr-1.5 inline-block align-[-1px]"
+              />
+            )}
             {o.test}
-            <span className="text-ink-2 font-normal"> · {o.patient}</span>
+            {!grouped && <span className="text-ink-2 font-normal"> · {o.patient}</span>}
+            {hit === true && <span className="sr-only"> ({t('lab.block.hitTag')})</span>}
           </span>
-          <span className="text-ink-3 block text-[13px]">
-            {[
-              [ageOf(o.birthDate), sexLetter].filter(Boolean).join(' '),
-              o.fileNumber,
-              o.reason,
-              o.orderedBy ? t('lab.orderedBy', { name: o.orderedBy }) : null,
-              o.status === 'verified' || o.status === 'resulted'
-                ? null
-                : t('lab.waitingFor', { time: formatDuration(minutesSince(o.orderedAt, now), t) }),
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </span>
+          {details && <span className="text-ink-3 block text-[13px]">{details}</span>}
         </span>
         <Pill tint={look.tint} icon={look.icon}>
           {t(`lab.status.${o.status}`)}
@@ -313,7 +225,7 @@ export function LabOrderRow({
               {t('lab.analysing')}
             </Button>
           )}
-          {mayWork && !desk && (o.status === 'ordered' || o.status === 'collected') && (
+          {mayWork && !desk && !grouped && (o.status === 'ordered' || o.status === 'collected') && (
             <Button
               size="sm"
               variant="tint-amber"
@@ -381,7 +293,7 @@ export function LabOrderRow({
               {t('lab.printSlip')}
             </Button>
           )}
-          {together && (
+          {together && !grouped && (
             <Button
               size="sm"
               variant="tint-grey"
@@ -418,14 +330,16 @@ export function LabOrderRow({
               {filesCount != null && filesCount > 0 && ` (${filesCount})`}
             </Button>
           )}
-          <StaffLink
-            to="/app/visit"
-            search={{ encounter: o.encounterId }}
-            className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
-          >
-            <ArrowUpRight size={14} aria-hidden="true" />
-            {t('visits.openVisit')}
-          </StaffLink>
+          {!grouped && (
+            <StaffLink
+              to="/app/visit"
+              search={{ encounter: o.encounterId }}
+              className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
+            >
+              <ArrowUpRight size={14} aria-hidden="true" />
+              {t('visits.openVisit')}
+            </StaffLink>
+          )}
         </span>
       </div>
       {cancelling && mayWork && (

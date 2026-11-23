@@ -145,6 +145,10 @@ export const NURSE_NAV: NavItem[] = [
   NOTICES,
 ]
 
+/** Register a patient and start the visit: reception's entry, also in the nurse's and (0197) the
+ *  doctor's menu. */
+const REGISTER: NavItem = RECEPTION_NAV[1]!
+
 /** The person's own calendar (hours, days off, bookings). */
 const CALENDAR: NavItem = {
   id: 'calendar',
@@ -172,6 +176,28 @@ const IN_CLINIC: NavItem = {
   labelKey: 'nav.inClinic',
   icon: 'stethoscope',
   to: '/app/visits',
+}
+/** 0197: the patients who stay in a bed, apart from the day's visits. */
+const BEDS: NavItem = {
+  id: 'beds',
+  labelKey: 'nav.patientsInBeds',
+  icon: 'bed',
+  to: '/app/beds',
+}
+/** "Patients in beds" for the doctors, the nurses, the manager and the cashier (what is owed):
+ *  right after In clinic, else before Patients. */
+const withBeds = (user: StaffUser, items: NavItem[]): NavItem[] => {
+  const who =
+    user.dashboard === 'manager' ||
+    user.role === 'manager' ||
+    user.role === 'nurse' ||
+    user.role === 'cashier' ||
+    isDoctorUser(user)
+  if (!who || items.some((n) => n.to === BEDS.to)) return items
+  const clinic = items.findIndex((n) => n.to === '/app/visits')
+  const patients = items.findIndex((n) => n.to === '/app/patients')
+  const at = clinic >= 0 ? clinic + 1 : patients >= 0 ? patients : items.length
+  return [...items.slice(0, at), BEDS, ...items.slice(at)]
 }
 /** Patient files: the pharmacy and the laboratory look a patient up too. */
 const PATIENTS: NavItem = {
@@ -215,7 +241,7 @@ const withDeskAnalytics = (user: StaffUser, items: NavItem[]): NavItem[] =>
  *  the manager allows them (Settings → Who may do what). The manager's menu never changes. Each
  *  entry carries the key of the count it shows (withCounts). */
 export const navForUser = (user: StaffUser): NavItem[] =>
-  withCounts(user, forDoctorsOnly(user, menuOf(user)))
+  withCounts(user, withBeds(user, forDoctorsOnly(user, menuOf(user))))
 
 /** 0126: patient records are for doctors: the Patients' documents, Record access and the results
  *  of the tests one asked for leave the menu of someone who is not a doctor (the routes and the
@@ -265,6 +291,8 @@ const menuOf = (user: StaffUser): NavItem[] =>
 const COUNT_OF: Record<string, NavCountKey> = {
   '/app/queue': 'queue',
   '/app/visits': 'inClinic',
+  // 0197: the patients in a bed now (information)
+  '/app/beds': 'inBeds',
   '/app/results': 'results',
   '/app/prescriptions': 'prescriptions',
   '/app/my-bookings': 'myBookings',
@@ -533,6 +561,9 @@ const roleNav = (user: StaffUser): NavItem[] =>
               ? [...ROLE_HOME.lab_tech.nav, CALENDAR, PATIENTS, HISTORY, NOTICES]
               : [...ROLE_HOME.lab_tech.nav, PATIENTS, HISTORY, NOTICES]
             : user.role === 'doctor'
-              ? [...ROLE_HOME.doctor.nav, IN_CLINIC, PATIENTS, HISTORY, NOTICES]
+              ? // 0197: a doctor registers patients too (Register right before In clinic, as in the
+                // nurse's menu). Like everyone's, the entry stays only with the reception desk
+                // (withDesks) and the "Start visits" switch (withSwitches).
+                [...ROLE_HOME.doctor.nav, REGISTER, IN_CLINIC, PATIENTS, HISTORY, NOTICES]
               : // the cashier looks a patient up to collect what a past visit still owes
                 [...ROLE_HOME.cashier.nav, PATIENTS, HISTORY, NOTICES]

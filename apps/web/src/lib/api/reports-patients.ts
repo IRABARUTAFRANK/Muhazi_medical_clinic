@@ -547,12 +547,12 @@ const SAMPLE_DEPTS = [
   { id: 'dep-mch', name: 'Mother and child' },
 ]
 const SAMPLE_DX = [
-  'Malaria (B54)',
-  'Upper respiratory tract infection (J06.9)',
-  'Gastroenteritis (A09)',
-  'Dental caries (K02.9)',
-  'Hypertension (I10)',
-  'Urinary tract infection (N39.0)',
+  'Malaria',
+  'Upper respiratory tract infection',
+  'Gastroenteritis',
+  'Dental caries',
+  'Hypertension',
+  'Urinary tract infection',
 ]
 const SAMPLE_FIELDS: PatientFieldDef[] = [
   { key: 'next_of_kin', label: 'Next of kin', type: 'text' },

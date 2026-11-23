@@ -144,6 +144,25 @@ export interface BoardBed {
   /** Nights planned (and billed) for the current stay, and when they end. */
   nights: number | null
   until: string | null
+  // 0197 (absent before): the stay billed day by day
+  /** The open stay in this bed. */
+  stayId?: string | null
+  patientId?: string | null
+  fileNumber?: string | null
+  /** Billed one day at a time (false: an older stay billed by nights in advance). */
+  byDay?: boolean | null
+  /** Days on the bill so far (the visit's whole time in a bed, moves included). */
+  days?: number | null
+  /** Days expected; null: not decided yet. */
+  expectedDays?: number | null
+  /** Why the patient stays. */
+  reason?: string | null
+  /** Who gave the bed, and the visit's doctor. */
+  givenBy?: string | null
+  doctor?: string | null
+  /** The bed days on the bill so far (RWF), and what the patient still owes on the whole bill. */
+  amount?: number | null
+  owed?: number | null
 }
 export interface OpenTask {
   id: string
@@ -227,17 +246,29 @@ const sampleAppts: DayAppointment[] = [
     late: false,
   },
 ]
-const sampleBeds: BoardBed[] = Array.from({ length: 6 }, (_, i) => ({
+/** Sample beds (exported for the bed actions of lib/api/beds.ts). 0197: Bed 1 for three days. */
+export const sampleBeds: BoardBed[] = Array.from({ length: 6 }, (_, i) => ({
   id: `b-${i + 1}`,
   name: `Bed ${i + 1}`,
   state: i === 0 || i === 3 ? 'occupied' : i === 4 ? 'cleaning' : 'free',
   encounterId: i === 0 || i === 3 ? `e-${i}` : null,
   patient: i === 0 ? 'Uwase Claudine' : i === 3 ? 'Mugisha Kevin' : null,
-  since: i === 0 || i === 3 ? at(9, 15) : null,
-  nightlyPrice: 15000,
-  nights: i === 0 ? 1 : i === 3 ? 2 : null,
-  until:
-    i === 0 || i === 3 ? new Date(Date.now() + (i === 0 ? 1 : 2) * 86_400_000).toISOString() : null,
+  since: i === 0 ? new Date(Date.now() - 2 * 86_400_000).toISOString() : i === 3 ? at(9, 15) : null,
+  nightlyPrice: i === 5 ? 20000 : 15000,
+  nights: i === 0 ? 5 : null,
+  until: i === 0 ? new Date(Date.now() + 3 * 86_400_000).toISOString() : null,
+  stayId: i === 0 || i === 3 ? `s-${i}` : null,
+  patientId: i === 0 || i === 3 ? `p-${i}` : null,
+  fileNumber: i === 0 ? 'MMC-000124' : i === 3 ? 'MMC-000131' : null,
+  byDay: i === 0 || i === 3 ? true : null,
+  days: i === 0 ? 3 : i === 3 ? 1 : null,
+  expectedDays: i === 0 ? 5 : null,
+  reason:
+    i === 0 ? 'Severe malaria: treatment by drip' : i === 3 ? 'Observation after a fall' : null,
+  givenBy: i === 0 || i === 3 ? 'Dr. Mukamana Béatrice' : null,
+  doctor: i === 0 || i === 3 ? 'Dr. Mukamana Béatrice' : null,
+  amount: i === 0 ? 45000 : i === 3 ? 15000 : null,
+  owed: i === 0 ? 52000 : i === 3 ? 15000 : null,
 }))
 const sampleTasks: OpenTask[] = [
   {
@@ -318,12 +349,40 @@ export function useOverdueNotices(enabled: boolean) {
   }, [enabled, qc])
 }
 
+/** When this screen last asked for the bed days of a visit ('*': of every patient in a bed). */
+const bedDaysAsked = new Map<string, number>()
+/**
+ * 0197: the bed days that are due go on the bills (bed_days_catch_up): one day on the bill from the
+ * day the patient is given a bed, one more for each new day while the stay is open. The database
+ * has no clock of its own, so the screens that show beds or a bill ask it first (at most once a
+ * minute per visit). Quiet: a database before 0197 (or a failure) shows the bill as it is.
+ */
+export async function catchUpBedDays(encounterId?: string | null): Promise<void> {
+  if (!supabase) return
+  const key = encounterId ?? '*'
+  const now = Date.now()
+  if (now - (bedDaysAsked.get(key) ?? 0) < 60_000) return
+  bedDaysAsked.set(key, now)
+  try {
+    const { error } = await supabase.rpc(
+      'bed_days_catch_up',
+      encounterId ? { p_encounter_id: encounterId } : {},
+    )
+    // a database before 0197: not again for an hour
+    if (error && isMissingFunction(error)) bedDaysAsked.set(key, now + 3_600_000)
+  } catch {
+    // the bill shows as it is
+  }
+}
+
 export function useBedBoard() {
   return useQuery({
     queryKey: ['beds'],
     refetchInterval: 30_000,
     queryFn: async (): Promise<BoardBed[]> => {
-      if (!supabase) return sampleBeds
+      if (!supabase) return sampleBeds.map((b) => ({ ...b }))
+      // 0197: the bed days that are due go on the bills first (nobody presses anything)
+      await catchUpBedDays()
       const { data, error } = await supabase.rpc('bed_board')
       if (error) throw apiError(error)
       return (data as BoardBed[]) ?? []

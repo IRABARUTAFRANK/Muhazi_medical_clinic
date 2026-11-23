@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { sampleVitalsOf } from './vitals'
 import type { Sex, Station } from '@/lib/api/visits'
 import { apiError, isMissingFunction, isMissingRelation, NotReadyError } from './errors'
+import { catchUpBedDays } from './desk-ops'
 
 /**
  * One visit on a station screen: who the patient is, the vitals from triage, who pays, and the
@@ -431,6 +432,8 @@ export function useVisitBill(encounterId: string) {
     refetchOnWindowFocus: true,
     queryFn: async (): Promise<VisitBill> => {
       if (!supabase) return { ...sampleBill(encounterId) }
+      // 0197: the bed days that are due are on the bill before it is read
+      await catchUpBedDays(encounterId)
       const [{ data: bill, error: be }, { data: lines, error: le }, covers, sources] =
         await Promise.all([
           supabase.from('visit_bill').select('*').eq('encounter_id', encounterId).maybeSingle(),

@@ -185,6 +185,8 @@ const WORKLIST_DESKS: readonly DeskId[] = ['laboratory', 'ultrasound', 'pharmacy
  * desk no department of the clinic gives — today's rule of the role). A department gives
  * reception, triage and the treating desks only with the role's switch for them (start a visit,
  * vital signs, the clinical record); the worklists and the pharmacy come with the department.
+ * 0197: a doctor has reception (register a patient, start a visit) by profession, whatever the
+ * departments give, while "Start visits" is on and the doctors' desks include it.
  * The manager gets every desk.
  *
  *   role        the role (profession) chosen in the form
@@ -217,6 +219,9 @@ export function desksFor(i: {
     if (!ceiling.has(d)) continue
     if (mine.has(d) && (WORKLIST_DESKS.includes(d) || switchOn(d))) via[d] = 'department'
     else if (kept.has(d) && (!perms || switchOn(d))) via[d] = 'kept'
+    // 0197: a doctor registers patients and starts visits by profession, whatever the
+    // departments give (the database's desk_via)
+    else if (d === 'reception' && i.role === 'doctor' && switchOn(d)) via[d] = 'role'
     else if (!offered.has(d) && ROLE_DESKS[i.role].includes(d) && switchOn(d)) via[d] = 'role'
   }
   return { desks: DESKS.filter((d) => via[d]), via }

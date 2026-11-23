@@ -206,7 +206,7 @@ export function VisitJourney({
               {j.diagnoses.map((d, i) => (
                 <Line
                   key={i}
-                  main={`${d.text}${d.icd10 ? ` (${d.icd10})` : ''}`}
+                  main={d.text}
                   meta={[
                     // 0192: a possible diagnosis (step 3) is said as such, never "secondary"
                     d.provisional

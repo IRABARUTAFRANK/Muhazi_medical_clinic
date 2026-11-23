@@ -113,7 +113,8 @@ export interface ReportVisit {
   notes: string[]
   history?: string | null
   examination?: string | null
-  diagnoses: { text: string; icd10: string | null; primary: boolean; provisional: boolean }[]
+  /** `icd10` is kept in the data and never printed (0197: diagnoses are words). */
+  diagnoses: { text: string; icd10?: string | null; primary: boolean; provisional: boolean }[]
   tests: ReportTest[]
   treatments: (string | ReportTreatment)[]
   medicines: ReportMedicine[]
@@ -139,7 +140,7 @@ export interface ReportVisit {
    */
   differentials?: {
     text: string
-    icd10: string | null
+    icd10?: string | null
     outcome?: DxOutcome
     confirmed?: boolean
   }[]
@@ -271,7 +272,6 @@ function medWords(t: TFn) {
     attending: k('attending'),
     referredBy: k('referredBy'),
     diagnosis: k('diagnosis'),
-    icd10: k('icd10'),
     status: k('status'),
     statusPrimary: k('statusPrimary'),
     statusSecondary: k('statusSecondary'),
@@ -550,18 +550,14 @@ function diagnosesPiece(
     if (d.provisional) words.push(c.w.statusProvisional.toLowerCase())
     return d.primary || !d.provisional ? words.join(', ') : c.w.statusProvisional
   }
+  // 0197: the diagnosis in words only (no code column)
   const cols: FixedColumn[] = [
-    { label: c.w.diagnosis, share: 64 },
-    { label: c.w.icd10, share: 14 },
-    { label: c.w.status, share: 22 },
+    { label: c.w.diagnosis, share: 74 },
+    { label: c.w.status, share: 26 },
   ]
   const tone = (d: ReportVisit['diagnoses'][number]): ChipTone =>
     d.provisional ? 'warn' : d.primary ? 'info' : 'muted'
-  const rows: CellValue[][] = sorted.map((d) => [
-    d.text,
-    d.icd10 ? { html: `<strong>${esc(d.icd10)}</strong>` } : null,
-    chipCell(status(d), tone(d)),
-  ])
+  const rows: CellValue[][] = sorted.map((d) => [d.text, chipCell(status(d), tone(d))])
   return tablePiece(heading(title, inVisit), rows.length, (a, b, h) =>
     fixedTable(cols, rows.slice(a, b), { withHead: h }),
   )
@@ -842,9 +838,8 @@ function sixStepPieces(v: ReportVisit, c: Ctx, inVisit: boolean): Piece[] {
   const dd = v.differentials ?? []
   if (dd.length) {
     const cols: FixedColumn[] = [
-      { label: c.w.diagnosis, share: 64 },
-      { label: c.w.icd10, share: 14 },
-      { label: c.w.status, share: 22 },
+      { label: c.w.diagnosis, share: 74 },
+      { label: c.w.status, share: 26 },
     ]
     // 0192: what the doctor decided (an older caller's `confirmed` true / false still reads)
     const outcome = (d: (typeof dd)[number]): DxOutcome =>
@@ -855,11 +850,7 @@ function sixStepPieces(v: ReportVisit, c: Ctx, inVisit: boolean): Piece[] {
       not_confirmed: chipCell(c.w.notConfirmed, 'muted'),
       not_decided: chipCell(c.w.notDecided, 'warn'),
     }
-    const rows: CellValue[][] = dd.map((d) => [
-      d.text,
-      d.icd10 ? { html: `<strong>${esc(d.icd10)}</strong>` } : null,
-      chip[outcome(d)],
-    ])
+    const rows: CellValue[][] = dd.map((d) => [d.text, chip[outcome(d)]])
     out.push(
       tablePiece(h(3), rows.length, (a, b, w) =>
         fixedTable(cols, rows.slice(a, b), { withHead: w }),
@@ -1153,12 +1144,7 @@ function medicalReportParts(
     if (d.visits.length) {
       const rows: CellValue[][] = d.visits.map((v) => {
         const main = v.diagnoses.find((x) => x.primary) ?? v.diagnoses[0]
-        return [
-          visitDay(v),
-          v.department ?? null,
-          v.doctor ?? null,
-          main ? `${main.text}${main.icd10 ? ` (${main.icd10})` : ''}` : null,
-        ]
+        return [visitDay(v), v.department ?? null, v.doctor ?? null, main ? main.text : null]
       })
       const cols: FixedColumn[] = [
         { label: c.w.visitDate, share: 15 },
@@ -1300,7 +1286,7 @@ export function buildMedicalReportsBatchHtml(
         d.patient.name,
         d.patient.fileNumber,
         v?.doctor ?? null,
-        main ? `${main.text}${main.icd10 ? ` (${main.icd10})` : ''}` : null,
+        main ? main.text : null,
       ]
     }),
   )
@@ -1353,7 +1339,7 @@ function historySummary(d: MedicalReportDoc, c: Ctx, now: Date) {
     const at = toDate(v.at)
     if (at && at.getTime() < yearAgo) continue
     for (const x of v.diagnoses.filter((y) => y.primary)) {
-      const text = `${x.text}${x.icd10 ? ` (${x.icd10})` : ''}`
+      const text = x.text
       if (!seen.has(text.toLowerCase())) {
         seen.add(text.toLowerCase())
         dx.push(text)

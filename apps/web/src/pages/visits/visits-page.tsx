@@ -1,5 +1,13 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
-import { ArrowRightLeft, FolderOpen, Lock, Stethoscope, UserPlus, Users } from 'lucide-react'
+import {
+  ArrowRightLeft,
+  BedDouble,
+  FolderOpen,
+  Lock,
+  Stethoscope,
+  UserPlus,
+  Users,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { StaffUser } from '@mmc/shared'
 import { StationGlyph } from '@/components/dash/kit'
@@ -25,6 +33,8 @@ import {
   type Station,
 } from '@/lib/api/visits'
 import { formatDuration } from '@/lib/duration'
+import { useBedStays, type BedStay } from '@/lib/api/beds'
+import { StayFacts } from '@/components/clinical/bed-stay'
 import { navForUser } from '@/lib/nav'
 import { matches, useShowMore, type SortKey } from '@/lib/paging'
 import { cn } from '@/lib/utils'
@@ -33,12 +43,18 @@ import { cn } from '@/lib/utils'
  * "In the clinic": every patient with an open visit today, grouped by the station where they
  * are now (triage, consultation, laboratory, pharmacy, cashier…). Each row opens the visit
  * screen (to treat or charge) or the patient file (history). Refreshes every 15 seconds.
+ * 0197: the two kinds of patients apart — those who stay in a bed come first, in their own card
+ * (bed, since when, the days so far; "Patients in beds" has the rest), and their rows at a desk say
+ * "In Bed 3"; the others come, are treated and go home the same day.
  */
 export function VisitsPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
   const { data: items = [], isLoading, error } = useQueueBoard('all', user.role)
+  const { stays } = useBedStays()
+  const bedOf = new Map(stays.map((s) => [s.encounterId, s]))
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<SortKey>('urgent')
+  const shownStays = stays.filter((s) => matches(query, s.patient, s.bed.fileNumber ?? ''))
   // Search and order apply to every desk; each desk card then shows a few at a time.
   const open = sortQueue(
     openItems(items).filter((q) => matches(query, q.name, q.ticket, q.fileNumber)),
@@ -64,7 +80,16 @@ export function VisitsPage({ user }: { user: StaffUser }) {
           tint="mint"
           title={t('visits.title')}
           lead={t('visits.lead')}
-          meta={<BannerChip icon={Stethoscope}>{t('visits.count', { count: people })}</BannerChip>}
+          meta={
+            <>
+              <BannerChip icon={Stethoscope}>{t('visits.count', { count: people })}</BannerChip>
+              {stays.length > 0 && (
+                <BannerChip icon={BedDouble}>
+                  {t('beds.inBedsCount', { count: stays.length })}
+                </BannerChip>
+              )}
+            </>
+          }
         >
           <StaffLink to="/app/register" className={buttonVariants({ variant: 'primary' })}>
             <UserPlus size={18} aria-hidden="true" />
@@ -90,7 +115,22 @@ export function VisitsPage({ user }: { user: StaffUser }) {
             placeholderKey="list.searchPatient"
           />
         )}
-        {!isLoading && open.length === 0 && (
+        {shownStays.length > 0 && (
+          <Card className="anim-enter border-primary/30">
+            <CardHeader>
+              <span className="inline-flex items-center gap-2">
+                <BedDouble size={16} aria-hidden="true" className="text-primary" />
+                {t('visits.inBeds')}
+              </span>
+              <StaffLink to="/app/beds" className="text-primary text-xs font-semibold">
+                {t('visits.inBedsLink')}
+              </StaffLink>
+            </CardHeader>
+            <p className="text-ink-3 m-0 px-4 pt-2 text-xs">{t('visits.inBedsHint')}</p>
+            <ShownRows items={shownStays} render={(s) => <StayRow key={s.bed.id} stay={s} />} />
+          </Card>
+        )}
+        {!isLoading && open.length === 0 && stays.length === 0 && (
           <Card>
             <CardBody>
               <EmptyNote>{t('visits.none')}</EmptyNote>
@@ -110,7 +150,13 @@ export function VisitsPage({ user }: { user: StaffUser }) {
             <ShownRows
               items={pools}
               render={(p) => (
-                <VisitRow key={p.item.poolId} item={p.item} desks={p.desks} user={user} />
+                <VisitRow
+                  key={p.item.poolId}
+                  item={p.item}
+                  desks={p.desks}
+                  user={user}
+                  stay={bedOf.get(p.item.encounterId)}
+                />
               )}
             />
           </Card>
@@ -136,7 +182,14 @@ export function VisitsPage({ user }: { user: StaffUser }) {
                 </CardHeader>
                 <ShownRows
                   items={rows}
-                  render={(r) => <VisitRow key={r.queueId} item={r} user={user} />}
+                  render={(r) => (
+                    <VisitRow
+                      key={r.queueId}
+                      item={r}
+                      user={user}
+                      stay={bedOf.get(r.encounterId)}
+                    />
+                  )}
                 />
               </Card>
             )
@@ -162,14 +215,38 @@ function ShownRows<T>({ items, render }: { items: T[]; render: (item: T) => Reac
   )
 }
 
+/** 0197: a patient who stays in a bed: the bed, since when, the days so far; open the visit. */
+function StayRow({ stay }: { stay: BedStay }) {
+  const { t } = useTranslation()
+  return (
+    <Row className="flex-wrap gap-x-3 gap-y-1 py-2">
+      <span className="min-w-[160px] flex-1">
+        <span className="block font-semibold break-words">{stay.patient}</span>
+        <StayFacts stay={stay} className="mt-0.5" />
+      </span>
+      <StaffLink
+        to="/app/visit"
+        search={{ encounter: stay.encounterId }}
+        className={buttonVariants({ size: 'sm', variant: 'primary' })}
+      >
+        <Stethoscope size={14} aria-hidden="true" />
+        {t('visits.openVisit')}
+      </StaffLink>
+    </Row>
+  )
+}
+
 function VisitRow({
   item: r,
   desks,
   user,
+  stay,
 }: {
   item: QueueItem
   desks?: Station[]
   user: StaffUser
+  /** 0197: the patient stays in a bed. */
+  stay?: BedStay
 }) {
   const { t } = useTranslation()
   // the row glows for a moment when the patient moves desk, is taken or changes colour
@@ -204,6 +281,12 @@ function VisitRow({
           </span>
         )}
         <HandoverBadge handover={r.handover} className="mt-0.5 text-[13px]" />
+        {stay && (
+          <span className="text-primary mt-0.5 flex items-center gap-1 text-[13px] font-semibold">
+            <BedDouble size={13} aria-hidden="true" className="flex-none" />
+            {t('beds.inBed', { bed: stay.bed.name })} · {t('beds.daysSoFar', { count: stay.days })}
+          </span>
+        )}
         {desks && (
           <span className="mt-1 flex flex-wrap gap-1">
             {desks.map((d) => (

@@ -18,6 +18,7 @@ import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppSectionRouteImport } from './routes/app/$section'
 import { Route as AppAnalyticsRouteImport } from './routes/app/analytics'
 import { Route as AppAppointmentsRouteImport } from './routes/app/appointments'
+import { Route as AppBedsRouteImport } from './routes/app/beds'
 import { Route as AppBillsRouteImport } from './routes/app/bills'
 import { Route as AppCalendarRouteImport } from './routes/app/calendar'
 import { Route as AppChangePinRouteImport } from './routes/app/change-pin'
@@ -92,6 +93,11 @@ const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
 const AppAppointmentsRoute = AppAppointmentsRouteImport.update({
   id: '/appointments',
   path: '/appointments',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppBedsRoute = AppBedsRouteImport.update({
+  id: '/beds',
+  path: '/beds',
   getParentRoute: () => AppRoute,
 } as any)
 const AppBillsRoute = AppBillsRouteImport.update({
@@ -254,6 +260,7 @@ export interface FileRoutesByFullPath {
   '/app/$section': typeof AppSectionRoute
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/appointments': typeof AppAppointmentsRoute
+  '/app/beds': typeof AppBedsRoute
   '/app/bills': typeof AppBillsRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/change-pin': typeof AppChangePinRoute
@@ -294,6 +301,7 @@ export interface FileRoutesByTo {
   '/app/$section': typeof AppSectionRoute
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/appointments': typeof AppAppointmentsRoute
+  '/app/beds': typeof AppBedsRoute
   '/app/bills': typeof AppBillsRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/change-pin': typeof AppChangePinRoute
@@ -336,6 +344,7 @@ export interface FileRoutesById {
   '/app/$section': typeof AppSectionRoute
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/appointments': typeof AppAppointmentsRoute
+  '/app/beds': typeof AppBedsRoute
   '/app/bills': typeof AppBillsRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/change-pin': typeof AppChangePinRoute
@@ -379,6 +388,7 @@ export interface FileRouteTypes {
     | '/app/$section'
     | '/app/analytics'
     | '/app/appointments'
+    | '/app/beds'
     | '/app/bills'
     | '/app/calendar'
     | '/app/change-pin'
@@ -419,6 +429,7 @@ export interface FileRouteTypes {
     | '/app/$section'
     | '/app/analytics'
     | '/app/appointments'
+    | '/app/beds'
     | '/app/bills'
     | '/app/calendar'
     | '/app/change-pin'
@@ -460,6 +471,7 @@ export interface FileRouteTypes {
     | '/app/$section'
     | '/app/analytics'
     | '/app/appointments'
+    | '/app/beds'
     | '/app/bills'
     | '/app/calendar'
     | '/app/change-pin'
@@ -564,6 +576,13 @@ declare module '@tanstack/react-router' {
       path: '/appointments'
       fullPath: '/app/appointments'
       preLoaderRoute: typeof AppAppointmentsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/beds': {
+      id: '/app/beds'
+      path: '/beds'
+      fullPath: '/app/beds'
+      preLoaderRoute: typeof AppBedsRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/bills': {
@@ -783,6 +802,7 @@ interface AppRouteChildren {
   AppSectionRoute: typeof AppSectionRoute
   AppAnalyticsRoute: typeof AppAnalyticsRoute
   AppAppointmentsRoute: typeof AppAppointmentsRoute
+  AppBedsRoute: typeof AppBedsRoute
   AppBillsRoute: typeof AppBillsRoute
   AppCalendarRoute: typeof AppCalendarRoute
   AppChangePinRoute: typeof AppChangePinRoute
@@ -820,6 +840,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSectionRoute: AppSectionRoute,
   AppAnalyticsRoute: AppAnalyticsRoute,
   AppAppointmentsRoute: AppAppointmentsRoute,
+  AppBedsRoute: AppBedsRoute,
   AppBillsRoute: AppBillsRoute,
   AppCalendarRoute: AppCalendarRoute,
   AppChangePinRoute: AppChangePinRoute,

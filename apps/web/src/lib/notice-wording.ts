@@ -263,6 +263,22 @@ export function useWording() {
           body: joinParts([p.name, quoted(p.reason)]),
         }
       }
+      // 0197: a patient given a bed, moved to another, or whose stay ended (the bed to clean)
+      case 'bed_stay': {
+        const what = ['given', 'moved', 'ended'].includes(String(p.what)) ? String(p.what) : 'given'
+        return {
+          title: t(`notify.bedStay.${what}`, {
+            name: p.name ?? '',
+            bed: p.bed ?? '',
+            from: p.fromBed ?? '',
+          }),
+          body: joinParts([
+            what === 'given' && num(p.days) > 0 ? t('beds.expected', { count: num(p.days) }) : null,
+            what === 'given' ? quoted(p.reason) : null,
+            byText(p.by),
+          ]),
+        }
+      }
       case 'inquiry':
         // the doctor named in the request is told too: reception books it, the doctor then accepts
         return {

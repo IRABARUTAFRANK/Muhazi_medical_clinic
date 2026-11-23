@@ -852,38 +852,46 @@ await expectError(
   },
   /only the manager/i,
 )
-await step('manager sets 6 beds at 15,000 a night; a 2-night stay bills 30,000', async () => {
-  await as(staff.manager)
-  const r = (await one(`select set_bed_count(6, 15000) as r`)).r
-  if (r.beds !== 6) throw new Error(`beds ${r.beds}`)
-  await as(staff.nurse)
-  const bed = (await one(`select bed_board() as b`)).b.find((b) => b.state === 'free')
-  if (bed.nightlyPrice !== 15000) throw new Error(`price ${bed.nightlyPrice}`)
-  const a = (await one(`select admit_to_bed($1, $2, 2) as a`, [paperVisit, bed.id])).a
-  if (Number(a.total) !== 30000) throw new Error(`total ${a.total}`)
-  await asAdmin()
-  const line = await one(
-    `select l.description, l.unit_price from invoice_line l join invoice i on i.id = l.invoice_id
-     where i.encounter_id = $1 and l.source_type = 'bed_stay' order by l.created_at desc limit 1`,
-    [paperVisit],
-  )
-  if (Number(line.unit_price) !== 30000) throw new Error(`line ${line.unit_price}`)
-  await as(staff.nurse)
-  const x = (await one(`select extend_bed_stay($1, 3, 40000) as x`, [bed.id])).x
-  if (Number(x.total) !== 40000) throw new Error(`extend ${x.total}`)
-  await as(staff.manager)
-  let refused = false
-  try {
-    await db.query(`select remove_bed($1)`, [bed.id])
-  } catch {
-    refused = true
-  }
-  if (!refused) throw new Error('removed an occupied bed')
-  await as(staff.nurse)
-  await db.query(`select discharge_bed($1)`, [bed.id])
-  await db.query(`select bed_ready($1)`, [bed.id])
-  return `${line.description} = 30,000; +3 nights agreed 40,000; occupied bed kept`
-})
+// 0197: a stay is billed day by day as the days pass (nothing in advance): the patient of the step
+// above was already in a (free) bed today, so today is not counted twice; the nights asked become
+// the days expected, "Extend" adds days expected and bills nothing
+await step(
+  'manager sets 6 beds at 15,000 a night; a stay is billed by the day, never twice (0197)',
+  async () => {
+    await as(staff.manager)
+    const r = (await one(`select set_bed_count(6, 15000) as r`)).r
+    if (r.beds !== 6) throw new Error(`beds ${r.beds}`)
+    await as(staff.nurse)
+    const bed = (await one(`select bed_board() as b`)).b.find((b) => b.state === 'free')
+    if (bed.nightlyPrice !== 15000) throw new Error(`price ${bed.nightlyPrice}`)
+    const a = (await one(`select admit_to_bed($1, $2, 2) as a`, [paperVisit, bed.id])).a
+    if (Number(a.total) !== 0) throw new Error(`total ${a.total}`)
+    await asAdmin()
+    const line = await one(
+      `select count(*)::int as n from invoice_line l join invoice i on i.id = l.invoice_id
+     where i.encounter_id = $1 and l.source_type = 'bed_stay' and l.deleted_at is null`,
+      [paperVisit],
+    )
+    if (line.n !== 0) throw new Error(`lines ${line.n}`)
+    await as(staff.nurse)
+    const x = (await one(`select extend_bed_stay($1, 3, 40000) as x`, [bed.id])).x
+    if (Number(x.total) !== 0) throw new Error(`extend ${x.total}`)
+    const after = (await one(`select bed_board() as b`)).b.find((b) => b.id === bed.id)
+    if (after.expectedDays !== 5 || after.days !== 1) throw new Error(JSON.stringify(after))
+    await as(staff.manager)
+    let refused = false
+    try {
+      await db.query(`select remove_bed($1)`, [bed.id])
+    } catch {
+      refused = true
+    }
+    if (!refused) throw new Error('removed an occupied bed')
+    await as(staff.nurse)
+    await db.query(`select discharge_bed($1)`, [bed.id])
+    await db.query(`select bed_ready($1)`, [bed.id])
+    return 'today already counted (not twice): nothing billed; 2 + 3 days expected; occupied bed kept'
+  },
+)
 
 // ---------------------------------------------------------------- nurse registers, reception completes (0023)
 await step('nurse registers with name/sex/age only â†’ reception sees it to complete', async () => {
@@ -8094,14 +8102,16 @@ await step(
     const switchedOff = await deskAs(staff.receptionist, 'reception')
     await as(staff.manager)
     await db.query(`select set_staff_permission($1, 'visit.start', null)`, [staff.receptionist])
-    // a doctor outside Front desk 85: an emergency, yes; an ordinary visit, no; open_encounter
-    // straight, no
+    // a doctor outside Front desk 85: an emergency, yes. A nurse outside it: an ordinary visit,
+    // no; open_encounter straight, no. (0197: a doctor starts ordinary visits by profession,
+    // whatever the departments give: checked at 0197 B; the departments' rule is checked here on
+    // a nurse.)
     const emergency = await hintAs(t85.docCons, `select start_visit($1, true, 'consultation')`, [
       pEm,
     ])
-    const ordinary = await hintAs(t85.docCons, `select start_visit($1)`, [pDoc])
+    const ordinary = await hintAs(staff.nurse, `select start_visit($1)`, [pDoc])
     const direct = await hintAs(
-      t85.docCons,
+      staff.nurse,
       `select open_encounter($1, 'opd', 'consultation', null)`,
       [pDoc],
     )
@@ -8213,7 +8223,7 @@ await step(
       !session?.desks?.includes('laboratory')
     )
       throw new Error(json85(r))
-    return `reception: ${before} → ok as a member; emergency by a doctor outside: ok, ordinary: ${ordinary}; nurse tasks: Nursing 85 works on them, the doctor is not told (0132)`
+    return `reception: ${before} → ok as a member; emergency by a doctor outside: ok, an ordinary visit by a nurse outside: ${ordinary}; nurse tasks: Nursing 85 works on them, the doctor is not told (0132)`
   },
 )
 await step('0085 G: one head and one assistant per department; members many', async () => {
@@ -15434,7 +15444,9 @@ await step(
       !row.doctors.includes(t110.d1Name) ||
       !row.desks.includes('consultation') ||
       row.diagnoses != null ||
-      !dx?.diagnoses?.includes('Malaria 102R (B54)') ||
+      // 0197: the diagnosis in words only (was 'Malaria 102R (B54)')
+      !dx?.diagnoses?.includes('Malaria 102R') ||
+      dx.diagnoses.some((d) => /B54/.test(d)) ||
       afterPlain.length !== 0 ||
       afterClinical.length !== 1 ||
       afterClinical[0].actor_id !== staff.manager ||
@@ -15526,7 +15538,8 @@ await step(
       v.status !== 'finished' ||
       !v.route.includes('consultation') ||
       v.doctor !== t110.d1Name ||
-      v.diagnosis !== 'Malaria 102R (B54)' ||
+      // 0197: the diagnosis in words only (was 'Malaria 102R (B54)')
+      v.diagnosis !== 'Malaria 102R' ||
       Number(v.billed) !== 4000 ||
       Number(v.paid) !== 4000 ||
       Number(v.balance) !== 0 ||
@@ -28805,6 +28818,987 @@ await step(
   },
 )
 // @@t194-end
+// @@t197-register-begin
+// 0197 (register and send rights): whoever starts a visit names one doctor (a nurse was refused
+// by the booking desk's check); a doctor registers patients and starts visits by profession.
+const t197 = { visits: [] }
+const json197 = (x) => JSON.stringify(x)
+/** 'ok', or "code/hint/first line of the refusal". */
+const say197 = async (who, sql, params = []) => {
+  await as(who)
+  try {
+    await db.query(sql, params)
+    return 'ok'
+  } catch (e) {
+    return `${e.code}/${e.hint ?? ''}/${String(e.message).split('\n')[0]}`
+  } finally {
+    await asAdmin()
+  }
+}
+const one197 = async (who, sql, params = []) => {
+  await as(who)
+  try {
+    return await one(sql, params)
+  } finally {
+    await asAdmin()
+  }
+}
+const file197 = async (who, given) =>
+  (
+    await one197(
+      who,
+      `select register_patient_file('Send 197', $1, 'female', null, 30, $2) as r`,
+      // a phone of its own for each file
+      [given, `0788197${String((t197.files = (t197.files ?? 100) + 1))}`],
+    )
+  ).r.patient_id
+const visit197 = async (who, sql, params) => {
+  const v = (await one197(who, sql, params)).v
+  t197.visits.push(v.encounter_id)
+  return v
+}
+const waits197 = async (enc, station) =>
+  one(
+    `select q.id, q.station::text as station, q.assigned_to, q.taken_by, e.intended_to,
+            (select pr.user_id from practitioner pr where pr.id = e.practitioner_id) as doctor
+       from queue_entry q join encounter e on e.id = q.encounter_id
+      where q.encounter_id = $1 and q.station = $2 and q.finished_at is null and q.deleted_at is null`,
+    [enc, station],
+  )
+// steps before this one re-ran older migrations (begin_visit of 0128, desk_via of 0141 and 0170):
+// put 0197 back (twice: it runs again on a database that already has it)
+await step('0197: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  const sql = await readFile(
+    path.join(migrationsDir, '20270215090000_register_and_send_rights.sql'),
+    'utf8',
+  )
+  await db.exec(sql)
+  await db.exec(sql)
+  const src = async (fn) =>
+    (
+      await one(
+        `select prosrc from pg_proc where proname = $1 and pronamespace = 'public'::regnamespace
+          order by pronargs desc limit 1`,
+        [fn],
+      )
+    )?.prosrc ?? ''
+  const begin = await src('begin_visit')
+  const via = await src('desk_via')
+  // the inner function is not callable from outside
+  const open = await one(
+    `select has_function_privilege('authenticated', 'practitioner_row(uuid)', 'execute') as a,
+              has_function_privilege('anon', 'practitioner_row(uuid)', 'execute') as n`,
+  )
+  if (
+    !begin.includes('then practitioner_row(p_assigned_to)') ||
+    begin.includes('then ensure_practitioner(')
+  )
+    throw new Error('begin_visit is not the 0197 one')
+  if (!via.includes(`p_desk = 'reception' and p.role = 'doctor'`))
+    throw new Error('desk_via is not the 0197 one')
+  if (open.a || open.n) throw new Error(JSON.stringify(open))
+  return 'applied twice; begin_visit keeps the named doctor through practitioner_row (not callable from outside); desk_via knows the doctor’s reception'
+})
+await step(
+  '0197 A: a nurse who starts a visit sends it to one named doctor (register, patient file) and from the vital signs; the person named must work there; without the right: refused',
+  async () => {
+    t197.nurse = await newStaff('nurse.front197', 'Nurse Front 197', 'nurse', 'Triage')
+    t197.nurseOut = await newStaff('nurse.out197', 'Nurse Outside 197', 'nurse', 'Triage')
+    t197.docA = await newStaff('doc.a197', 'Dr. Named 197', 'doctor', 'Consultation 7')
+    t197.docB = await newStaff('doc.b197', 'Dr. Colleague 197', 'doctor', 'Consultation 8')
+    await asAdmin()
+    t197.flow = (await one(`select value from setting where key = 'flow'`))?.value ?? null
+    await db.query(
+      `insert into setting (key, value) values ('flow', '{"triage_first": false}')
+       on conflict (key) do update set value = setting.value || '{"triage_first": false}'`,
+    )
+    // a department gives reception and triage: this nurse is in it, the doctors are in none
+    t197.front = await dept85('Front desk 197', ['reception', 'triage'])
+    await member85(t197.nurse, t197.front)
+    const p1 = await file197(t197.nurse, 'Named')
+    const p2 = await file197(t197.nurse, 'Vitals')
+    const p3 = await file197(t197.nurse, 'Measured')
+    const p4 = await file197(t197.nurse, 'Refused')
+    // the booking desk's own check stays: a nurse does not open a doctor's calendar row
+    const calendar = await say197(t197.nurse, `select ensure_practitioner($1)`, [t197.docB])
+    const inner = await say197(t197.nurse, `select practitioner_row($1)`, [t197.docB])
+    // 1. the Register screen and the patient file's "Start visit": begin_visit with the person
+    const v1 = await visit197(
+      t197.nurse,
+      `select begin_visit(p_patient_id => $1, p_service => 'consultation', p_assigned_to => $2, p_note => 'Malaria') as v`,
+      [p1, t197.docA],
+    )
+    const q1 = await waits197(v1.encounter_id, 'consultation')
+    const told = await one(
+      `select count(*)::int as n from notification where recipient_user = $1 and params ->> 'queue' = $2`,
+      [t197.docA, q1?.id ?? ''],
+    )
+    // the person named must give the service chosen
+    const wrongService = await say197(
+      t197.nurse,
+      `select begin_visit(p_patient_id => $1, p_service => 'dental', p_assigned_to => $2)`,
+      [p4, t197.docA],
+    )
+    // without the right: the cashier; a nurse in no department giving reception; this nurse with
+    // "Start visits" switched off by the manager
+    const named = `select begin_visit(p_patient_id => $1, p_service => 'consultation', p_assigned_to => $2)`
+    const cashier = await say197(staff.cashier, named, [p4, t197.docA])
+    const outside = await say197(t197.nurseOut, named, [p4, t197.docA])
+    await as(staff.manager)
+    await db.query(`select set_staff_permission($1, 'visit.start', false)`, [t197.nurse])
+    const switchedOff = await say197(t197.nurse, named, [p4, t197.docA])
+    await as(staff.manager)
+    await db.query(`select set_staff_permission($1, 'visit.start', null)`, [t197.nurse])
+    await asAdmin()
+    // 2. the vital signs: measured at triage, sent to the doctor named
+    const v2 = await visit197(
+      t197.nurse,
+      `select begin_visit(p_patient_id => $1, p_station => 'triage') as v`,
+      [p2],
+    )
+    const wrongDesk = await say197(
+      t197.nurse,
+      `select record_vitals_to($1, '{"temp": 36.9}'::jsonb, 'green', 'dental', null, null, null, $2)`,
+      [v2.encounter_id, t197.docA],
+    )
+    const vitals = await say197(
+      t197.nurse,
+      `select record_vitals_to($1, '{"temp": 36.9}'::jsonb, 'green', 'consultation', null, null, null, $2)`,
+      [v2.encounter_id, t197.docA],
+    )
+    const q2 = await waits197(v2.encounter_id, 'consultation')
+    // 3. measured first, sent on afterwards (the triage screen's "Send")
+    const v3 = await visit197(
+      t197.nurse,
+      `select begin_visit(p_patient_id => $1, p_station => 'triage') as v`,
+      [p3],
+    )
+    const measured = await say197(
+      t197.nurse,
+      `select record_vitals_to($1, '{"temp": 37.2}'::jsonb, null, null, null, null, null, null)`,
+      [v3.encounter_id],
+    )
+    const sentOn = await say197(
+      t197.nurse,
+      `select send_from_triage_to($1, 'green', 'consultation', null, $2)`,
+      [v3.encounter_id, t197.docA],
+    )
+    const q3 = await waits197(v3.encounter_id, 'consultation')
+    const r = {
+      calendar,
+      inner,
+      v1: [v1.station, v1.assigned, q1?.assigned_to === t197.docA, q1?.doctor === t197.docA],
+      intended: q1?.intended_to === t197.docA,
+      told: told.n,
+      wrongService,
+      cashier,
+      outside,
+      switchedOff,
+      wrongDesk,
+      vitals,
+      q2: q2?.assigned_to === t197.docA,
+      measured,
+      sentOn,
+      q3: q3?.assigned_to === t197.docA,
+    }
+    if (
+      calendar !== '42501//not allowed' ||
+      !/^42501\/\/permission denied/.test(inner) ||
+      json197(r.v1) !== json197(['consultation', 'Dr. Named 197', true, true]) ||
+      !r.intended ||
+      told.n < 1 ||
+      wrongService !== '22023//that person does not give this service' ||
+      !/^42501\/\/you may not start visits/.test(cashier) ||
+      !/^42501\/no_desk\//.test(outside) ||
+      !/^42501\/\/you may not start visits/.test(switchedOff) ||
+      !/^22023\/not_at_desk\//.test(wrongDesk) ||
+      vitals !== 'ok' ||
+      !r.q2 ||
+      measured !== 'ok' ||
+      sentOn !== 'ok' ||
+      !r.q3
+    )
+      throw new Error(json197(r))
+    return 'the nurse of the front desk: Consultation → Dr. Named 197 accepted (waiting for him, kept as the visit’s doctor, he is told); from the vital signs and from "Send" too; a doctor who does not give the service or work at the desk: 22023; the cashier, a nurse outside the department, the nurse switched off: 42501; the calendar’s own check unchanged'
+  },
+)
+await step(
+  '0197 B: a doctor in no reception department registers a patient and starts the visit (to a desk, to a named colleague, for themself); the manager’s switch and the profession’s desks still take it away',
+  async () => {
+    await asAdmin()
+    const offered = (await one(`select desk_offered('reception') as ok`)).ok
+    const inDept = (
+      await one(`select count(*)::int as n from staff_department where profile_id = $1`, [
+        t197.docA,
+      ])
+    ).n
+    const desk = await deskAs(t197.docA, 'reception')
+    const mine = await myDesks85(t197.docA)
+    // registers (the full file, as reception does), then starts the visit three ways
+    const pa = await file197(t197.docA, 'By the doctor')
+    const pb = await file197(t197.docA, 'To a colleague')
+    const pc = await file197(t197.docA, 'Seen myself')
+    const pd = await file197(t197.docA, 'Switched off')
+    const toDesk = await visit197(t197.docA, `select start_visit($1) as v`, [pa])
+    const toColleague = await visit197(
+      t197.docA,
+      `select begin_visit(p_patient_id => $1, p_service => 'consultation', p_assigned_to => $2) as v`,
+      [pb, t197.docB],
+    )
+    const qb = await waits197(toColleague.encounter_id, 'consultation')
+    const myself = await visit197(
+      t197.docA,
+      `select begin_visit($1, 'consultation', null, null, true, false) as v`,
+      [pc],
+    )
+    const qc = await waits197(myself.encounter_id, 'consultation')
+    // the manager switches "Start visits" off for this doctor: the desk and the visit go
+    const start = `select begin_visit(p_patient_id => $1, p_service => 'consultation')`
+    await as(staff.manager)
+    await db.query(`select set_staff_permission($1, 'visit.start', false)`, [t197.docA])
+    const offDesk = await deskAs(t197.docA, 'reception')
+    const offStart = await say197(t197.docA, start, [pd])
+    await as(staff.manager)
+    await db.query(`select set_staff_permission($1, 'visit.start', null)`, [t197.docA])
+    // the manager takes Reception out of the doctors' desks (Settings → Who may do what)
+    await db.query(`select set_role_desk('doctor', 'reception', false)`)
+    const ceilingDesk = await deskAs(t197.docA, 'reception')
+    const ceilingStart = await say197(t197.docA, start, [pd])
+    await as(staff.manager)
+    await db.query(`select set_role_desk('doctor', 'reception', true)`)
+    const back = await deskAs(t197.docA, 'reception')
+    // the other professions follow their departments, as before
+    const nurseOut = await deskAs(t197.nurseOut, 'reception')
+    // a doctor put in the department has the desk from it
+    await member85(t197.docB, t197.front)
+    const viaDept = (await myDesks85(t197.docB)).via?.reception
+    // tidy: the visits ended, the department closed, the accounts off, the flow as it was
+    await as(staff.manager)
+    for (const id of t197.visits) await db.query(`select end_visit($1, 'tidy 0197')`, [id])
+    await asAdmin()
+    await db.query(`delete from staff_department where department_id = $1`, [t197.front])
+    await db.query(`update department set active = false where id = $1`, [t197.front])
+    await db.query(`update profiles set active = false where id = any($1::uuid[])`, [
+      [t197.nurse, t197.nurseOut, t197.docA, t197.docB],
+    ])
+    if (t197.flow)
+      await db.query(`update setting set value = $1::jsonb where key = 'flow'`, [
+        JSON.stringify(t197.flow),
+      ])
+    const r = {
+      offered,
+      inDept,
+      desk,
+      via: mine.via?.reception,
+      toDesk: toDesk.station,
+      toColleague: [toColleague.assigned, qb?.assigned_to === t197.docB, qb?.doctor === t197.docB],
+      myself: [myself.myself, qc?.taken_by === t197.docA],
+      offDesk,
+      offStart,
+      ceilingDesk,
+      ceilingStart,
+      back,
+      nurseOut,
+      viaDept,
+    }
+    if (
+      !offered ||
+      inDept !== 0 ||
+      !desk ||
+      r.via !== 'role' ||
+      toDesk.station !== 'consultation' ||
+      json197(r.toColleague) !== json197(['Dr. Colleague 197', true, true]) ||
+      json197(r.myself) !== json197([true, true]) ||
+      offDesk ||
+      !/^42501\/\/you may not start visits/.test(offStart) ||
+      ceilingDesk ||
+      !/^42501\/no_desk\//.test(ceilingStart) ||
+      !back ||
+      nurseOut ||
+      viaDept !== 'department'
+    )
+      throw new Error(json197(r))
+    return 'Front desk 197 gives reception, the doctor is in no department: the reception desk by profession; 4 files registered; a visit to Consultation, one to Dr. Colleague 197 by name, one seen by themself; "Start visits" off for the doctor → 42501; Reception out of the doctors’ desks → 42501 no_desk, back on → the desk again; a nurse outside the department still without it; a doctor in the department: from the department'
+  },
+)
+// @@t197-register-end
+// @@t197-documents-begin
+// ---------------------------------------------------------------- 0197 (documents): no disease code in what people read
+const t197d = {}
+const json197d = (x) => JSON.stringify(x)
+// the 0100, 0127 and 0192 steps re-ran older migrations (analytics_staff_events,
+// report_visit_diagnosis, report_patients_seen, report_diagnoses_staged with the code in the
+// words): put 0197 back (twice: it runs again)
+await step(
+  '0197 documents: the migration runs again on a database that already has it',
+  async () => {
+    await asAdmin()
+    const sql = await readFile(path.join(migrationsDir, '20270217090000_no_icd_words.sql'), 'utf8')
+    await db.exec(sql)
+    await db.exec(sql)
+    const r = await one(
+      `select has_function_privilege('authenticated', 'report_diagnoses_staged(date, date, uuid, uuid, text)', 'execute') as staged,
+              has_function_privilege('authenticated', 'report_patients_seen(date, date, uuid, uuid)', 'execute') as seen,
+              has_function_privilege('anon', 'report_patients_seen(date, date, uuid, uuid)', 'execute') as anon_seen,
+              has_function_privilege('anon', 'report_diagnoses_staged(date, date, uuid, uuid, text)', 'execute') as anon_staged,
+              (select count(*)::int from information_schema.columns
+                where table_schema = 'public' and table_name = 'condition' and column_name = 'icd10_code') as col`,
+    )
+    if (!r.staged || !r.seen || r.anon_seen || r.anon_staged || r.col !== 1)
+      throw new Error(json197d(r))
+    return 'ran twice; the same rights as before (a signed-in person, never anon); condition.icd10_code is still there (nothing dropped)'
+  },
+)
+await step(
+  '0197 documents A: old diagnoses with a code read in words only — the visit’s diagnosis, Patients seen, an employee’s work; the code stays in the data; an HIV diagnosis stays hidden without the right',
+  async () => {
+    // three visits of one patient with Dr Elsewhere 127: the same words written three ways, two
+    // with an old code, one without; a second coded diagnosis on the first; an HIV one apart
+    t197d.a = await t127.ov(t127.doc2)
+    t197d.b = await t127.ov(t127.doc2)
+    t197d.c = await t127.ov(t127.doc2)
+    t197d.h = await t127.ov(t127.doc2)
+    await asAdmin()
+    const ids = (
+      await db.query(
+        `insert into condition (encounter_id, icd10_code, text, type, stage, created_by) values
+           ($1, 'B54', 'Malaria 197', 'primary', 'definitive', $5),
+           ($1, 'I10', 'High blood pressure 197', 'secondary', 'definitive', $5),
+           ($2, null, 'malaria 197', 'primary', 'definitive', $5),
+           ($3, 'B50.9', 'MALARIA 197', 'primary', 'definitive', $5),
+           ($4, 'B20', 'HIV disease 197', 'primary', 'definitive', $5)
+         returning id`,
+        [t197d.a, t197d.b, t197d.c, t197d.h, t127.doc2],
+      )
+    ).rows.map((x) => x.id)
+    t197d.conditions = ids
+    const r = {}
+    r.visit = (await one(`select report_visit_diagnosis($1, true) as d`, [t197d.a])).d
+    r.hivHidden = (await one(`select report_visit_diagnosis($1, false) as d`, [t197d.h])).d
+    r.hivShown = (await one(`select report_visit_diagnosis($1, true) as d`, [t197d.h])).d
+    const events = (
+      await db.query(
+        `select what from analytics_staff_events(now() - interval '1 hour', now() + interval '1 hour', false)
+          where user_id = $1 and kind = 'diagnoses' and encounter_id = any($2::uuid[]) order by what`,
+        [t127.doc2, [t197d.a, t197d.b, t197d.c]],
+      )
+    ).rows.map((x) => x.what)
+    r.events = events
+    await as(t127.doc2)
+    const seen = (
+      await one(`select report_patients_seen(current_date - 1, current_date + 1, $1) as j`, [
+        t127.doc2,
+      ])
+    ).j
+    await asAdmin()
+    r.seen = seen.find((x) => x.encounterId === t197d.a)?.diagnosis ?? null
+    r.seenC = seen.find((x) => x.encounterId === t197d.c)?.diagnosis ?? null
+    r.kept = (
+      await db.query(
+        `select icd10_code from condition where id = any($1::uuid[]) and icd10_code is not null order by icd10_code`,
+        [ids],
+      )
+    ).rows.map((x) => x.icd10_code)
+    const want = {
+      visit: 'Malaria 197',
+      hivHidden: null,
+      hivShown: 'HIV disease 197',
+      events: ['High blood pressure 197', 'MALARIA 197', 'Malaria 197', 'malaria 197'],
+      seen: 'Malaria 197; High blood pressure 197',
+      seenC: 'MALARIA 197',
+      kept: ['B20', 'B50.9', 'B54', 'I10'],
+    }
+    const sorted = { ...r, events: [...r.events].sort() }
+    if (json197d(sorted) !== json197d({ ...want, events: [...want.events].sort() }))
+      throw new Error(json197d(r))
+    return 'the visit reads “Malaria 197” (was “Malaria 197 (B54)”); Patients seen “Malaria 197; High blood pressure 197” (was “B54 Malaria 197; I10 …”); the work of the doctor lists the words alone; the four codes are still in the table; the HIV diagnosis shows only with the right'
+  },
+)
+await step(
+  '0197 documents B: the Diagnoses report counts a diagnosis by its words — the same words under two old codes and without one are ONE line (3 cases: 1 new, 2 follow-up, 1 patient), whatever the capitals; a cashier is still refused',
+  async () => {
+    await as(staff.manager)
+    const def = (
+      await one(`select report_diagnoses(current_date - 1, current_date + 1, null, $1) as j`, [
+        t127.doc2,
+      ])
+    ).j
+    const all = (
+      await one(
+        `select report_diagnoses_staged(current_date - 1, current_date + 1, null, $1, 'all') as j`,
+        [t127.doc2],
+      )
+    ).j
+    await asAdmin()
+    const refused = await codeAs(
+      staff.cashier,
+      `select report_diagnoses(current_date - 1, current_date + 1)`,
+    )
+    const lines = (list) => list.filter((x) => String(x.diagnosis).toLowerCase() === 'malaria 197')
+    const m = lines(def)[0]
+    const r = {
+      lines: lines(def).length,
+      linesAll: lines(all).length,
+      m: m && [m.cases, m.newCases, m.followUp, m.patients, m.primary, m.confirmed],
+      bp: def.find((x) => x.diagnosis === 'High blood pressure 197')?.cases ?? null,
+      refused,
+    }
+    if (
+      r.lines !== 1 ||
+      r.linesAll !== 1 ||
+      json197d(r.m) !== json197d([3, 1, 2, 1, 3, 3]) ||
+      r.bp !== 1 ||
+      refused !== '42501'
+    )
+      throw new Error(json197d(r))
+    // tidy: the visits and their diagnoses leave no trace for the checks of other steps
+    await db.query(`update condition set deleted_at = now() where id = any($1::uuid[])`, [
+      t197d.conditions,
+    ])
+    await db.query(
+      `update queue_entry set deleted_at = now() where encounter_id = any($1::uuid[])`,
+      [[t197d.a, t197d.b, t197d.c, t197d.h]],
+    )
+    await db.query(`update encounter set deleted_at = now() where id = any($1::uuid[])`, [
+      [t197d.a, t197d.b, t197d.c, t197d.h],
+    ])
+    return 'one line “Malaria 197” with 3 cases (1 new, 2 follow-up, 1 patient, 3 confirmed) where the codes B54 and B50.9 made three; High blood pressure 197: 1 case; the cashier refused (42501); tidied'
+  },
+)
+// @@t197-documents-end
+// @@t197-beds-begin
+// ---------------------------------------------------------------- 0197 (beds): a bed from the treatment plan, billed day by day, kept apart
+const t197b = {}
+const json197b = (x) => JSON.stringify(x)
+/** The JSON of a function run as someone. */
+const as197b = async (who, sql, params = []) => {
+  await as(who)
+  try {
+    return (await one(sql, params)).j
+  } finally {
+    await asAdmin()
+  }
+}
+/** code|hint|message of a statement run as someone ('ok' when it succeeds). */
+const msg197b = async (who, sql, params = []) => {
+  await as(who)
+  try {
+    await db.query(sql, params)
+    return 'ok'
+  } catch (e) {
+    return `${e.code}|${e.hint ?? ''}|${String(e.message).split('\n')[0]}`
+  } finally {
+    await asAdmin()
+  }
+}
+/** "A day passes": the visit's stays and the days already on its bill move one day back. */
+const pass197b = async (enc, days = 1) => {
+  await asAdmin()
+  await db.query(
+    `update bed_stay set admitted_at = admitted_at - make_interval(days => $2::int),
+                         discharged_at = discharged_at - make_interval(days => $2::int)
+     where encounter_id = $1`,
+    [enc, days],
+  )
+  // two moves: a key (visit, day) is never taken twice on the way
+  await db.query(`update bed_day set day = day - 1000 where encounter_id = $1`, [enc])
+  await db.query(`update bed_day set day = day + (1000 - $2::int) where encounter_id = $1`, [
+    enc,
+    days,
+  ])
+}
+/** The live bed lines of a visit: [quantity, unit price, coverage %, patient, insurer]. */
+const bedLines197b = async (enc) =>
+  (
+    await db.query(
+      `select l.quantity::int as q, l.unit_price::int as p, l.coverage_pct::int as c,
+              l.patient_share::int as pat, l.insurer_share::int as ins, l.description as d,
+              l.price_origin::text as o
+         from invoice_line l join invoice i on i.id = l.invoice_id
+        where i.encounter_id = $1 and l.source_type = 'bed_stay' and l.deleted_at is null
+        order by l.created_at, l.id`,
+      [enc],
+    )
+  ).rows
+const days197b = async (enc) =>
+  (await one(`select count(*)::int as n from bed_day where encounter_id = $1`, [enc])).n
+const board197b = async (who, bed) =>
+  (await as197b(who, `select bed_board() as j`)).find((b) => b.id === bed)
+await step('0197 beds: the migration runs again on a database that already has it', async () => {
+  await asAdmin()
+  const sql = await readFile(path.join(migrationsDir, '20270216090000_beds_stay.sql'), 'utf8')
+  await db.exec(sql)
+  await db.exec(sql)
+  const r = await one(
+    `select has_function_privilege('authenticated', 'keep_in_bed(uuid, uuid, integer, text)', 'execute') as keep,
+            has_function_privilege('anon', 'keep_in_bed(uuid, uuid, integer, text)', 'execute') as keep_anon,
+            has_function_privilege('authenticated', 'bed_days_catch_up(uuid)', 'execute') as catch,
+            has_function_privilege('anon', 'bed_days_catch_up(uuid)', 'execute') as catch_anon,
+            has_function_privilege('authenticated', 'end_bed_stay(uuid, text)', 'execute') as ending,
+            has_function_privilege('authenticated', 'bill_bed_day(uuid, date)', 'execute') as day_x,
+            has_function_privilege('authenticated', 'bill_bed_days_of(uuid)', 'execute') as days_x,
+            has_table_privilege('authenticated', 'bed_day', 'select') as table_x,
+            (select count(*)::int from bed_stay s join encounter e on e.id = s.encounter_id
+              where e.status = 'open' and s.discharged_at is null and s.deleted_at is null and not s.by_day) as old_open`,
+  )
+  if (
+    !r.keep ||
+    r.keep_anon ||
+    !r.catch ||
+    r.catch_anon ||
+    !r.ending ||
+    r.day_x ||
+    r.days_x ||
+    r.table_x ||
+    r.old_open !== 0
+  )
+    throw new Error(json197b(r))
+  return 'no error; give / move / extend / end and the catch-up for a signed-in person (not anon); one day on the bill and the days table internal; no open stay left billed in advance'
+})
+await step(
+  '0197 beds seed: four beds (A 10,000, B 12,000, C and D 10,000), a visit of Dr 127, two insurers (85 %; Insurer B covers no bed days)',
+  async () => {
+    await asAdmin()
+    const bed = async (name, price) =>
+      (
+        await one(
+          `insert into bed (name, sort_order, nightly_price, status) values ($1, 900, $2, 'free') returning id`,
+          [name, price],
+        )
+      ).id
+    t197b.A = await bed('Bed A 197', 10000)
+    t197b.B = await bed('Bed B 197', 12000)
+    t197b.C = await bed('Bed C 197', 10000)
+    t197b.D = await bed('Bed D 197', 10000)
+    t197b.v1 = await t127.ov(t127.doc)
+    await as(staff.manager)
+    t197b.insA = (
+      await one(
+        `select upsert_payer(null, 'Insurer A 197', 'private', 85, '{}'::jsonb, true, 'INSA197', false, 'cash_covered') as id`,
+      )
+    ).id
+    t197b.insB = (
+      await one(
+        `select upsert_payer(null, 'Insurer B 197', 'private', 85, '{"bed": 0}'::jsonb, true, 'INSB197', false, 'cash_covered') as id`,
+      )
+    ).id
+    await asAdmin()
+    t197b.svc = (await one(`select id from service where code = 'BED-STAY'`)).id
+    return 'four free beds, an open visit with Dr. Steps 127, Insurer A 197 and Insurer B 197'
+  },
+)
+await step(
+  '0197 beds A: the doctor keeps the patient in a bed from the treatment plan — one day on the bill at once, the nurses told, the board says it all',
+  async () => {
+    const before = await as197b(t127.doc, `select nav_counts() as j`)
+    const s = await as197b(
+      t127.doc,
+      `select keep_in_bed($1, $2, 3, 'Severe malaria: IV quinine 197') as j`,
+      [t197b.v1, t197b.A],
+    )
+    t197b.stayA = s.stayId
+    const after = await as197b(t127.doc, `select nav_counts() as j`)
+    const lines = await bedLines197b(t197b.v1)
+    const told = (
+      await db.query(
+        `select recipient_user, params ->> 'what' as what from notification
+          where kind = 'bed_stay' and params ->> 'stayId' = $1`,
+        [t197b.stayA],
+      )
+    ).rows
+    const b = await board197b(t127.doc, t197b.A)
+    const r = {
+      s: [s.bed, s.days, Number(s.amount), s.expectedDays],
+      lines: lines.map((l) => [
+        l.q,
+        l.p,
+        l.c,
+        l.pat,
+        l.d.startsWith('Bed stay · Bed A 197 · '),
+        l.o,
+      ]),
+      told: [
+        told.some((x) => x.recipient_user === t127.nurseA && x.what === 'given'),
+        told.some((x) => x.recipient_user === t127.nurseB),
+        told.some((x) => x.recipient_user === t127.doc),
+      ],
+      beds: [before.inBeds ?? 0, after.inBeds],
+      board: [
+        b.state,
+        b.encounterId === t197b.v1,
+        b.days,
+        b.expectedDays,
+        b.reason,
+        b.givenBy,
+        b.doctor,
+        Number(b.amount),
+        Number(b.owed) >= 10000,
+      ],
+      again: await msg197b(t127.doc, `select keep_in_bed($1, $2, null, 'x')`, [t197b.v1, t197b.B]),
+      busy: await msg197b(t127.nurseA, `select keep_in_bed($1, $2, null, 'x')`, [
+        (t197b.v0 = await t127.ov(t127.doc)),
+        t197b.A,
+      ]),
+    }
+    if (
+      json197b(r.s) !== json197b(['Bed A 197', 1, 10000, 3]) ||
+      json197b(r.lines) !== json197b([[1, 10000, 0, 10000, true, 'manual']]) ||
+      json197b(r.told) !== json197b([true, true, false]) ||
+      r.beds[1] !== r.beds[0] + 1 ||
+      json197b(r.board) !==
+        json197b([
+          'occupied',
+          true,
+          1,
+          3,
+          'Severe malaria: IV quinine 197',
+          'Dr. Steps 127',
+          'Dr. Steps 127',
+          10000,
+          true,
+        ]) ||
+      !/already in a bed/.test(r.again) ||
+      !/this bed is not free/.test(r.busy)
+    )
+      throw new Error(json197b(r))
+    return 'Bed A 197: day 1 on the bill (1 × 10,000, the bed’s price), 3 days expected, why kept; Nurses A and B told, not the doctor; Patients in beds +1; a second bed for the same visit and a busy bed refused'
+  },
+)
+await step(
+  '0197 beds B: a day passes — one more day on the same line, never twice (the cashier’s catch-up, run again, and the clinic-wide one)',
+  async () => {
+    await pass197b(t197b.v1)
+    const once = await as197b(staff.cashier, `select bed_days_catch_up($1) as j`, [t197b.v1])
+    const twice = await as197b(staff.cashier, `select bed_days_catch_up($1) as j`, [t197b.v1])
+    const all = await as197b(staff.nurse, `select bed_days_catch_up() as j`)
+    const lines = await bedLines197b(t197b.v1)
+    const inv = await one(
+      `select total::int as t, patient_share::int as p from invoice where encounter_id = $1`,
+      [t197b.v1],
+    )
+    const anon = await msg197b(null, `select bed_days_catch_up()`)
+    const r = {
+      added: [once, twice, all >= 0],
+      days: await days197b(t197b.v1),
+      lines: lines.map((l) => [l.q, l.p, l.pat, / → /.test(l.d)]),
+      inv: inv.t >= 20000 && inv.p >= 20000,
+      anon: anon.split('|')[0],
+    }
+    // the clinic-wide catch-up added nothing more to this visit
+    if (
+      json197b(r.added.slice(0, 2)) !== json197b([1, 0]) ||
+      r.days !== 2 ||
+      json197b(r.lines) !== json197b([[2, 10000, 20000, true]]) ||
+      !r.inv ||
+      r.anon === 'ok'
+    )
+      throw new Error(json197b(r))
+    return 'a new day: 1 added, 0 the second time; the line is now 2 days (20,000, “… → …”); anon refused'
+  },
+)
+await step(
+  '0197 beds C: moved to another bed — today stays on the old bed, the next day at the new bed’s price; the old bed to clean; the nurses told',
+  async () => {
+    const s = await as197b(t127.doc, `select move_to_bed($1, $2, null) as j`, [t197b.v1, t197b.B])
+    const afterMove = (await bedLines197b(t197b.v1)).map((l) => [l.q, l.p])
+    const beds = (
+      await db.query(
+        `select name, status::text as s from bed where id = any($1::uuid[]) order by name`,
+        [[t197b.A, t197b.B]],
+      )
+    ).rows.map((b) => b.s)
+    const told = await one(
+      `select params ->> 'fromBed' as f, params ->> 'bed' as b from notification
+        where kind = 'bed_stay' and params ->> 'what' = 'moved' and recipient_user = $1
+          and params ->> 'stayId' = $2`,
+      [t127.nurseA, s.stayId],
+    )
+    t197b.stayB = s.stayId
+    await pass197b(t197b.v1)
+    const added = await as197b(t127.nurseA, `select bed_days_catch_up($1) as j`, [t197b.v1])
+    const b = await board197b(staff.cashier, t197b.B)
+    const r = {
+      s: [s.bed, s.days, s.expectedDays],
+      afterMove,
+      beds,
+      told: told && [told.f, told.b],
+      added,
+      lines: (await bedLines197b(t197b.v1)).map((l) => [l.q, l.p, l.d.includes('Bed B 197')]),
+      board: [b.days, Number(b.amount), b.expectedDays],
+      same: await msg197b(t127.doc, `select move_to_bed($1, $2, null)`, [t197b.v1, t197b.B]),
+    }
+    if (
+      json197b(r.s) !== json197b(['Bed B 197', 2, 3]) ||
+      json197b(r.afterMove) !== json197b([[2, 10000]]) ||
+      json197b(r.beds) !== json197b(['cleaning', 'occupied']) ||
+      json197b(r.told) !== json197b(['Bed A 197', 'Bed B 197']) ||
+      r.added !== 1 ||
+      json197b(r.lines) !==
+        json197b([
+          [2, 10000, false],
+          [1, 12000, true],
+        ]) ||
+      json197b(r.board) !== json197b([3, 32000, 3]) ||
+      !/already in this bed/.test(r.same)
+    )
+      throw new Error(json197b(r))
+    return 'moved the same day: nothing more (2 days on Bed A 197); A to clean; the nurses told “from Bed A 197 to Bed B 197”; the next day: 1 × 12,000 on its own line; 3 days, 32,000 in all'
+  },
+)
+await step(
+  '0197 beds D: Extend changes the days expected (or leaves them open) and bills nothing; finishing the visit is refused while the patient is in a bed',
+  async () => {
+    const amount = async () => (await bedLines197b(t197b.v1)).reduce((s, l) => s + l.q * l.p, 0)
+    const a0 = await amount()
+    const seven = await as197b(t127.nurseA, `select set_bed_days($1, 7) as j`, [t197b.v1])
+    const open = await as197b(t127.doc, `select set_bed_days($1, null) as j`, [t197b.v1])
+    const r = {
+      seven: seven.expectedDays,
+      open: open.expectedDays ?? null,
+      billed: (await amount()) - a0,
+      zero: await msg197b(t127.doc, `select set_bed_days($1, 0)`, [t197b.v1]),
+      finish: await msg197b(t127.doc, `select finish_visit($1)`, [t197b.v1]),
+    }
+    if (
+      r.seven !== 7 ||
+      r.open !== null ||
+      r.billed !== 0 ||
+      !/between 1 and 365/.test(r.zero) ||
+      !r.finish.startsWith('23514|in_bed|')
+    )
+      throw new Error(json197b(r))
+    return '7 days expected, then not decided; nothing billed; 0 days refused; finish refused (in_bed): end the stay first'
+  },
+)
+await step(
+  '0197 beds E: the stay ends — the bed to clean, the nurses told, no more days afterwards; the visit can then be finished',
+  async () => {
+    const s = await as197b(t127.doc, `select end_bed_stay($1, null) as j`, [t197b.v1])
+    const bed = await one(`select status::text as s from bed where id = $1`, [t197b.B])
+    const told = await one(
+      `select count(*)::int as n from notification where kind = 'bed_stay' and params ->> 'what' = 'ended'
+        and params ->> 'stayId' = $1 and recipient_user = any($2::uuid[])`,
+      [t197b.stayB, [t127.nurseA, t127.nurseB]],
+    )
+    const d0 = await days197b(t197b.v1)
+    await pass197b(t197b.v1, 2)
+    const added = await as197b(staff.cashier, `select bed_days_catch_up($1) as j`, [t197b.v1])
+    const r = {
+      s: [s.days, Number(s.amount)],
+      bed: bed.s,
+      told: told.n,
+      days: [d0, await days197b(t197b.v1), added],
+      again: await msg197b(t127.doc, `select end_bed_stay($1, null)`, [t197b.v1]),
+      inBed: (await one(`select visit_in_bed($1) as b`, [t197b.v1])).b,
+      finish: await msg197b(t127.doc, `select finish_visit($1)`, [t197b.v1]),
+    }
+    if (
+      json197b(r.s) !== json197b([3, 32000]) ||
+      r.bed !== 'cleaning' ||
+      r.told !== 2 ||
+      json197b(r.days) !== json197b([3, 3, 0]) ||
+      !/not in a bed/.test(r.again) ||
+      r.inBed !== false ||
+      r.finish.startsWith('23514|in_bed|')
+    )
+      throw new Error(json197b(r))
+    return `ended at 3 days (32,000); Bed B 197 to clean; both nurses told; two days later still 3 days (nothing added); ending again refused; finishing is no longer refused for the bed (${r.finish === 'ok' ? 'finished' : r.finish.split('|')[2]})`
+  },
+)
+await step(
+  '0197 beds F: the payer rules — Insurer A covers 85 % of the bed’s price; Insurer B’s plan 0 % for beds; Insurer A’s own price for a bed day from the next day, on a line of its own',
+  async () => {
+    t197b.v2 = await t127.ov(t127.doc)
+    t197b.v3 = await t127.ov(t127.doc)
+    await as(staff.cashier)
+    await db.query(`select set_visit_payer($1, $2, 'INSA-197-1')`, [t197b.v2, t197b.insA])
+    await db.query(`select set_visit_payer($1, $2, 'INSB-197-1')`, [t197b.v3, t197b.insB])
+    await asAdmin()
+    await as197b(t127.doc, `select keep_in_bed($1, $2, null, 'Observation 197') as j`, [
+      t197b.v2,
+      t197b.C,
+    ])
+    await as197b(t127.nurseA, `select keep_in_bed($1, $2, 2, 'Observation 197') as j`, [
+      t197b.v3,
+      t197b.D,
+    ])
+    const a1 = (await bedLines197b(t197b.v2)).map((l) => [l.q, l.p, l.c, l.pat, l.ins])
+    const b1 = (await bedLines197b(t197b.v3)).map((l) => [l.q, l.p, l.c, l.pat, l.ins])
+    await as(staff.manager)
+    await db.query(`select set_insurer_price($1, $2, null, 8000)`, [t197b.insA, t197b.svc])
+    await asAdmin()
+    await pass197b(t197b.v2)
+    await as197b(staff.cashier, `select bed_days_catch_up($1) as j`, [t197b.v2])
+    const a2 = (await bedLines197b(t197b.v2)).map((l) => [l.q, l.p, l.c, l.pat, l.ins, l.o])
+    const r = { a1, b1, a2 }
+    if (
+      json197b(a1) !== json197b([[1, 10000, 85, 1500, 8500]]) ||
+      json197b(b1) !== json197b([[1, 10000, 0, 10000, 0]]) ||
+      json197b(a2) !==
+        json197b([
+          [1, 10000, 85, 1500, 8500, 'manual'],
+          [1, 8000, 85, 1200, 6800, 'preset'],
+        ])
+    )
+      throw new Error(json197b(r))
+    return 'Insurer A: 10,000 → patient 1,500, insurer 8,500; Insurer B: the patient pays 10,000; Insurer A’s own price 8,000 the next day (patient 1,200, insurer 6,800) on a new line'
+  },
+)
+await step(
+  '0197 beds G: who may — the receptionist and the cashier may not give a bed, another doctor may not on a patient who is not with them; the cashier reads the beds and what is owed',
+  async () => {
+    const v4 = await t127.ov(t127.doc)
+    const r = {
+      recep: (
+        await msg197b(staff.receptionist, `select keep_in_bed($1, $2, null, 'x')`, [v4, t197b.A])
+      ).split('|')[0],
+      cashier: (
+        await msg197b(staff.cashier, `select keep_in_bed($1, $2, null, 'x')`, [v4, t197b.A])
+      ).split('|')[0],
+      doc2: (await msg197b(t127.doc2, `select end_bed_stay($1, null)`, [t197b.v2])).split('|')[0],
+      board: (await as197b(staff.cashier, `select bed_board() as j`)).find((b) => b.id === t197b.C),
+    }
+    await asAdmin()
+    await db.query(`update queue_entry set deleted_at = now() where encounter_id = $1`, [v4])
+    await db.query(`update encounter set deleted_at = now() where id = $1`, [v4])
+    if (
+      r.recep !== '42501' ||
+      r.cashier !== '42501' ||
+      r.doc2 !== '42501' ||
+      r.board?.encounterId !== t197b.v2 ||
+      !(Number(r.board?.owed) > 0)
+    )
+      throw new Error(json197b(r))
+    return 'receptionist, cashier and a doctor the patient is not with refused (42501); the cashier sees Bed C 197 with what is owed'
+  },
+)
+await step(
+  '0197 beds H: kept apart — a patient in a bed is not “from earlier days” nor forgotten; another open visit of an earlier day still is',
+  async () => {
+    await asAdmin()
+    // the patient in Bed C 197 came two days ago and waits at the laboratory since then
+    await db.query(
+      `update queue_entry set created_at = now() - interval '2 days' where encounter_id = $1`,
+      [t197b.v2],
+    )
+    await db.query(
+      `insert into queue_entry (encounter_id, station, ticket_no, created_at) values ($1, 'laboratory', 'B197', now() - interval '2 days')`,
+      [t197b.v2],
+    )
+    // a visit of two days ago, not in a bed, also waiting at the laboratory
+    const v5 = await t127.ov(t127.doc)
+    await db.query(
+      `update queue_entry set created_at = now() - interval '2 days' where encounter_id = $1`,
+      [v5],
+    )
+    await db.query(
+      `insert into queue_entry (encounter_id, station, ticket_no, created_at) values ($1, 'laboratory', 'C197', now() - interval '2 days')`,
+      [v5],
+    )
+    const mine = (await as197b(t127.doc, `select my_summary() as j`)).waiting
+    const row = (enc) => mine.find((w) => w.encounter_id === enc)
+    const forgotten = Number(
+      (await one(`select forgotten from queue_now(array['laboratory']::station[])`)).forgotten,
+    )
+    await db.query(
+      `update queue_entry set deleted_at = now() where encounter_id = $1 and station = 'laboratory'`,
+      [v5],
+    )
+    const forgottenAfter = Number(
+      (
+        await one(
+          `select coalesce((select forgotten from queue_now(array['laboratory']::station[])), 0) as forgotten`,
+        )
+      ).forgotten,
+    )
+    await db.query(`update queue_entry set deleted_at = now() where encounter_id = $1`, [v5])
+    await db.query(`update encounter set deleted_at = now() where id = $1`, [v5])
+    const r = {
+      bed: row(t197b.v2) && [row(t197b.v2).earlier, row(t197b.v2).in_bed],
+      other: row(v5) && [row(v5).earlier, row(v5).in_bed],
+      forgotten: forgotten - forgottenAfter,
+    }
+    if (
+      json197b(r.bed) !== json197b([false, true]) ||
+      json197b(r.other) !== json197b([true, false]) ||
+      r.forgotten !== 1
+    )
+      throw new Error(json197b(r))
+    return 'the patient in Bed C 197 is today’s (in a bed); the other visit of two days ago is “from earlier days”; at the laboratory only that one is forgotten'
+  },
+)
+await step(
+  '0197 beds I: the patient who leaves (end_visit) — the last day is on the bill before what is due is counted, then the stay ends with the visit; the old Beds panel still works',
+  async () => {
+    await pass197b(t197b.v3)
+    const out = await as197b(
+      staff.cashier,
+      `select end_visit($1, 'went home, pays tomorrow 197') as j`,
+      [t197b.v3],
+    )
+    const s = await one(
+      `select discharged_at is not null as ended, end_reason from bed_stay where encounter_id = $1`,
+      [t197b.v3],
+    )
+    const bed = await one(`select status::text as s from bed where id = $1`, [t197b.D])
+    const inv = await one(
+      `select status::text as s, patient_share::int as p from invoice where encounter_id = $1`,
+      [t197b.v3],
+    )
+    // the panel of before: admit (2 nights → 2 days expected, 1 day billed), extend, discharge
+    await asAdmin()
+    await db.query(`update bed set status = 'free' where id = $1`, [t197b.D])
+    const v6 = await t127.ov(t127.doc)
+    const a = await as197b(t127.nurseA, `select admit_to_bed($1, $2, 2, 50000) as j`, [v6, t197b.D])
+    const x = await as197b(t127.nurseA, `select extend_bed_stay($1, 1, null) as j`, [t197b.D])
+    const old = await board197b(t127.nurseA, t197b.D)
+    await as(t127.nurseA)
+    await db.query(`select discharge_bed($1)`, [t197b.D])
+    await asAdmin()
+    const r = {
+      due: Number(out.due),
+      days: await days197b(t197b.v3),
+      stay: [s.ended, s.end_reason],
+      bed: bed.s,
+      inv: [inv.s, inv.p],
+      old: [Number(a.total), Number(x.total), old.expectedDays, old.days],
+      oldEnded: (await one(`select visit_in_bed($1) as b`, [v6])).b,
+    }
+    await db.query(`update queue_entry set deleted_at = now() where encounter_id = $1`, [v6])
+    await db.query(`update encounter set deleted_at = now() where id = $1`, [v6])
+    if (
+      r.due !== 20000 ||
+      r.days !== 2 ||
+      json197b(r.stay) !== json197b([true, 'visit finished']) ||
+      r.bed !== 'cleaning' ||
+      json197b(r.inv) !== json197b(['posted', 20000]) ||
+      json197b(r.old) !== json197b([10000, 0, 3, 1]) ||
+      r.oldEnded !== false
+    )
+      throw new Error(json197b(r))
+    return 'left owing 20,000 (2 days, Insurer B pays none), the stay ended with the visit, Bed D 197 to clean, the bill posted; the old panel: 1 day billed (not 50,000 in advance), +1 night = 3 days expected, discharged'
+  },
+)
+await step(
+  '0197 beds: tidy — the visits of these checks leave no trace for the others',
+  async () => {
+    await asAdmin()
+    for (const v of [t197b.v0, t197b.v1, t197b.v2]) {
+      await db.query(
+        `update bed_stay set discharged_at = coalesce(discharged_at, now()) where encounter_id = $1`,
+        [v],
+      )
+      await db.query(`update queue_entry set deleted_at = now() where encounter_id = $1`, [v])
+      await db.query(`update encounter set deleted_at = now() where id = $1`, [v])
+    }
+    await db.query(`update bed set status = 'free' where id = any($1::uuid[])`, [
+      [t197b.A, t197b.B, t197b.C, t197b.D],
+    ])
+    return 'done'
+  },
+)
+// @@t197-beds-end
 finish()
 
 function finish() {

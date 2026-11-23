@@ -30,19 +30,24 @@ const MAX_ROWS = 30
  * 0155: a prescription sheet to write by hand — the clinic's letterhead, the patient, numbered
  * empty lines (the doctor chooses how many), the prescriber's name, registration and signature.
  * Some medicines are written with a pen, not typed: the printed template keeps the clinic's
- * look and the prescriber's identity. From the visit (the patient filled in) or the
- * Prescriptions page (a patient searched, or none).
+ * look and the prescriber's identity. From the visit (the patient filled in), the
+ * Prescriptions page (a patient searched, or none) or the report centre (0197: no patient at
+ * all; printed by someone who does not prescribe, the prescriber's lines are left to write).
  */
 export function BlankRxForm({
   user,
   patient,
   searchable = false,
+  signs = true,
   onClose,
 }: {
   user: StaffUser
   patient?: BlankRxPatient | null
   /** Prescriptions page: the patient is searched (or left blank). */
   searchable?: boolean
+  /** The person printing prescribes: their name, title and registration are printed. False (the
+   *  manager printing sheets for the doctors): ruled blanks, the prescriber writes them. */
+  signs?: boolean
   onClose?: () => void
 }) {
   const { t } = useTranslation()
@@ -84,11 +89,13 @@ export function BlankRxForm({
       givenHere: [],
       outside: false,
       blankRows: lines,
-      prescriber: {
-        name: user.name,
-        title: creds?.specialty?.trim() || roleLabel(user, t),
-        registrationNo: registrationText(creds),
-      },
+      prescriber: signs
+        ? {
+            name: user.name,
+            title: creds?.specialty?.trim() || roleLabel(user, t),
+            registrationNo: registrationText(creds),
+          }
+        : { name: '', title: '', registrationNo: null },
       printedBy: user.name,
     }
     w.document.open()
@@ -98,7 +105,13 @@ export function BlankRxForm({
 
   return (
     <div className="border-violet/30 wash wash-violet rounded-lg2 flex flex-col gap-3 border p-3">
-      <p className="text-ink-2 m-0 text-[13px]">{t('rxDoc.blank.lead')}</p>
+      <p className="text-ink-2 m-0 text-[13px]">
+        {t(signs ? 'rxDoc.blank.lead' : 'rxDoc.blank.leadToSign')}
+      </p>
+      {/* the report centre: no patient at all, said in words */}
+      {!searchable && !patient && (
+        <p className="text-ink-3 m-0 text-[12px]">{t('rxDoc.blank.noPatient')}</p>
+      )}
       {searchable && (
         <div className="flex flex-col gap-1.5">
           <span className="text-ink-2 text-[13px] font-semibold">{t('rxDoc.blank.patient')}</span>

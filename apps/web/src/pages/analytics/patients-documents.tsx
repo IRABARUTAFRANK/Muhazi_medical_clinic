@@ -197,7 +197,7 @@ export function PatientsDocuments({
     {
       key: 'diagnosis',
       label: tx(t, 'documents.cols.diagnosis', 'Diagnosis'),
-      cell: (r) => (r.diagnosis ? `${r.diagnosis}${r.icd10 ? ` (${r.icd10})` : ''}` : '—'),
+      cell: (r) => r.diagnosis || '—',
       sort: (r) => r.diagnosis,
     },
     {

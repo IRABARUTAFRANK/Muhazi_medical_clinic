@@ -1,5 +1,5 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
-import { PackageOpen, Pill, Plus, Send, Syringe } from 'lucide-react'
+import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { PackageOpen, Pill, Plus, Send, Syringe, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatRwf } from '@mmc/shared'
 import { Button } from '@/components/ui/button'
@@ -12,7 +12,15 @@ import { NurseOrderRow } from '@/components/clinical/nurse-order-row'
 import { NurseRecipient } from '@/components/clinical/nurse-recipient'
 import { EmptyNote } from '@/components/clinical/empty-note'
 import { OrderSummary } from '@/components/clinical/six-steps/order-summary'
-import { treatmentName, useTreatments } from '@/lib/api/catalogue'
+import {
+  listMedicineOption,
+  medicineRefOption,
+  sortMedicineRefs,
+  treatmentName,
+  useListMedicines,
+  useMedicineReference,
+  useTreatments,
+} from '@/lib/api/catalogue'
 import { useItems } from '@/lib/api/patients'
 import {
   useClinicStock,
@@ -33,6 +41,11 @@ const ALL = ''
 
 /** The chooser's row for an act that is not in the price list (written, not billed). */
 const TYPED_ACT = '__typed__'
+
+/** 0197: a medicine the clinic does not hold — of the official list (REF + code) or of an
+ *  uploaded list (LIST + code), as the prescription form writes them. Never orderable. */
+const REF = 'ref:'
+const LIST = 'list:'
 
 /** Where the patient takes the medicine (0193). */
 type Where = 'here' | 'home' | 'both'
@@ -86,6 +99,11 @@ function PartTitle({ title, hint }: { title: string; hint?: string }) {
  * Each order is carried out ONCE: one press of Given / Handed over / Done takes everything from the
  * stock and puts it on the bill. For one nurse, all of them, or the doctor himself. The box above
  * Send says what will happen; every field says what it does. Below: each order, with Undo.
+ *
+ * 0197: the medicine list holds everything the clinic knows — its own medicines and products, the
+ * official list and every uploaded list (each medicine once) — in two groups: in the clinic's
+ * stock (orderable), then not in stock. Choosing one that is not in stock is refused at once in
+ * words, with the two ways out (add its delivery; prescribe it to buy outside).
  */
 export function NurseOrdersStep({
   encounterId,
@@ -96,6 +114,7 @@ export function NurseOrdersStep({
   patientName,
   patientFile,
   visitOver = false,
+  onPrescribeOutside,
   onDone,
   onError,
 }: {
@@ -110,6 +129,9 @@ export function NurseOrdersStep({
   patientFile?: string | null
   /** The visit is finished (Undo by a nurse then ends the order). */
   visitOver?: boolean
+  /** Opens the prescription form on this medicine (a clinic item's id, REF or LIST + code): the
+   *  way out for one the clinic does not have in stock. */
+  onPrescribeOutside?: (pick: string) => void
   onDone: (m: string) => void
   onError: (m: string | null) => void
 }) {
@@ -123,6 +145,9 @@ export function NurseOrdersStep({
   const { data: stock } = useClinicStock(adding)
   const { data: treatments = [] } = useTreatments(adding)
   const { data: nurses = [] } = useOrderNurses(adding)
+  // 0197: the official list and the uploaded lists join the picker (as on Add stock)
+  const { data: refs = [] } = useMedicineReference(adding)
+  const { data: listMeds = [] } = useListMedicines(adding)
   // the treatments charged on the visit (not the tests a desk carries out)
   const acts = treatments.filter(
     (x) => !x.orderStation && x.active !== false && x.code !== 'BED-STAY',
@@ -165,10 +190,15 @@ export function NurseOrdersStep({
   const homeBoxes =
     pack && home > 0 && !notWhole ? packsText(t, home, pack.size, pack.packUnit) : null
 
-  // the picker: the medicines the clinic has first, with how many and the price; the others
-  // last, to prescribe for an outside pharmacy instead
-  const medicineOptions: SearchOption[] = items
-    .map((it) => {
+  // the picker (0197): everything the clinic knows as a medicine or product, each once — those in
+  // the clinic's stock first (how many, the box, the price), then those it does not have: its own
+  // with none left, the official list's and the uploaded lists'. Worked out once per change of the
+  // lists (thousands of lines), not on every key pressed in the form.
+  const medicineOptions = useMemo((): SearchOption[] => {
+    const inGroup = t('nurseOrders.groupInStock')
+    const noGroup = t('nurseOrders.groupNoStock')
+    const none = t('nurseOrders.noStock')
+    const own = items.map((it) => {
       const n = stock ? (stock.units[it.id] ?? 0) : null
       const p = stock?.packs[it.id]
       const piece = it.unit || t('nurseOrders.unit')
@@ -184,45 +214,56 @@ export function NurseOrdersStep({
             })
           : null,
       ].filter(Boolean)
-      return {
-        option: {
-          value: it.id,
-          label: [it.name, it.strength, it.form ? `· ${it.form}` : null].filter(Boolean).join(' '),
-          sub:
-            [
-              n == null
-                ? null
-                : n > 0
-                  ? t('nurseOrders.inStock', { count: n, unit: piece })
-                  : t('nurseOrders.noStock'),
-              p
-                ? t('nurseOrders.boxOf', {
-                    pack: p.packUnit || t('nurseOrders.pack'),
-                    size: p.size,
-                  })
-                : null,
-            ]
-              .filter(Boolean)
-              .join(' · ') || undefined,
-          hint: prices.length ? prices.join(' · ') : undefined,
-          keywords: it.code,
-          group:
-            n == null
-              ? undefined
-              : n > 0
-                ? t('nurseOrders.groupInStock')
-                : t('nurseOrders.groupNoStock'),
-        },
-        has: n == null || n > 0,
+      const option: SearchOption = {
+        value: it.id,
+        label: [it.name, it.strength, it.form ? `· ${it.form}` : null].filter(Boolean).join(' '),
+        sub:
+          [
+            n == null ? null : n > 0 ? t('nurseOrders.inStock', { count: n, unit: piece }) : none,
+            p
+              ? t('nurseOrders.boxOf', { pack: p.packUnit || t('nurseOrders.pack'), size: p.size })
+              : null,
+          ]
+            .filter(Boolean)
+            .join(' · ') || undefined,
+        hint: prices.length ? prices.join(' · ') : undefined,
+        keywords: it.code,
+        group: n == null ? undefined : n > 0 ? inGroup : noGroup,
       }
+      return { option, has: n == null || n > 0 }
     })
-    .sort((a, b) => Number(b.has) - Number(a.has))
-    .map((x) => x.option)
+    // each medicine shows once: one the clinic already holds as its own line; one of an uploaded
+    // list (the clinic's own lists come before the official one) once, whatever the lists
+    const seen = new Set(items.map((it) => it.code))
+    const once = (code: string) => !seen.has(code) && !!seen.add(code)
+    const uploaded = listMeds
+      .filter((l) => once(l.code))
+      .map((l) => ({ ...listMedicineOption(l, t, LIST + l.code), group: noGroup, hint: none }))
+    const official = sortMedicineRefs(refs)
+      .filter((r) => once(r.code))
+      .map((r) => ({ ...medicineRefOption(r, t, REF + r.code), group: noGroup, hint: none }))
+    return [
+      ...own.filter((x) => x.has).map((x) => x.option),
+      ...own.filter((x) => !x.has).map((x) => x.option),
+      ...uploaded,
+      ...official,
+    ]
+  }, [items, stock, refs, listMeds, t])
+  // 0197: the medicine chosen is not in the clinic's stock (none left, or only on a list): it
+  // cannot be given here — said at once under the field, Send stays off
+  const offList = f.itemId.startsWith(REF) || f.itemId.startsWith(LIST)
+  const notInStock =
+    f.kind === 'drug' &&
+    !!f.itemId &&
+    (offList || (!!item && !!stock && (stock.units[item.id] ?? 0) <= 0))
+  const pickedName = medicineOptions.find((o) => o.value === f.itemId)?.label ?? ''
+  const notInStockText = t('nurseOrders.notInStock', { name: pickedName })
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setErr(null)
     if (f.kind === 'drug') {
+      if (notInStock) return setErr(`${notInStockText} ${t('nurseOrders.notInStockWays')}`)
       if (!item) return setErr(t('nurseOrders.errMedicine'))
       if (notWhole) return setErr(t('nurseOrders.errWhole'))
       if (here + home <= 0) return setErr(t('nurseOrders.errAmounts'))
@@ -376,27 +417,59 @@ export function NurseOrdersStep({
                   <SearchSelect
                     label={t('clinical.medicine')}
                     value={f.itemId}
-                    onChange={(v) => set({ itemId: v })}
+                    onChange={(v) => {
+                      setErr(null)
+                      set({ itemId: v })
+                    }}
                     required
                     emptyLabel={t('clinical.pickMedicine')}
                     options={medicineOptions}
                   />
                 </Hinted>
-                <div className="flex flex-col gap-1.5">
-                  <PartTitle title={t('nurseOrders.where')} hint={t('nurseOrders.whereHint')} />
-                  <Seg
-                    label={t('nurseOrders.where')}
-                    value={f.where}
-                    onChange={(w) => set({ where: w })}
-                    options={[
-                      { value: 'here', label: t('nurseOrders.whereHere') },
-                      { value: 'home', label: t('nurseOrders.whereHome') },
-                      { value: 'both', label: t('nurseOrders.whereBoth') },
-                    ]}
-                    className="self-start"
-                  />
-                </div>
-                {showHere && (
+                {notInStock && (
+                  <div
+                    role="alert"
+                    className="border-red bg-red-bg flex min-w-0 flex-col gap-2 rounded-md border px-3 py-2.5 text-[13px]"
+                  >
+                    <span className="text-red font-semibold">{notInStockText}</span>
+                    <span className="text-ink">{t('nurseOrders.notInStockWays')}</span>
+                    <span className="flex flex-wrap gap-2">
+                      {onPrescribeOutside && (
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            onPrescribeOutside(f.itemId)
+                            set({ itemId: '' })
+                          }}
+                        >
+                          <Pill size={14} aria-hidden="true" />
+                          {t('nurseOrders.prescribeOutside')}
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" onClick={() => set({ itemId: '' })}>
+                        <X size={14} aria-hidden="true" />
+                        {t('nurseOrders.removeMedicine')}
+                      </Button>
+                    </span>
+                  </div>
+                )}
+                {!notInStock && (
+                  <div className="flex flex-col gap-1.5">
+                    <PartTitle title={t('nurseOrders.where')} hint={t('nurseOrders.whereHint')} />
+                    <Seg
+                      label={t('nurseOrders.where')}
+                      value={f.where}
+                      onChange={(w) => set({ where: w })}
+                      options={[
+                        { value: 'here', label: t('nurseOrders.whereHere') },
+                        { value: 'home', label: t('nurseOrders.whereHome') },
+                        { value: 'both', label: t('nurseOrders.whereBoth') },
+                      ]}
+                      className="self-start"
+                    />
+                  </div>
+                )}
+                {!notInStock && showHere && (
                   <fieldset className="border-border bg-card m-0 flex min-w-0 flex-col gap-2 rounded-md border p-2.5">
                     <legend className="px-1">
                       <PartTitle title={t('nurseOrders.hereTitle')} />
@@ -434,7 +507,7 @@ export function NurseOrdersStep({
                     </div>
                   </fieldset>
                 )}
-                {showHome && (
+                {!notInStock && showHome && (
                   <fieldset className="border-border bg-card m-0 flex min-w-0 flex-col gap-2 rounded-md border p-2.5">
                     <legend className="px-1">
                       <PartTitle title={t('nurseOrders.takeHomeTitle')} />
@@ -559,7 +632,8 @@ export function NurseOrdersStep({
                 placeholder={t('nurseOrders.notesPh')}
               />
             </Hinted>
-            {notWhole ? (
+            {/* what will happen is said once a medicine is chosen (never "no price" for none) */}
+            {notInStock || (f.kind === 'drug' && !item) ? null : notWhole ? (
               <p
                 role="alert"
                 className="border-red bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[13px] font-semibold"
@@ -590,7 +664,7 @@ export function NurseOrdersStep({
                 type="submit"
                 variant="primary"
                 loading={actions.create.isPending}
-                disabled={blocked}
+                disabled={blocked || notInStock}
               >
                 <Send size={14} aria-hidden="true" />
                 {t(f.assignedTo === myId ? 'ops.tasks.keep' : 'nurseOrders.send')}

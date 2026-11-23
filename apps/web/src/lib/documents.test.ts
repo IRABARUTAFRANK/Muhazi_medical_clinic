@@ -175,6 +175,37 @@ describe('prescription', () => {
     expect(html).not.toContain('Paracetamol')
   })
 
+  // 0197: printed from the report centre by someone who does not prescribe (the manager, for the
+  // doctors): the prescriber's name and registration are ruled blanks to write
+  it('blank sheet with no prescriber: ruled blanks for the name and the registration', () => {
+    const html = buildPrescriptionHtml(
+      rx({
+        medicines: [],
+        givenHere: [],
+        blankRows: 8,
+        diagnosis: null,
+        patient: { name: '', fileNumber: '' },
+        prescriber: { name: '', title: '', registrationNo: null },
+      }),
+      { t, lang: 'en' },
+      { autoPrint: false, printedAt: at, fonts },
+    )
+    expect(html.match(/class="rx-blank/g)?.length).toBe(8)
+    expect(html).toContain('Prescribed by:</span> <span class="rx-line who"></span>')
+    expect(html).toContain('<span class="rx-line reg"></span>')
+    expect(html).toContain('Muhazi Medical Clinic Ltd')
+  })
+
+  // 0197: a diagnosis is its words: an old code is never printed
+  it('never prints a disease code beside the diagnosis', () => {
+    const html = buildPrescriptionHtml(
+      rx(),
+      { t, lang: 'en' },
+      { autoPrint: false, printedAt: at, fonts },
+    )
+    expect(html).not.toMatch(/ICD|B50\.9/)
+  })
+
   it('prints the validity, the quantity in words and never a medicine given here', () => {
     const html = buildPrescriptionHtml(
       rx(),
@@ -403,6 +434,9 @@ describe('medical report: the six steps (0127)', () => {
     expect(html).toContain('Typhoid fever')
     expect(html).toContain('IM injection')
     expect(html.indexOf('Treat malaria')).toBeGreaterThan(steps[5]!)
+    // 0197: the diagnoses in words only: no code column, no code (the data may still hold one)
+    expect(html).not.toMatch(/ICD|>B54<|>A01\.0<|\(B54\)|\(A01\.0\)/)
+    expect(html).not.toContain('<strong>B54</strong>')
   })
   it('says a step with nothing written; a visit without the steps keeps the old layout', () => {
     const html = doc({ complaint: 'Cough' })

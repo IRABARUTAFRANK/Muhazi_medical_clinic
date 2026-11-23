@@ -1448,7 +1448,7 @@ function sampleDeskAnalytics(p: AnalyticsPeriod, user: StaffUser | null): DeskAn
   for (const x of days) counts[x.kind] = (counts[x.kind] ?? 0) + x.n
   const names = ['Mukamana Alice', 'Rukundo Kevin', 'Uwase Claudine', 'Hakizimana Emmanuel']
   const what: Record<string, string[]> = {
-    diagnoses: ['B54 Malaria', 'J06.9 Upper respiratory infection', 'A09 Gastroenteritis'],
+    diagnoses: ['Malaria', 'Upper respiratory infection', 'Gastroenteritis'],
     prescriptions: ['Amoxicillin 500 mg · 1 cap', 'Paracetamol 500 mg · 2 tab'],
     orders: ['Malaria RDT', 'Full blood count'],
     patientsSeen: ['V-2026-000124', 'V-2026-000131'],

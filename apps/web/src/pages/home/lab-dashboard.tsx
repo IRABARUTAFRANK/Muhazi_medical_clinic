@@ -39,7 +39,8 @@ import { useNow } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { matches } from '@/lib/paging'
 import { isLive } from '@/lib/supabase'
-import { LabOrderRow } from '../lab/lab-parts'
+import { visitBlocks } from '@/lib/visit-blocks'
+import { LabVisitBlock } from '../lab/lab-visit-block'
 import { ErrorBox, ToAcceptPanel } from './role-panels'
 import { MyWorkPanel, WaitingForMePanel } from './my-panels'
 import { WORK_OF } from './my-work'
@@ -92,7 +93,10 @@ export function LabDashboard({ user }: { user: StaffUser }) {
   // a sonographer keeps a calendar: the bookings made with them wait for their answer
   const { data: home } = useHomeSummary()
   const [bookingError, setBookingError] = useState<string | null>(null)
-  const bench = open.filter((o) => matches(query, o.patient, o.test, o.fileNumber, o.ticket))
+  // the tests of one patient's visit stand together (as on the worklist); the search keeps a
+  // block when one of its tests matches and points out which
+  const bench = visitBlocks(open, (o) => matches(query, o.patient, o.test, o.fileNumber, o.ticket))
+  const doneBlocks = visitBlocks(done)
   // the laboratory's own shelves (reagents, supplies): low or expiring soon
   const { data: stock } = useStockOverview()
   const labStores = (stock?.locations ?? []).filter((l) => l.type === 'lab').map((l) => l.id)
@@ -262,8 +266,8 @@ export function LabDashboard({ user }: { user: StaffUser }) {
                 <ShownList items={bench} step={6}>
                   {(shown) => (
                     <div className="flex flex-col">
-                      {shown.map((o, i) => (
-                        <LabOrderRow key={o.id} order={o} i={i} now={now} />
+                      {shown.map((b, i) => (
+                        <LabVisitBlock key={b.key} block={b} i={i} now={now} />
                       ))}
                     </div>
                   )}
@@ -383,11 +387,11 @@ export function LabDashboard({ user }: { user: StaffUser }) {
             {done.length === 0 ? (
               <Empty>{t('lab.noneDoneIn', { period: doneWord })}</Empty>
             ) : (
-              <ShownList items={done} step={5}>
+              <ShownList items={doneBlocks} step={5}>
                 {(shown) => (
                   <div className="flex flex-col">
-                    {shown.map((o, i) => (
-                      <LabOrderRow key={o.id} order={o} i={i} now={now} />
+                    {shown.map((b, i) => (
+                      <LabVisitBlock key={b.key} block={b} i={i} now={now} />
                     ))}
                   </div>
                 )}

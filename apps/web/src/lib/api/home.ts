@@ -144,15 +144,30 @@ const sampleSummary = (): HomeSummary => ({
     overdue: !!x.overdue,
     patient: x.patient,
   })),
-  results: LAB_RESULTS.map((r, i) => ({
-    id: `r-${i}`,
-    encounterId: `e-${i}`,
-    test: r.test,
-    name: r.name,
-    impression: r.detail,
-    verified: r.flag !== 'critical',
-    at: '12:20',
-  })),
+  results: [
+    ...LAB_RESULTS.map((r, i) => ({
+      id: `r-${i}`,
+      encounterId: `e-${i}`,
+      test: r.test,
+      name: r.name,
+      impression: r.detail,
+      verified: r.flag !== 'critical',
+      at: '12:20',
+    })),
+    // two more results of Mukamana Alice's visit (e-1): the three stand together as one block
+    ...[
+      { test: 'Malaria RDT', detail: 'Negative · 12:05' },
+      { test: 'Blood thin smear', detail: 'No parasite seen · 12:10' },
+    ].map((r, i) => ({
+      id: `r-same-${i}`,
+      encounterId: 'e-1',
+      test: r.test,
+      name: 'Mukamana Alice',
+      impression: r.detail,
+      verified: true,
+      at: '12:10',
+    })),
+  ],
 })
 
 const KEY = ['home', 'summary'] as const

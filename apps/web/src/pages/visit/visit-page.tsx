@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router'
 import {
   Activity,
   ArrowLeft,
+  BedDouble,
   CalendarCheck,
   CalendarPlus,
   CheckCircle2,
@@ -28,6 +29,7 @@ import { NextPatientPanel } from '@/components/clinical/next-patient-panel'
 import { OpenFileLink } from '@/components/clinical/file-panel'
 import { EmptyNote } from '@/components/clinical/empty-note'
 import { GlassPill, HeroHead } from '@/components/clinical/hero-head'
+import { useVisitBed } from '@/lib/api/beds'
 import { NurseTaskCard } from '@/components/clinical/nurse-task-card'
 import { VitalsForm } from '@/components/clinical/vitals-form'
 import { bmiOf, vitalName, vitalValue } from '@/lib/api/vitals'
@@ -177,6 +179,8 @@ export function VisitPage({
             (!r.assignedTo || r.assignedTo === user.id),
         )
   const { data: header, isLoading, error } = useVisitHeader(encounterId)
+  // 0197: the patient stays in a bed (the stay and its actions are in step 6)
+  const bedNow = useVisitBed(encounterId)
   const { data: vitals = [] } = useVisitVitals(encounterId)
   // 0088: a visit whose clinical record this person may not see (its vital signs come empty)
   const { data: clinical } = useVisitClinical(encounterId)
@@ -416,6 +420,13 @@ export function VisitPage({
                 {header.stations.map((s) => (
                   <GlassPill key={s}>{t(`register.stations.${s}`)}</GlassPill>
                 ))}
+                {bedNow && (
+                  <GlassPill className="whitespace-normal">
+                    <BedDouble size={13} aria-hidden="true" className="flex-none" />
+                    {t('beds.inBed', { bed: bedNow.bed.name })} ·{' '}
+                    {t('beds.daysSoFar', { count: bedNow.days })}
+                  </GlassPill>
+                )}
               </HeroHead>
               <CardBody className="flex-row flex-wrap items-center gap-2">
                 {/* the file opens beside the visit (teal tint: an action); middle-click: the whole page */}

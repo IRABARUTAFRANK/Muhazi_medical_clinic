@@ -1392,10 +1392,7 @@ function Clinical({
           return (
             <Row key={c.id} className="flex-wrap gap-x-3 gap-y-1 py-2">
               <span className="min-w-[160px] flex-1">
-                <span className="block font-semibold">
-                  {c.text}
-                  {c.icd10 ? <span className="text-ink-3 ml-2 text-xs">{c.icd10}</span> : null}
-                </span>
+                <span className="block font-semibold">{c.text}</span>
                 <span className="text-ink-3 block text-xs">
                   {[when(c.at), c.by].filter(Boolean).join(' · ')}
                 </span>

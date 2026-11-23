@@ -162,6 +162,22 @@ sampleOrders = [
     orderedAt: ago(70),
     visitReference: 'V-2026-000101',
   },
+  // Several tests of one patient's visit (they stand together as one block on the worklist):
+  // Mukamana Alice has three waiting for their sample, Umutoni Grace one whose sample is taken
+  // beside her result to verify.
+  { ...sampleOrders[0]!, id: 'lo-same-1', test: 'Haemoglobin A1c' },
+  { ...sampleOrders[0]!, id: 'lo-same-2', test: 'Blood thin smear' },
+  {
+    ...sampleOrders[4]!,
+    id: 'lo-same-3',
+    test: 'Full blood count',
+    status: 'collected',
+    findings: null,
+    impression: null,
+    resultAt: null,
+    resultBy: null,
+    resultByPerson: null,
+  },
 ]
 /** The sample tests at the signed-in person's bench: imaging for a sonographer, the laboratory's
  *  for a laboratory technician, every test for the others (the manager). */
@@ -180,6 +196,13 @@ let sampleDone: LabOrder[] = [
   {
     ...sampleOrders[0]!,
     id: 'ld-1',
+    // her own visit (it used to borrow Mukamana Alice's)
+    encounterId: 'e-done-1',
+    patientId: 'p-done-1',
+    fileNumber: 'MMC-000118',
+    ticket: 'A-005',
+    visitReference: 'V-2026-000118',
+    allergies: null,
     test: 'Haemoglobin',
     patient: 'Kayitesi Rose',
     status: 'verified',
@@ -197,6 +220,11 @@ let sampleDone: LabOrder[] = [
       registrationBody: 'RAHPC',
     },
   },
+]
+// a second result of the same visit, signed by the same person: the two print on one report
+sampleDone = [
+  ...sampleDone,
+  { ...sampleDone[0]!, id: 'ld-2', test: 'Malaria RDT', findings: 'Negative', resultAt: ago(35) },
 ]
 
 export function useLabWorklist(scope: 'open' | 'done') {

@@ -18,11 +18,12 @@ import { useNow } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { useSearchPeriod } from '@/lib/period'
 import { matches, usePaged, type SortKey } from '@/lib/paging'
+import { blockTotals, visitBlocks } from '@/lib/visit-blocks'
 import { NoDeskPage } from '@/components/clinical/desk-gate'
 import { NotAllowedNotice } from '@/components/clinical/perm-gate'
 import { useCan } from '@/lib/api/permissions'
 import { useCanDesk, type DeskId } from '@/lib/api/desks'
-import { LabOrderRow } from './lab-parts'
+import { LabVisitBlock } from './lab-visit-block'
 
 const LAB_DESKS: readonly DeskId[] = ['laboratory', 'ultrasound']
 
@@ -38,8 +39,9 @@ const sortOrders = (rows: LabOrder[], sort: SortKey) =>
 
 /**
  * The full laboratory worklist: every open test (or the results given in a period, today by
- * default), searchable, by status and in the order chosen, 15 at a time; each row takes the test
- * to its next step.
+ * default), searchable, by status and in the order chosen. The tests of one patient's visit stand
+ * together as one block ("the file of that patient", lab-visit-block.tsx), 15 patients at a time;
+ * each test is taken to its next step in its block.
  */
 export function LabPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
@@ -79,13 +81,11 @@ function LabWorklist({ user }: { user: StaffUser }) {
   const [who, setWho] = useState<'all' | 'mine'>('all')
   const byMe = (o: LabOrder) =>
     o.resultByPerson?.id ? o.resultByPerson.id === user.id : o.resultBy === user.name
-  const doneShown = who === 'mine' ? doneAll.filter(byMe) : doneAll
-  const orders = tab === 'open' ? openAll : doneShown
-  // the verified results of one visit signed by the same person print together on one report
-  const sameVisit = (o: LabOrder) =>
-    doneAll.filter(
-      (x) => x.encounterId === o.encounterId && x.verified && x.resultBy === o.resultBy,
-    )
+  const orders = tab === 'open' ? openAll : doneAll
+  // the tests of the same visit that are in the other list: said on the block ("1 other test of
+  // this visit is already done")
+  const other = tab === 'open' ? doneAll : openAll
+  const inOther = (encounterId: string) => other.filter((x) => x.encounterId === encounterId).length
   // where the result just saved went (said once, with the way to it)
   const [saved, setSaved] = useState<'open' | 'done' | null>(null)
   const { data: summary } = useLabSummary()
@@ -98,16 +98,22 @@ function LabWorklist({ user }: { user: StaffUser }) {
     (filter === 'ordered' && o.status === 'ordered') ||
     (filter === 'process' && (o.status === 'collected' || o.status === 'in_process')) ||
     (filter === 'resulted' && o.status === 'resulted')
-  const shown = sortOrders(
-    orders.filter((o) => inFilter(o) && matches(query, o.patient, o.test, o.fileNumber, o.ticket)),
-    sort,
+  // One block per patient's visit, where its first test stands in the order chosen. The search,
+  // the state and "done by me" keep a block when one of its tests matches: the block stays whole
+  // and points out which.
+  const shown = visitBlocks(
+    sortOrders(orders, sort),
+    (o) =>
+      (tab === 'open' ? inFilter(o) : who === 'all' || byMe(o)) &&
+      matches(query, o.patient, o.test, o.fileNumber, o.ticket),
   )
+  const totals = blockTotals(shown)
   const paged = usePaged(
     shown,
     15,
     `${tab}|${filter}|${who}|${query}|${sort}|${period.from}|${period.to}`,
   )
-  const count = (f: Filter) => orders.filter((o) => (f === 'all' ? true : inFilterOf(f, o))).length
+  const count = (f: Filter) => openAll.filter((o) => (f === 'all' ? true : inFilterOf(f, o))).length
   // the bench at a glance, from the lists already on the page
   const openCount = (f: Filter) => openAll.filter((o) => inFilterOf(f, o)).length
 
@@ -216,7 +222,11 @@ function LabWorklist({ user }: { user: StaffUser }) {
           title={
             tab === 'open' ? t('lab.worklist') : t('lab.resultsGivenIn', { period: periodWord })
           }
-          right={tab === 'open' ? t('lab.openCount', { count: shown.length }) : undefined}
+          right={
+            totals.blocks > 0
+              ? `${t('lab.block.tests', { count: totals.rows })} · ${t('lab.block.patients', { count: totals.blocks })}`
+              : undefined
+          }
         >
           <ListBar
             query={query}
@@ -244,7 +254,7 @@ function LabWorklist({ user }: { user: StaffUser }) {
               />
               <Hint>{t('lab.doneHint')}</Hint>
             </>
-          )}
+          )}{' '}
           {tab === 'done' && done?.todayOnly && (
             <p className="border-amber/30 bg-amber-bg text-amber m-0 flex items-start gap-2 rounded-md border px-3 py-2.5 text-[14px] font-medium">
               <TriangleAlert size={16} aria-hidden="true" className="mt-0.5 flex-none" />
@@ -269,13 +279,13 @@ function LabWorklist({ user }: { user: StaffUser }) {
             </Empty>
           ) : (
             <div className="flex flex-col">
-              {paged.slice.map((o, i) => (
-                <LabOrderRow
-                  key={o.id}
-                  order={o}
+              {paged.slice.map((b, i) => (
+                <LabVisitBlock
+                  key={b.key}
+                  block={b}
                   i={i}
                   now={now}
-                  visitResults={tab === 'done' ? sameVisit(o) : undefined}
+                  also={tab === 'open' ? { done: inOther(b.key) } : { open: inOther(b.key) }}
                   onSaved={setSaved}
                 />
               ))}

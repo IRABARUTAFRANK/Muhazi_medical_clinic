@@ -1091,13 +1091,13 @@ export async function sampleStaffActivity(
 }
 
 const DIAGNOSES = [
-  'B54 Malaria',
-  'J06.9 Upper respiratory tract infection',
-  'N39.0 Urinary tract infection',
-  'I10 Hypertension',
-  'A09 Gastroenteritis',
-  'K29.7 Gastritis',
-  'L08.9 Skin infection',
+  'Malaria',
+  'Upper respiratory tract infection',
+  'Urinary tract infection',
+  'Hypertension',
+  'Gastroenteritis',
+  'Gastritis',
+  'Skin infection',
 ]
 const MEDICINES = [
   'Paracetamol 500 mg tabs · 1 g three times a day',

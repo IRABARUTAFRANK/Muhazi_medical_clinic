@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiError } from './errors'
 import { sampleCounterToPay } from './counter-sales'
+import { catchUpBedDays } from './desk-ops'
 import { supabase } from '@/lib/supabase'
 
 /**
@@ -168,6 +169,8 @@ export function useCashierSummary(
           counterToPay: sampleCounterToPay(),
         }
       }
+      // 0197: the bed days that are due are on the bills before what is owed is counted
+      await catchUpBedDays()
       if (period) {
         const { data, error } = await supabase.rpc('cashier_summary', {
           p_day: day,

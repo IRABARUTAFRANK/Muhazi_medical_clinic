@@ -30,6 +30,8 @@ const MONEY = new Set([
 ])
 /** Bookkeeping or id fields that say nothing to a reader on their own. */
 const HIDDEN = new Set([
+  // 0197: diagnoses are words; an old disease code is kept in the data and never shown
+  'icd10_code',
   'encounter_id',
   'patient_id',
   'invoice_id',
@@ -295,7 +297,6 @@ export function explain(h: HistoryItem, t: TFn): Explained {
     case 'condition':
       sentence = say(deleted ? 'dxDel' : 'dx', {
         text: r('text'),
-        code: r('icd10_code') || '—',
         type: value(r('type')),
       })
       if (row.provisional === true) lines.push(t('history.line.provisional'))

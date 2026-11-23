@@ -93,6 +93,31 @@ const sampleOrders: MyOrder[] = [
   resultBy: findings ? 'Uwera Diane' : null,
   visitOpen: true,
 }))
+// Two more tests of Mukamana Alice's visit (e-0): with her Malaria RDT they are one block, one
+// result verified, one given but not verified yet, one still waiting for its sample.
+sampleOrders.push(
+  {
+    ...sampleOrders[0]!,
+    id: 'mo-same-1',
+    test: 'Blood thin smear',
+    status: 'resulted',
+    findings: 'No malaria parasite seen on the thin film.\nRed cells of normal shape and size.',
+    impression: 'No parasite seen',
+    verified: false,
+    reason: 'fever 3 days',
+  },
+  {
+    ...sampleOrders[0]!,
+    id: 'mo-same-2',
+    test: 'Haemoglobin A1c',
+    status: 'ordered',
+    findings: null,
+    impression: null,
+    verified: false,
+    resultAt: null,
+    resultBy: null,
+  },
+)
 const sampleRx: MyPrescription[] = [
   ['Artemether-lumefantrine 20/120 mg', 'Mukamana Alice', 24, 'waiting', null, 30],
   ['Amoxicillin 500 mg', 'Habimana Eric', 21, 'given', null, 65],

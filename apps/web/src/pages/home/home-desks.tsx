@@ -20,7 +20,8 @@ import { useCan } from '@/lib/api/permissions'
 import { onePerPool, openItems, useQueueBoard } from '@/lib/api/visits'
 import { useNow } from '@/lib/hooks'
 import { cn } from '@/lib/utils'
-import { LabOrderRow } from '../lab/lab-parts'
+import { visitBlocks } from '@/lib/visit-blocks'
+import { LabVisitBlock } from '../lab/lab-visit-block'
 import { AppointmentsPanel, BedsPanel, TasksPanel } from './desk-panels'
 import { MyQueuePanel } from './role-panels'
 import { OpenBillsPanel } from './bills-panel'
@@ -166,11 +167,12 @@ export function LabBenchPanel() {
       {open.length === 0 ? (
         <Empty>{t('homeDesks.labEmpty')}</Empty>
       ) : (
-        <ShownList items={open} step={5}>
+        // the tests of one patient's visit together, as on the worklist
+        <ShownList items={visitBlocks(open)} step={5}>
           {(shown) => (
             <div className="flex flex-col">
-              {shown.map((o, i) => (
-                <LabOrderRow key={o.id} order={o} i={i} now={now} />
+              {shown.map((b, i) => (
+                <LabVisitBlock key={b.key} block={b} i={i} now={now} />
               ))}
             </div>
           )}

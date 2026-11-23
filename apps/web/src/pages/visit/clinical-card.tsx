@@ -114,6 +114,8 @@ import { STEP_KEYS, stepNumber, type StepKey } from '@/components/clinical/six-s
 import { SectionEditor } from '@/components/clinical/six-steps/section-editor'
 import { PastHistoryPanel } from '@/components/clinical/six-steps/past-history'
 import { NurseOrdersStep } from '@/components/clinical/six-steps/nurse-orders-step'
+import { BedStayStep } from '@/components/clinical/bed-stay'
+import { useBedActions, useVisitBed } from '@/lib/api/beds'
 import { isOnce, orderParts } from '@/lib/api/nurse-orders'
 import { DefinitivePick } from '@/components/clinical/six-steps/definitive-pick'
 
@@ -193,10 +195,9 @@ const givenFrom = (r: Prescription) =>
   (r as Prescription & { store?: string | null }).store ??
   null
 /** The step of the record each form belongs to (0127): its messages are shown there. */
-const MODE_STEP: Record<'note' | 'dd' | 'dx' | 'rx' | 'test', StepKey> = {
+const MODE_STEP: Record<'note' | 'dd' | 'rx' | 'test', StepKey> = {
   note: 'exam',
   dd: 'differential',
-  dx: 'definitive',
   rx: 'plan',
   test: 'tests',
 }
@@ -270,6 +271,9 @@ export function ClinicalCard({
   const plainTreatments = treatments.filter((x) => !x.orderStation && x.code !== 'BED-STAY')
   const { data: myDepartments = [] } = useMyDepartments(user.id)
   const billing = useBillingActions(encounterId)
+  // 0197: the patient's bed (step 6); finishing ends the stay first
+  const bedNow = useVisitBed(encounterId)
+  const bedActions = useBedActions()
   const can = useCan(user)
   const switchedOff = useSwitchedOff(user)
   const stock = useStockActions()
@@ -347,7 +351,8 @@ export function ClinicalCard({
       bar.scrollIntoView({ block: 'start', behavior: still ? 'auto' : 'smooth' })
     }
   }
-  const [mode, setMode] = useState<'note' | 'dd' | 'dx' | 'rx' | 'test' | null>(null)
+  // 0197: the old "Diagnosis" tab (mode 'dx') is gone: a definitive diagnosis is step 5's form
+  const [mode, setMode] = useState<'note' | 'dd' | 'rx' | 'test' | null>(null)
   // editing or removing a diagnosis, editing a note (0104): the line's form, with the reason
   const [dxEdit, setDxEdit] = useState<{
     id: string
@@ -511,6 +516,10 @@ export function ClinicalCard({
   const doctor = isDoctorUser(user) && !deskView
   // 0127: the doctor's record of a visit is six steps; the desk view keeps its own list
   const stepper = !deskView
+  // 0197: the desk view no longer shows the old tabs (Note, Diagnosis, Prescription, Tests &
+  // exams): only what the person's role and desk do on a visit, each part under its plain name.
+  // A nurse's note is a "nursing note"; another desk's is "your note".
+  const noteWord = t(user.role === 'nurse' ? 'deskPart.nurseNote' : 'deskPart.note')
   /** The open orders to the nurses (listed when the visit is finished; they do not stop it). */
   const openOrders = (data?.nurseOrders ?? []).filter((o) => o.status === 'open')
   const [reporting, setReporting] = useState(openReport)
@@ -746,11 +755,11 @@ export function ClinicalCard({
   const submitDx = async (e: FormEvent) => {
     e.preventDefault()
     if (!dx.text.trim()) return
-    // 0127: step 3 (a possible diagnosis) or step 5 (definitive); the desk view keeps the mark
-    const differential = mode === 'dd'
+    // 0127: step 3, a possible diagnosis (0197: the only one written here — a definitive one is
+    // step 5's own form, and the old "Diagnosis" tab of the desk view is gone)
     if (
       !(await confirm({
-        title: t(differential ? 'sixSteps.ddQ' : 'confirm.visit.dx', { dx: dx.text.trim(), name }),
+        title: t('sixSteps.ddQ', { dx: dx.text.trim(), name }),
         body: t('confirm.visit.recordBody'),
         confirmLabel: t('confirm.visit.saveYes'),
       }))
@@ -759,14 +768,9 @@ export function ClinicalCard({
     void run(
       () =>
         actions.addDiagnosis
-          .mutateAsync({
-            ...dx,
-            ...(stepper
-              ? { stage: differential ? ('differential' as const) : ('definitive' as const) }
-              : {}),
-          })
+          .mutateAsync({ ...dx, stage: 'differential' as const })
           .then(() => setDx({ text: '', provisional: false })),
-      t(differential ? 'sixSteps.ddSaved' : 'clinical.dxSaved'),
+      t('sixSteps.ddSaved'),
     )
   }
   /**
@@ -1386,6 +1390,13 @@ export function ClinicalCard({
   // a database before 0127 has no complaint to ask for
   const complaintKnown = !!data && ('sections' in data || 'hasComplaint' in data)
   const hasComplaint = !complaintKnown || !!data?.sections?.complaint || data?.hasComplaint === true
+  /** 0197: a patient in a bed: finishing the visit ends the stay first (the question says so). */
+  const bedText = bedNow
+    ? t('beds.confirm.finishBody', { name: bedNow.patient || name, bed: bedNow.bed.name })
+    : null
+  const endBedFirst = async () => {
+    if (bedNow) await bedActions.end.mutateAsync({ encounterId, bedId: bedNow.bed.id })
+  }
   /** "The orders not carried out yet: …", said when finishing (they do not stop it). */
   const openOrdersText = openOrders.length
     ? t('sixSteps.openOrders', {
@@ -1407,12 +1418,12 @@ export function ClinicalCard({
       setMsgStep('complaint')
       setLocalError(t('sixSteps.needComplaint'))
       if (stepper) goStep(1)
-      else document.getElementById('step-complaint')?.scrollIntoView({ behavior: 'smooth' })
       return
     }
     // no primary diagnosis: the clinician says none was found, and why (0125), instead of a block
-    // (0126: a desk view knows there is one without its words); in step 5
-    if (!hasPrimary) {
+    // (0126: a desk view knows there is one, or the doctor's reason for none, without its words);
+    // in step 5
+    if (!hasPrimary && !data.hasNoDiagnosis) {
       setLocalError(null)
       setMsgStep('definitive')
       setNoDx((x) => x ?? { kind: 'no_disease', note: '' })
@@ -1422,12 +1433,15 @@ export function ClinicalCard({
     if (
       !(await confirm({
         title: t('confirm.visit.finish', { name }),
-        body: [t('confirm.visit.finishBody'), openOrdersText].filter(Boolean).join(' '),
-        confirmLabel: t('confirm.visit.finishYes'),
+        body: [t('confirm.visit.finishBody'), bedText, openOrdersText].filter(Boolean).join(' '),
+        confirmLabel: bedNow ? t('beds.confirm.finishYes') : t('confirm.visit.finishYes'),
       }))
     )
       return
-    void run(() => actions.finishVisit.mutateAsync(), t('clinical.finished'))
+    void run(async () => {
+      await endBedFirst()
+      await actions.finishVisit.mutateAsync()
+    }, t('clinical.finished'))
   }
 
   /** Finish with no diagnosis found: the reason is kept on the visit and printed in the reports. */
@@ -1440,12 +1454,15 @@ export function ClinicalCard({
     if (
       !(await confirm({
         title: t('noDx.confirm', { name }),
-        body: [t('noDx.confirmBody', { reason }), openOrdersText].filter(Boolean).join(' '),
-        confirmLabel: t('confirm.visit.finishYes'),
+        body: [t('noDx.confirmBody', { reason }), bedText, openOrdersText]
+          .filter(Boolean)
+          .join(' '),
+        confirmLabel: bedNow ? t('beds.confirm.finishYes') : t('confirm.visit.finishYes'),
       }))
     )
       return
     void run(async () => {
+      await endBedFirst()
       await actions.finishVisit.mutateAsync({ noDiagnosis: noDx.kind, note: noDx.note })
       setNoDx(null)
     }, t('noDx.finished'))
@@ -1484,12 +1501,12 @@ export function ClinicalCard({
     <Reveal focus block="nearest">
       <form onSubmit={submitNote} className="flex flex-col gap-2">
         <label className="text-ink-2 flex flex-col gap-1.5 text-[13px] font-semibold">
-          {t('clinical.note')}
+          {deskView ? noteWord : t('clinical.note')}
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
             rows={4}
-            placeholder={t('clinical.notePh')}
+            placeholder={t(deskView ? 'deskPart.notePh' : 'clinical.notePh')}
             className="border-border bg-card text-ink focus:border-primary focus:ring-primary-tint rounded-md border px-3 py-2 text-[14px] font-normal outline-none focus:ring-[3px]"
             required
           />
@@ -1513,9 +1530,6 @@ export function ClinicalCard({
         onSubmit={submitDx}
         className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto]"
       >
-        {!stepper && (
-          <p className="text-ink-3 col-span-full m-0 text-xs">{t('clinical.dxHintAuto')}</p>
-        )}
         <Field
           label={t('clinical.dx')}
           value={dx.text}
@@ -1524,26 +1538,11 @@ export function ClinicalCard({
           required
         />
         <div className="flex flex-wrap items-end gap-3">
-          {!stepper && (
-            <label className="flex min-h-9 items-center gap-2 text-[13px] font-semibold">
-              <input
-                type="checkbox"
-                className="accent-primary"
-                checked={dx.provisional}
-                onChange={(e) => setDx({ ...dx, provisional: e.target.checked })}
-              />
-              {t('clinical.provisional')}
-            </label>
-          )}
           <Button type="submit" variant="primary" loading={actions.addDiagnosis.isPending}>
-            {t(mode === 'dd' ? 'sixSteps.saveDifferential' : 'clinical.saveDx')}
+            {t('sixSteps.saveDifferential')}
           </Button>
         </div>
-        {(!stepper || mode === 'dd') && (
-          <p className="text-ink-3 col-span-full m-0 text-xs">
-            {t(stepper ? 'sixSteps.differentialHint' : 'clinical.provisionalHint')}
-          </p>
-        )}
+        <p className="text-ink-3 col-span-full m-0 text-xs">{t('sixSteps.differentialHint')}</p>
       </form>
     </Reveal>
   )
@@ -1777,7 +1776,10 @@ export function ClinicalCard({
               options={testOptions}
               adder
             />
-            <span className="text-ink-3 text-xs">{t('clinical.testPickHint')}</span>
+            {/* a desk view has no prescription part to point to (0197) */}
+            <span className="text-ink-3 text-xs">
+              {t(deskView ? 'deskPart.testPickHint' : 'clinical.testPickHint')}
+            </span>
           </div>
         )}
         {chosenTests.length > 0 ? (
@@ -2776,9 +2778,19 @@ export function ClinicalCard({
     ) : null
   // 0127: what finishing needs, ticked as the doctor goes: the complaint (step 1), a definitive
   // primary diagnosis or the reason none was found (step 5)
-  const dxOrReason = hasPrimary || !!data?.visit?.noDiagnosis
+  const dxOrReason = hasPrimary || !!data?.visit?.noDiagnosis || data?.hasNoDiagnosis === true
   const finishBar =
-    clinician && !finished ? (
+    !clinician || finished ? null : deskView && !(hasComplaint && dxOrReason) ? (
+      // 0197: the main complaint and the diagnosis (or the reason none was found) are the
+      // doctor's to write. Until they are there, someone who is not a doctor is told so in words,
+      // instead of a Finish button that only refuses (or asks a nurse for a diagnosis)
+      <CardBody className="border-border border-t">
+        <p className="text-ink-2 m-0 flex items-start gap-2 text-[13px]">
+          <Stethoscope size={16} aria-hidden="true" className="text-ink-3 mt-0.5 flex-none" />
+          <span className="min-w-0">{t('deskPart.finishByDoctor')}</span>
+        </p>
+      </CardBody>
+    ) : (
       <CardBody className="border-border gap-3 border-t">
         {stepper && (
           <ul
@@ -2830,12 +2842,12 @@ export function ClinicalCard({
             <CheckCircle2 size={16} aria-hidden="true" />
             {t('clinical.finish')}
           </Button>
-          <span className={cn('text-xs', hasPrimary ? 'text-ink-3' : 'text-red')}>
-            {t(stepper ? 'sixSteps.finishHint' : 'noDx.finishHint')}
+          <span className={cn('min-w-0 text-xs', dxOrReason ? 'text-ink-3' : 'text-red')}>
+            {t(stepper ? 'sixSteps.finishHint' : 'deskPart.finishHint')}
           </span>
         </span>
       </CardBody>
-    ) : null
+    )
 
   /** The messages under the step they belong to (the last one acted on). */
   const msgIn = (k: StepKey | 'finish') => (msgStep === k ? messages : null)
@@ -3018,10 +3030,28 @@ export function ClinicalCard({
               patientName={name}
               patientFile={patient?.fileNumber ?? null}
               visitOver={finished}
+              // 0197: a medicine the clinic does not have: prescribed to buy outside instead
+              onPrescribeOutside={(pick) => {
+                setMsgStep('plan')
+                setLocalError(null)
+                setRx((lines) => [...lines.filter((l) => l.item), { ...emptyLine(), item: pick }])
+                setMode('rx')
+              }}
               onDone={onDone}
               onError={(m) => {
                 setMsgStep('plan')
                 setLocalError(m)
+              }}
+            />
+            {/* 0197: the patient kept in a bed (billed by the day until the stay ends) */}
+            <BedStayStep
+              encounterId={encounterId}
+              patientName={name}
+              canAct={clinician && !finished}
+              visitOver={finished}
+              onDone={(m) => {
+                setMsgStep('plan')
+                onDone(m)
               }}
             />
           </>
@@ -3095,6 +3125,40 @@ export function ClinicalCard({
       })}
     </CardBody>
   )
+  // 0197: the desk view — which parts the person has on this visit. Someone at a treating desk
+  // (a nurse) writes a note; the lab, the ultrasound and whoever holds the right to request tests
+  // add one; nothing is shown that would only refuse when pressed.
+  const mayDeskNote = deskView && clinician
+  const mayDeskTest = deskView && (clinician || deskStaff) && can('orders.write')
+  const showDeskNotes = mayDeskNote || (data?.notes.length ?? 0) > 0
+  const showDeskTests = mayDeskTest || (data?.orders.length ?? 0) > 0
+  const deskDiagnoses = deskView && data ? standing(data.diagnoses) : []
+  const deskEmpty =
+    !!data &&
+    !showDeskNotes &&
+    !showDeskTests &&
+    nurseOrders.length + data.prescriptions.length + deskDiagnoses.length === 0
+  /** Where a message shows in the desk view: in the part it belongs to, else above the parts. */
+  const hasMessages = !!localError || warnings.length > 0
+  const deskMsgAt: 'notes' | 'tests' | 'finish' | 'top' =
+    msgStep === 'exam' && showDeskNotes
+      ? 'notes'
+      : msgStep === 'tests' && showDeskTests
+        ? 'tests'
+        : msgStep === 'finish' || msgStep === 'complaint' || msgStep === 'definitive'
+          ? 'finish'
+          : 'top'
+  const deskOther = deskView && hasMessages && deskMsgAt === 'top'
+  /** The heading of a part of the desk view: its icon and name, the button that adds to it. */
+  const deskHead = (icon: ReactNode, title: string, action?: ReactNode) => (
+    <span className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <span className="text-ink flex min-w-0 items-center gap-2 text-[15px] font-semibold">
+        {icon}
+        <span className="min-w-0">{title}</span>
+      </span>
+      {action}
+    </span>
+  )
   // 0151: a finished visit is a closed file — the patient's name, when it was closed, the
   // diagnoses — opened for reading (or an edit code) on request; a new visit is its own record
   if (stepper && finished && !editing && !reviewing && data) {
@@ -3158,7 +3222,7 @@ export function ClinicalCard({
       <CardHeader hue="navy">
         <span className="inline-flex items-center gap-2">
           <Stethoscope size={16} aria-hidden="true" />
-          {t(stepper ? 'sixSteps.cardTitle' : 'clinical.title')}
+          {t(stepper ? 'sixSteps.cardTitle' : 'deskPart.title')}
         </span>
         <span className="inline-flex flex-wrap items-center gap-2">
           {data?.patient?.bloodGroup && (
@@ -3263,7 +3327,13 @@ export function ClinicalCard({
           ⚠ {t('file.allergiesLabel')}: {data.patient.allergies}
         </CardBody>
       )}
-      <CardBody className="gap-3">
+      {/* the desk view has no lead and no buttons here: an empty band is not drawn */}
+      <CardBody
+        className={cn(
+          'gap-3',
+          deskView && !error && !finished && !lockedNote && !deskOther && 'hidden',
+        )}
+      >
         {error && <p className={errorBox}>{error.message}</p>}
         {stepper && finished && !editing && reviewing && (
           <div className="flex justify-end">
@@ -3297,30 +3367,11 @@ export function ClinicalCard({
         {stepper && !readOnly && clinician && (
           <p className="text-ink-2 m-0 text-[13px]">{t('sixSteps.lead')}</p>
         )}
-        {!stepper && !readOnly && (
-          <div className="flex flex-wrap gap-2">
-            {tabBtn('note', t('clinical.addNote'), <ClipboardList size={14} aria-hidden="true" />)}
-            {tabBtn('dx', t('clinical.addDx'), <Stethoscope size={14} aria-hidden="true" />)}
-            {tabBtn('rx', t('clinical.addRx'), <Pill size={14} aria-hidden="true" />)}
-            {tabBtn('test', t('clinical.addTest'), <FlaskConical size={14} aria-hidden="true" />)}
-          </div>
-        )}
-        {!clinician && !readOnly && (
+        {stepper && !clinician && !readOnly && (
           <p className="text-ink-3 m-0 text-xs">{t('clinical.readOnly')}</p>
         )}
-        {!stepper && noTests && (
-          <p className="text-ink-3 m-0 text-xs">{t('clinical.testsWhoHint')}</p>
-        )}
-
-        {!stepper && (
-          <>
-            {mode === 'note' && noteForm}
-            {(mode === 'dx' || mode === 'dd') && dxForm}
-            {mode === 'rx' && rxForm}
-            {mode === 'test' && testForm}
-            {messages}
-          </>
-        )}
+        {/* a message that belongs to no part below (an order carried out, a medicine line) */}
+        {deskOther && messages}
       </CardBody>
 
       {/* 0127: the doctor's record, in six steps */}
@@ -3356,13 +3407,14 @@ export function ClinicalCard({
         </CardBody>
       )}
 
-      {/* the desk view (0126): the reader's part, as a list; first the orders for them (0127) */}
-      {!stepper && data && nurseOrders.length > 0 && (
+      {/* the desk view (0126; 0197: no tabs — each part the person works on, under its name):
+          first the orders for them (0127) */}
+      {deskView && data && nurseOrders.length > 0 && (
         <CardBody className="border-border gap-2 border-t">
-          <span className="text-ink flex items-center gap-2 text-[15px] font-semibold">
-            <ClipboardList size={16} aria-hidden="true" className="text-teal" />
-            {t('nurseOrders.forYouTitle', { count: nurseOrders.length })}
-          </span>
+          {deskHead(
+            <ClipboardList size={16} aria-hidden="true" className="text-teal flex-none" />,
+            t('nurseOrders.forYouTitle', { count: nurseOrders.length }),
+          )}
           {nurseOrders.map((o) => (
             <NurseOrderRow
               key={o.id}
@@ -3374,32 +3426,107 @@ export function ClinicalCard({
               visitOver={finished}
               carryOut={o.mine && can('clinical.write') && !finished}
               onDone={onDone}
-              onError={setLocalError}
+              onError={(m) => {
+                setMsgStep('plan')
+                setLocalError(m)
+              }}
             />
           ))}
         </CardBody>
       )}
-      {!stepper &&
-        data &&
-        data.notes.length +
-          data.diagnoses.length +
-          data.prescriptions.length +
-          data.orders.length +
-          nurseOrders.length ===
-          0 && (
-          <CardBody className="border-border border-t">
-            <EmptyNote>{t('clinical.empty')}</EmptyNote>
+      {/* the person's own notes: a nurse writes her nursing note here (add_clinical_note) */}
+      {deskView && data && showDeskNotes && (
+        <>
+          <CardBody className="border-border gap-2 border-t">
+            {deskHead(
+              <ClipboardList size={16} aria-hidden="true" className="text-primary flex-none" />,
+              t(user.role === 'nurse' ? 'deskPart.nurseNotes' : 'deskPart.notes'),
+              mayDeskNote && (
+                <Button
+                  size="sm"
+                  variant={mode === 'note' ? 'primary' : 'default'}
+                  onClick={() => {
+                    setMode(mode === 'note' ? null : 'note')
+                    setMsgStep('exam')
+                  }}
+                >
+                  <Plus size={14} aria-hidden="true" />
+                  {t(user.role === 'nurse' ? 'deskPart.addNurseNote' : 'deskPart.addNote')}
+                </Button>
+              ),
+            )}
+            {mayDeskNote && <p className="text-ink-3 m-0 text-xs">{t('deskPart.noteHint')}</p>}
+            {mode === 'note' && mayDeskNote && noteForm}
+            {deskMsgAt === 'notes' && messages}
+            {data.notes.length === 0 && mode !== 'note' && (
+              <EmptyNote>{t('deskPart.noNotes')}</EmptyNote>
+            )}
           </CardBody>
-        )}
-      {!stepper && data && data.notes.map(renderNote)}
-      {!stepper && data && standing(data.diagnoses).map(renderDx)}
-      {!stepper && data && data.prescriptions.map(renderRx)}
-      {!stepper && data && data.orders.map(renderOrder)}
+          {data.notes.map(renderNote)}
+        </>
+      )}
+      {/* the tests the person's desk runs (with their results) and those they asked for; the
+          lab and the ultrasound add a test of their own desk (a patient who came straight to them) */}
+      {deskView && data && showDeskTests && (
+        <>
+          <CardBody className="border-border gap-2 border-t">
+            {deskHead(
+              <FlaskConical size={16} aria-hidden="true" className="text-primary flex-none" />,
+              t('deskPart.tests'),
+              mayDeskTest && (
+                <Button
+                  size="sm"
+                  variant={mode === 'test' ? 'primary' : 'default'}
+                  onClick={() => {
+                    setMode(mode === 'test' ? null : 'test')
+                    setMsgStep('tests')
+                  }}
+                >
+                  <Plus size={14} aria-hidden="true" />
+                  {t('deskPart.addTest')}
+                </Button>
+              ),
+            )}
+            {mode === 'test' && mayDeskTest && testForm}
+            {deskMsgAt === 'tests' && messages}
+            {data.orders.length === 0 && mode !== 'test' && (
+              <EmptyNote>{t('deskPart.noTests')}</EmptyNote>
+            )}
+          </CardBody>
+          {data.orders.map(renderOrder)}
+        </>
+      )}
+      {/* the medicines of the person's desk: the pharmacy's to hand over, those given here */}
+      {deskView && data && data.prescriptions.length > 0 && (
+        <>
+          <CardBody className="border-border border-t">
+            {deskHead(
+              <Pill size={16} aria-hidden="true" className="text-primary flex-none" />,
+              t('sixSteps.prescriptions'),
+            )}
+          </CardBody>
+          {data.prescriptions.map(renderRx)}
+        </>
+      )}
+      {/* a diagnosis the person wrote before 0197 (the old tab): still theirs to read and correct */}
+      {deskView && data && deskDiagnoses.length > 0 && (
+        <>
+          <CardBody className="border-border border-t">
+            {deskHead(
+              <Stethoscope size={16} aria-hidden="true" className="text-primary flex-none" />,
+              t('deskPart.myDiagnoses'),
+            )}
+          </CardBody>
+          {deskDiagnoses.map(renderDx)}
+        </>
+      )}
+      {deskView && data && deskEmpty && (
+        <CardBody className="border-border border-t">
+          <EmptyNote>{t('deskPart.empty')}</EmptyNote>
+        </CardBody>
+      )}
 
-      {/* finished with no diagnosis found (0125): the reason, by whom and when */}
-      {!stepper && noDxNotice}
-      {!stepper && noDxPanel}
-      {stepper && msgStep === 'finish' && (localError || warnings.length > 0) && (
+      {(stepper ? msgStep === 'finish' : deskMsgAt === 'finish') && hasMessages && (
         <CardBody className="border-border border-t">{messages}</CardBody>
       )}
       {(!stepper || step === STEP_KEYS.length) && finishBar}

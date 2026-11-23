@@ -959,7 +959,7 @@ export function visitsListReport(
         x.patient.fileNumber,
         x.doctor?.name ?? null,
         x.department?.name ?? null,
-        x.diagnosis ? `${x.diagnosis}${x.icd10 ? ` (${x.icd10})` : ''}` : null,
+        x.diagnosis || null,
         x.insurer,
         status(x.status),
       ]),

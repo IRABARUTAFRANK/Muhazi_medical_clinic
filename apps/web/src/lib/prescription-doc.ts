@@ -83,7 +83,7 @@ export interface RxDoc {
     insurer?: string | null
     memberNo?: string | null
   }
-  /** Text plus ICD-10, or the older pre-joined string. */
+  /** The diagnosis in words (a code, if any, is never printed: 0197), or the older pre-joined string. */
   diagnosis?: string | { text: string; icd10?: string | null; provisional?: boolean } | null
   /** To collect at a pharmacy. */
   medicines: RxDocMedicine[]
@@ -95,6 +95,7 @@ export interface RxDoc {
   /** 0155: a sheet to write by hand: this many numbered empty lines instead of medicines. */
   blankRows?: number
   prescriber: {
+    /** Empty (0197, a blank sheet printed for the doctors): a ruled blank to write the name. */
     name: string
     /** Qualification ("Medical doctor", "Clinical officer"). */
     title: string
@@ -493,9 +494,8 @@ function diagnosisText(dx: RxDoc['diagnosis'], t: TFn): string | null {
     )
   const text = dx.text.trim()
   if (!text) return null
-  const icd = dx.icd10?.trim() ? ` (ICD-10: ${dx.icd10.trim()})` : ''
   const prov = dx.provisional ? `, ${lowerFirst(t('clinical.provisional'))}` : ''
-  return `${text}${icd}${prov}`
+  return `${text}${prov}`
 }
 
 // ---------------------------------------------------------------- the document
@@ -546,7 +546,12 @@ function closingHtml(o: {
   const { prescriber: p, dl } = o
   // the qualification moves to the next line as a whole, never split mid-phrase
   const qual = p.title?.trim()
-  const who = `${esc(p.name.trim())}${qual ? `, <span class="rx-qual">${esc(qual)}</span>` : ''}`
+  // 0197: a blank sheet printed by someone who does not prescribe (the manager, for the doctors):
+  // no name, so a ruled blank where the prescriber writes theirs
+  const name = p.name.trim()
+  const who = name
+    ? `${esc(name)}${qual ? `, <span class="rx-qual">${esc(qual)}</span>` : ''}`
+    : '<span class="rx-line who"></span>'
   const reg = p.registrationNo?.trim()
   const phone = p.phone?.trim()
   const system = o.clinicName.replace(/\s+(ltd|limited)\.?$/i, '')
@@ -609,6 +614,7 @@ ol.rx > li.rx-first { border-top: 0; }
 .rx-line { display: inline-block; flex: none; width: 50mm; height: 5mm; border-bottom: 0.75pt solid var(--rule); }
 .rx-line.date { width: 30mm; height: 4.5mm; }
 .rx-line.reg { width: 30mm; height: 1.1em; vertical-align: bottom; }
+.rx-line.who { height: 1.4em; vertical-align: bottom; }
 .rx-stamp { flex: none; width: var(--stamp-w); }
 .rx-stamp-box { height: calc(var(--stamp-h) - 4mm); margin-top: 1pt; border: 0.75pt dashed var(--line); border-radius: 3pt; }
 .rx-close + .sig-note { margin-top: 2pt; }

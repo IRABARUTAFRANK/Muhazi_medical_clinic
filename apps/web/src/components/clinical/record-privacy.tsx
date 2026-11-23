@@ -428,7 +428,6 @@ export function SafetySummaryCard({
               : summary.chronic.map((c, i) => (
                   <span key={i} className="text-[14px]">
                     <b>{c.text}</b>
-                    {c.icd10 ? <span className="text-ink-3 ml-1.5 text-xs">{c.icd10}</span> : null}
                     <span className="text-ink-3 block text-xs">
                       {t('safetySummary.since', { date: formatDate(new Date(c.since)) })}
                     </span>

@@ -44,6 +44,7 @@ export interface PatientSeenRow {
 }
 
 export interface DiagnosisRow {
+  /** An old disease code (before 0130): kept in the data, never shown (0197). */
   code: string | null
   diagnosis: string
   cases: number
@@ -693,7 +694,7 @@ function samplePatientsSeen(a: SeenArgs, ctx: ReportContext): PatientSeenRow[] {
           ? null
           : noDxSample(v.encounterId)
             ? '[no-dx:check_up] BP control'
-            : `${v.dx[0]} ${v.dx[1]}`,
+            : v.dx[1],
       complaint: v.clinician.role === 'nurse' ? null : complaintOf(v.dx[0]),
       prescriptions: v.rx.length,
       tests: v.tests.length,

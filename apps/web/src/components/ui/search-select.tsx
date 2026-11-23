@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, ChevronDown, Search, PenLine } from 'lucide-react'
+import { Check, ChevronDown, Search, PenLine, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { controlClass } from './field'
@@ -49,8 +49,16 @@ const fold = (s: string) =>
     .replace(/\s+/g, ' ')
     .trim()
 const wordsOf = (q: string) => fold(q).trim().split(/\s+/).filter(Boolean)
-const haystack = (o: SearchOption) =>
-  fold([o.label, o.sub, o.hint, o.keywords].filter(Boolean).join(' '))
+/** The folded text of each option, worked out once (0197: lists of thousands stay fast to search). */
+const folded = new WeakMap<SearchOption, string>()
+const haystack = (o: SearchOption) => {
+  let h = folded.get(o)
+  if (h === undefined) {
+    h = fold([o.label, o.sub, o.hint, o.keywords].filter(Boolean).join(' '))
+    folded.set(o, h)
+  }
+  return h
+}
 /**
  * The options every typed word is found in. Loose (the list shown): when no option has every
  * word, those with most of them, the best first — a brand in brackets or a strength written
@@ -97,6 +105,10 @@ function marked(text: string, words: string[]): ReactNode {
  * must appear, in any order, accents ignored; at most `limit` matches are listed, the one chosen
  * always stays, and a single match is chosen at once. ↑ ↓ Home End Page Up/Down move, Enter
  * picks, Esc closes. Long names wrap in the popover; rows are 40 px at least for fingers.
+ *
+ * 0197: a choice made is changed by pressing the field again (the list opens on the chosen line)
+ * and removed with the "×" at its right, or Delete / Backspace on the field — a required field
+ * too (the owner chose a medicine by mistake and found no way to take it off).
  */
 /** The value of the "write it" row: never a real option's value. */
 const WRITE = '\u0000write'
@@ -151,6 +163,8 @@ export function SearchSelect({
   const [activeValue, setActiveValue] = useState<string | null>(null)
   const searchable = options.length > SEARCH_FROM
   const chosen = options.find((o) => o.value === value)
+  // the "×" that empties the choice (never on a picker that adds to a list elsewhere)
+  const clearable = !!chosen && !adder && !disabled
 
   // what the popover lists (only worked out while it is open)
   const words = open ? wordsOf(query) : []
@@ -193,6 +207,12 @@ export function SearchSelect({
     }
     if (v !== value) onChange(v)
     close()
+  }
+  const clear = () => {
+    setOpen(false)
+    setQuery('')
+    onChange('')
+    triggerRef.current?.focus({ preventScroll: true })
   }
   const typed = (q: string) => {
     setQuery(q)
@@ -263,7 +283,10 @@ export function SearchSelect({
 
   const onTriggerKey = (e: KeyboardEvent<HTMLButtonElement>) => {
     if (open) return onListKey(e)
-    if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) {
+    if (clearable && (e.key === 'Delete' || e.key === 'Backspace')) {
+      e.preventDefault()
+      clear()
+    } else if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) {
       e.preventDefault()
       openWith()
     } else if (searchable && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -290,7 +313,9 @@ export function SearchSelect({
       const up = below < 280 && above > below
       pop.style.width = `${width}px`
       pop.style.left = `${left}px`
-      pop.style.maxHeight = `${Math.max(160, Math.min(440, up ? above : below))}px`
+      // 0197: as tall as 60 % of the screen (440 px at least) where there is room: more lines seen
+      const tallest = Math.max(440, Math.round(vh * 0.6))
+      pop.style.maxHeight = `${Math.max(160, Math.min(tallest, up ? above : below))}px`
       pop.style.top = up ? 'auto' : `${r.bottom + 4}px`
       pop.style.bottom = up ? `${vh - r.top + 4}px` : 'auto'
       pop.dataset.side = up ? 'top' : 'bottom'
@@ -329,45 +354,63 @@ export function SearchSelect({
       <label id={labelId} htmlFor={`${id}-field`} className="text-ink-2 text-[13px] font-medium">
         {label}
       </label>
-      <button
-        ref={triggerRef}
-        id={`${id}-field`}
-        type="button"
-        role="combobox"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-controls={open ? listId : undefined}
-        aria-labelledby={labelId}
-        aria-required={required || undefined}
-        disabled={disabled}
-        title={chosen ? [chosen.label, chosen.sub].filter(Boolean).join(' · ') : undefined}
-        onClick={() => (open ? close() : openWith())}
-        onKeyDown={onTriggerKey}
-        className={cn(
-          controlClass,
-          'flex w-full min-w-0 items-center gap-2 text-left',
-          open && 'border-primary ring-primary/20 ring-2',
-          disabled && 'cursor-not-allowed',
-        )}
-      >
-        <span className={cn('min-w-0 flex-1 truncate', !chosen && 'text-ink-3')}>
-          {chosen ? chosen.label : emptyLabel}
-          {chosen?.sub && <span className="text-ink-3"> · {chosen.sub}</span>}
-        </span>
-        {chosen?.hint && (
-          <span className="text-ink-3 flex-none text-[12px] tabular-nums max-[420px]:hidden">
-            {chosen.hint}
-          </span>
-        )}
-        <ChevronDown
-          size={16}
-          aria-hidden="true"
+      <div className="relative flex min-w-0">
+        <button
+          ref={triggerRef}
+          id={`${id}-field`}
+          type="button"
+          role="combobox"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-controls={open ? listId : undefined}
+          aria-labelledby={labelId}
+          aria-required={required || undefined}
+          aria-keyshortcuts={clearable ? 'Delete' : undefined}
+          disabled={disabled}
+          title={chosen ? [chosen.label, chosen.sub].filter(Boolean).join(' · ') : undefined}
+          onClick={() => (open ? close() : openWith())}
+          onKeyDown={onTriggerKey}
           className={cn(
-            'text-ink-3 flex-none transition-transform motion-reduce:transition-none',
-            open && 'rotate-180',
+            controlClass,
+            'flex w-full min-w-0 items-center gap-2 text-left',
+            open && 'border-primary ring-primary/20 ring-2',
+            disabled && 'cursor-not-allowed',
           )}
-        />
-      </button>
+        >
+          <span className={cn('min-w-0 flex-1 truncate', !chosen && 'text-ink-3')}>
+            {chosen ? chosen.label : emptyLabel}
+            {chosen?.sub && <span className="text-ink-3"> · {chosen.sub}</span>}
+          </span>
+          {chosen?.hint && (
+            <span className="text-ink-3 flex-none text-[12px] tabular-nums max-[420px]:hidden">
+              {chosen.hint}
+            </span>
+          )}
+          {/* room for the "×" laid over the field (a finger-sized one on touch screens) */}
+          {clearable && (
+            <span aria-hidden="true" className="w-[max(1.5rem,var(--tap,0px))] flex-none" />
+          )}
+          <ChevronDown
+            size={16}
+            aria-hidden="true"
+            className={cn(
+              'text-ink-3 flex-none transition-transform motion-reduce:transition-none',
+              open && 'rotate-180',
+            )}
+          />
+        </button>
+        {clearable && (
+          <button
+            type="button"
+            onClick={clear}
+            title={t('picker.clear')}
+            aria-label={`${t('picker.clear')}: ${chosen?.label ?? ''}`}
+            className="text-ink-3 hover:bg-hover hover:text-ink focus-visible:ring-primary/40 absolute top-1/2 right-[34px] flex size-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md bg-transparent outline-none focus-visible:ring-2"
+          >
+            <X size={15} aria-hidden="true" />
+          </button>
+        )}
+      </div>
       {required && (
         // the form's own check: submit is blocked while nothing is chosen
         <input
@@ -428,7 +471,7 @@ export function SearchSelect({
               tabIndex={searchable ? undefined : -1}
               aria-activedescendant={!searchable && activeIdx >= 0 ? optId(activeIdx) : undefined}
               onKeyDown={searchable ? undefined : onListKey}
-              className="m-0 max-h-[320px] min-h-0 flex-1 list-none overflow-y-auto overscroll-contain p-1 outline-none"
+              className="m-0 min-h-0 flex-1 list-none overflow-y-auto overscroll-contain p-1 outline-none"
             >
               {rows.map((o, i) => {
                 const heading = o.group && o.group !== rows[i - 1]?.group ? o.group : null

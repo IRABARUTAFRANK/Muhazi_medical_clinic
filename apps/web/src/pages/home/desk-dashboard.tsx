@@ -57,7 +57,8 @@ import { CallsPanel } from './calls-panel'
 import { OverduePanel } from './overdue-panel'
 import { useOverdueNotices } from '@/lib/api/desk-ops'
 import { useDeskOrders } from '@/lib/api/lab'
-import { LabOrderRow } from '../lab/lab-parts'
+import { visitBlocks } from '@/lib/visit-blocks'
+import { LabVisitBlock } from '../lab/lab-visit-block'
 import { ErrorBox, ToAcceptSection } from './role-panels'
 import { useNow } from '@/lib/hooks'
 import { TREATING_DESKS } from '@/lib/api/desks'
@@ -592,11 +593,12 @@ function NursingOrdersPanel() {
       {orders.length === 0 ? (
         <Empty>{t('desk.nurse.ordersEmpty')}</Empty>
       ) : (
-        <ShownList items={orders} step={5}>
+        // several orders for one patient's visit stand together, the patient named once
+        <ShownList items={visitBlocks(orders)} step={5}>
           {(shown) => (
             <div className="flex flex-col">
-              {shown.map((o, i) => (
-                <LabOrderRow key={o.id} order={o} i={i} now={now} desk />
+              {shown.map((b, i) => (
+                <LabVisitBlock key={b.key} block={b} i={i} now={now} desk />
               ))}
             </div>
           )}

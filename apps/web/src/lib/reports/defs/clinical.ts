@@ -42,7 +42,7 @@ import type {
 } from './types'
 
 /**
- * The clinical reports (migration 0112): patients seen, diagnoses (ICD-10), prescriptions, tests
+ * The clinical reports (migration 0112): patients seen, diagnoses, prescriptions, tests
  * and exams, vital signs, bookings and arrivals. Each shows what its reader may see on the screens
  * (0088): the manager everything, a head their departments' visits, a clinician their own work;
  * the diagnoses, results and measurements are clinical columns (offered to clinical readers only).
@@ -344,15 +344,15 @@ const diagnoses: AnyReportDef = {
     },
     searchFilter,
   ],
+  // 0197: a diagnosis is its words: no code column, no grouping by a code's first letter (a
+  // saved layout that still names them opens without them: sanitizeChoices)
   columns: [
     {
-      key: 'code',
-      label: `${C}.col.icd10`,
-      nowrap: true,
+      key: 'diagnosis',
+      label: `${C}.col.diagnosis`,
       default: true,
-      value: (r: DiagnosisRow) => r.code,
+      value: (r: DiagnosisRow) => r.diagnosis,
     },
-    { key: 'diagnosis', label: `${C}.col.diagnosis`, default: true, value: (r) => r.diagnosis },
     {
       key: 'cases',
       label: `${C}.col.cases`,
@@ -459,7 +459,7 @@ const diagnoses: AnyReportDef = {
       },
       ctx,
     )
-    return search(rows, f, (r) => [r.code, r.diagnosis])
+    return search(rows, f, (r) => [r.diagnosis])
   },
   figures: (rows: DiagnosisRow[]) => [
     fig('diagnoses', rows.length),
@@ -475,14 +475,6 @@ const diagnoses: AnyReportDef = {
       'followUp',
       sum(rows, (r) => r.followUp),
     ),
-  ],
-  groups: [
-    {
-      key: 'chapter',
-      label: `${C}.g.chapter`,
-      heading: `${C}.col.chapter`,
-      value: (r: DiagnosisRow) => (r.code ? r.code.charAt(0) : w(`${C}.noCode`, 'No ICD-10 code')),
-    },
   ],
   defaultSort: { key: 'cases', dir: 'desc' },
   countLabel: `${C}.count.diagnoses`,

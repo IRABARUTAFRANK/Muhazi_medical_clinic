@@ -8,30 +8,46 @@ import { Select } from '@/components/ui/select'
 import { matches } from '@/lib/paging'
 import { REPORT_GROUPS } from '@/lib/reports/catalog'
 import type { AnyReportDef } from '@/lib/reports/defs/types'
+import type { SheetDef } from '@/lib/reports/sheets'
 import { cn } from '@/lib/utils'
-import { GROUP_LOOK } from './report-look'
+import { GROUP_LOOK, SHEETS_LOOK } from './report-look'
 
 /**
  * The reports the person may run, grouped (Patients, Finance, Pharmacy…) with each group's
  * icon, and a search box. Under 1280 px (a phone, a tablet, a small laptop beside the app's
- * sidebar) the list is one select above the report.
+ * sidebar) the list is one select above the report. 0197: the sheets printed empty, to write by
+ * hand (the blank prescription), come first, under their own heading.
  */
 export function ReportList({
   reports,
+  sheets = [],
   current,
   onPick,
 }: {
   reports: AnyReportDef[]
+  sheets?: SheetDef[]
   current: string | null
   onPick: (id: string) => void
 }) {
   const { t } = useTranslation()
   const [q, setQ] = useState('')
   const shown = reports.filter((r) => matches(q, t(r.title), t(r.description)))
-  const groups = REPORT_GROUPS.map((g) => ({
-    g,
-    items: shown.filter((r) => r.group === g),
-  })).filter((x) => x.items.length > 0)
+  const shownSheets = sheets.filter((s) => matches(q, t(s.title), t(s.description)))
+  // the sheets first, then the groups of reports: one look for both
+  const groups = [
+    {
+      g: 'sheets',
+      label: t('reports.sheets.group'),
+      look: SHEETS_LOOK,
+      items: shownSheets as { id: string; title: string }[],
+    },
+    ...REPORT_GROUPS.map((g) => ({
+      g: g as string,
+      label: t(`reports.groups.${g}`),
+      look: GROUP_LOOK[g],
+      items: shown.filter((r) => r.group === g) as { id: string; title: string }[],
+    })),
+  ].filter((x) => x.items.length > 0)
   return (
     <>
       {/* under 1280 px: one select */}
@@ -42,6 +58,15 @@ export function ReportList({
         onChange={(e) => e.target.value && onPick(e.target.value)}
       >
         <option value="">{t('reports.ui.chooseReportHint')}</option>
+        {sheets.length > 0 && (
+          <optgroup label={t('reports.sheets.group')}>
+            {sheets.map((s) => (
+              <option key={s.id} value={s.id}>
+                {t(s.title)}
+              </option>
+            ))}
+          </optgroup>
+        )}
         {REPORT_GROUPS.map((g) => {
           const items = reports.filter((r) => r.group === g)
           return items.length ? (
@@ -78,13 +103,12 @@ export function ReportList({
         {groups.length === 0 && (
           <p className="text-ink-3 m-0 px-1 py-2 text-[14px]">{t('reports.ui.noMatch')}</p>
         )}
-        {groups.map(({ g, items }) => {
-          const look = GROUP_LOOK[g]
+        {groups.map(({ g, label, look, items }) => {
           return (
             <section key={g} className="flex flex-col gap-0.5">
               <h2 className="text-ink-2 m-0 flex items-center gap-2 px-1 pt-2 pb-1 text-[12px] font-semibold tracking-wide uppercase">
                 <IconChip icon={look.icon} tint={look.hue} size="sm" />
-                {t(`reports.groups.${g}`)}
+                {label}
               </h2>
               {items.map((r) => {
                 const on = r.id === current

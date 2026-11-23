@@ -30,6 +30,8 @@ export const NAV_COUNT_KEYS = [
   'filesToComplete',
   // 0127: the doctors' orders to carry out (the nurse's Home)
   'nurseOrders',
+  // 0197: the patients in a bed now ("Patients in beds")
+  'inBeds',
 ] as const
 export type NavCountKey = (typeof NAV_COUNT_KEYS)[number]
 export type NavCounts = Partial<Record<NavCountKey, number>> & {

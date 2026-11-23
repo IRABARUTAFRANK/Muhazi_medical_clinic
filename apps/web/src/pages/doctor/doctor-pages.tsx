@@ -9,6 +9,7 @@ import {
   Hourglass,
   ListOrdered,
   Pill as PillIcon,
+  Search,
   Store,
   TestTube,
   TriangleAlert,
@@ -47,8 +48,16 @@ import {
 } from '@/lib/api/visits'
 import { navForUser } from '@/lib/nav'
 import { matches, usePaged, type SortKey } from '@/lib/paging'
+import {
+  blockTotals,
+  countByState,
+  partialHits,
+  visitBlocks,
+  type VisitBlock,
+} from '@/lib/visit-blocks'
 import { useSearchPeriod, type Period } from '@/lib/period'
 import { cn } from '@/lib/utils'
+import { STATUS_ORDER } from '../lab/lab-report'
 import { OpenNextButton } from '../home/open-next'
 import { MyQueuePanel } from '../home/role-panels'
 
@@ -230,7 +239,191 @@ const orderTab = (o: MyOrder): OrderTab =>
       ? 'cancelled'
       : 'waiting'
 
-/** Every test I ordered: waiting at the lab, results ready (to read), not done (and why). */
+/** Tests requested in one go are written within the same minute or two. */
+const SAME_MOMENT_MS = 2 * 60_000
+
+/**
+ * One test I requested: its state, where it is done, when and why it was asked, and its result in
+ * full (findings, conclusion, who gave it and when; "Open wide" for reading size). Inside the
+ * block of its patient's visit (`grouped`) the patient and the way to the visit are on the block's
+ * heading, once.
+ */
+function OrderRow({
+  order: o,
+  i,
+  grouped,
+  hit = null,
+}: {
+  order: MyOrder
+  i: number
+  /** Inside a block; the row says when it was requested only when the tests differ on it. */
+  grouped?: { orderedAt: boolean }
+  /** The tab or the search keeps the block for some of its tests only: this one, or not. */
+  hit?: boolean | null
+}) {
+  const { t } = useTranslation()
+  const look = STATUS_LOOK[o.status]
+  const station = t(`register.stations.${o.station}`, { defaultValue: o.station })
+  const details = [
+    grouped ? null : o.fileNumber,
+    station,
+    !grouped || grouped.orderedAt ? t('doctorLists.orderedAt', { when: when(o.orderedAt) }) : null,
+    o.reason,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+  return (
+    <div
+      className={cn(
+        'border-grid anim-enter flex flex-col gap-2 border-b py-3 last:border-b-0',
+        grouped && 'px-3 last:rounded-b-[7px]',
+        hit === true && 'border-l-primary bg-primary-tint/50 border-l-[3px] pl-[9px]',
+      )}
+      style={{ '--i': Math.min(i, 12) } as CSSProperties}
+    >
+      <div className="flex flex-wrap items-center gap-3">
+        <Pill tint={look.tint} icon={look.icon}>
+          {t(`lab.status.${o.status}`)}
+        </Pill>
+        <span className="min-w-[min(200px,100%)] flex-1">
+          <span className={cn('block font-semibold', hit === false && 'text-ink-2')}>
+            {hit === true && (
+              <Search
+                size={13}
+                aria-hidden="true"
+                className="text-primary mr-1.5 inline-block align-[-1px]"
+              />
+            )}
+            {o.test}
+            {!grouped && <span className="text-ink-2 font-normal"> · {o.patient}</span>}
+            {hit === true && <span className="sr-only"> ({t('lab.block.hitTag')})</span>}
+          </span>
+          <span className="text-ink-3 block text-[13px]">{details}</span>
+        </span>
+        {!grouped && (
+          <VisitLink open={o.visitOpen} encounterId={o.encounterId} patientId={o.patientId} />
+        )}
+      </div>
+      {(o.findings || o.impression) && (
+        // "Open wide" at the top right; in a narrow box it takes its own line and the
+        // result keeps the whole width (it used to float, squeezing the words beside it)
+        <span className="border-border bg-card border-l-green-dot flex flex-row-reverse flex-wrap items-start gap-x-2 gap-y-0.5 rounded-md border border-l-2 px-3 py-2 text-[13px]">
+          <span className="flex-none">
+            <WideResult
+              result={{
+                test: o.test,
+                patient: o.patient,
+                station,
+                findings: o.findings,
+                impression: o.impression,
+                verified: !!o.verified,
+                by: o.resultBy,
+                at: o.resultAt,
+                orderedAt: o.orderedAt,
+                reason: o.reason,
+              }}
+            />
+          </span>
+          <span className="min-w-0 flex-[1_1_8rem]">
+            {/* the result as it was written: its lines are kept */}
+            {o.findings && <span className="block whitespace-pre-wrap">{o.findings}</span>}
+            {o.impression && (
+              <span className="block font-semibold whitespace-pre-wrap">{o.impression}</span>
+            )}
+            <span className="text-ink-3 block text-xs">
+              {[
+                o.verified ? t('clinical.verified') : t('clinical.notVerified'),
+                o.resultBy,
+                o.resultAt && when(o.resultAt),
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
+          </span>
+        </span>
+      )}
+    </div>
+  )
+}
+
+/**
+ * "The file of that patient" on the doctor's side: the tests I requested at one patient's visit
+ * together, with their results inside. One heading with the patient, when they were requested,
+ * how many tests and where they stand, and the visit (or the patient file) one press away. A
+ * visit with a single test stays the plain row.
+ */
+function OrdersBlock({ block, i }: { block: VisitBlock<MyOrder>; i: number }) {
+  const { t } = useTranslation()
+  const { rows } = block
+  const first = rows[0]
+  if (!first) return null
+  if (rows.length === 1) return <OrderRow order={first} i={i} />
+  const hits = partialHits(block)
+  const times = rows.map((o) => new Date(o.orderedAt).getTime())
+  const earliest = Math.min(...times)
+  const oneMoment = Math.max(...times) - earliest <= SAME_MOMENT_MS
+  const states = countByState(
+    rows.map((o) => o.status),
+    STATUS_ORDER,
+  )
+  return (
+    <section
+      aria-label={t('lab.block.aria', { patient: first.patient })}
+      className="border-border anim-enter my-2 flex min-w-0 flex-col rounded-lg border first:mt-0 last:mb-0"
+      style={{ '--i': Math.min(i, 12) } as CSSProperties}
+    >
+      <header className="border-border bg-hover flex flex-wrap items-center gap-x-3 gap-y-2 rounded-t-[7px] border-b px-3 py-2.5">
+        <span className="min-w-[min(200px,100%)] flex-1">
+          <span className="block text-[15px] font-semibold">{first.patient}</span>
+          <span className="text-ink-3 block text-[13px]">
+            {[
+              first.fileNumber,
+              oneMoment
+                ? t('lab.block.orderedAt', { when: when(new Date(earliest).toISOString()) })
+                : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </span>
+          <span className="text-ink-2 block text-[13px] font-medium">
+            {[
+              t('lab.block.tests', { count: rows.length }),
+              ...states.map((s) => `${t(`lab.status.${s.state}`)}: ${s.count}`),
+            ].join(' · ')}
+          </span>
+        </span>
+        <VisitLink
+          open={rows.some((o) => o.visitOpen)}
+          encounterId={first.encounterId}
+          patientId={first.patientId}
+        />
+        {hits && (
+          <span className="text-primary flex basis-full items-start gap-1.5 text-[13px] font-medium">
+            <Search size={14} aria-hidden="true" className="mt-0.5 flex-none" />
+            {t('lab.block.hits', { hits: hits.size, count: rows.length })}
+          </span>
+        )}
+      </header>
+      <div className="flex flex-col">
+        {rows.map((o, n) => (
+          <OrderRow
+            key={o.id}
+            order={o}
+            i={i + n}
+            grouped={{ orderedAt: !oneMoment }}
+            hit={hits ? hits.has(o.id) : null}
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+/**
+ * Every test I ordered: waiting at the lab, results ready (to read), not done (and why). The
+ * tests of one patient's visit stand together as one block; a tab or a search keeps a block when
+ * one of its tests matches, whole, and points out which. The pages count the patients' visits.
+ */
 export function ResultsPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
   // the same period filter as the dashboards (the last 7 days by default)
@@ -241,10 +434,12 @@ export function ResultsPage({ user }: { user: StaffUser }) {
   const data = got?.rows ?? []
   const count = (k: OrderTab) =>
     k === 'all' ? data.length : data.filter((o) => orderTab(o) === k).length
-  const shown = data.filter(
+  const shown = visitBlocks(
+    data,
     (o) =>
       (tab === 'all' || orderTab(o) === tab) && matches(query, o.patient, o.test, o.fileNumber),
   )
+  const totals = blockTotals(shown)
   const paged = usePaged(shown, 15, `${tab}|${query}|${period.from}|${period.to}`)
   return (
     <StaffShell user={user} nav={navForUser(user)} activeId="results">
@@ -260,7 +455,17 @@ export function ResultsPage({ user }: { user: StaffUser }) {
             </BannerChip>
           }
         />
-        <Panel i={1} icon={FlaskConical} tint="coral" title={t('doctorLists.resultsPanel')}>
+        <Panel
+          i={1}
+          icon={FlaskConical}
+          tint="coral"
+          title={t('doctorLists.resultsPanel')}
+          right={
+            totals.blocks > 0
+              ? `${t('lab.block.tests', { count: totals.rows })} · ${t('lab.block.patients', { count: totals.blocks })}`
+              : undefined
+          }
+        >
           <PeriodFilter period={period} />
           {got?.cut && <PeriodCutNote />}
           <Tabs
@@ -279,82 +484,9 @@ export function ResultsPage({ user }: { user: StaffUser }) {
             </Empty>
           ) : (
             <div className="flex flex-col">
-              {paged.slice.map((o, i) => {
-                const look = STATUS_LOOK[o.status]
-                return (
-                  <div
-                    key={o.id}
-                    className="border-grid anim-enter flex flex-col gap-2 border-b py-3 last:border-b-0"
-                    style={{ '--i': Math.min(i, 12) } as CSSProperties}
-                  >
-                    <div className="flex flex-wrap items-center gap-3">
-                      <Pill tint={look.tint} icon={look.icon}>
-                        {t(`lab.status.${o.status}`)}
-                      </Pill>
-                      <span className="min-w-[min(200px,100%)] flex-1">
-                        <span className="block font-semibold">
-                          {o.test}
-                          <span className="text-ink-2 font-normal"> · {o.patient}</span>
-                        </span>
-                        <span className="text-ink-3 block text-[13px]">
-                          {[
-                            o.fileNumber,
-                            t(`register.stations.${o.station}`, { defaultValue: o.station }),
-                            t('doctorLists.orderedAt', { when: when(o.orderedAt) }),
-                            o.reason,
-                          ]
-                            .filter(Boolean)
-                            .join(' · ')}
-                        </span>
-                      </span>
-                      <VisitLink
-                        open={o.visitOpen}
-                        encounterId={o.encounterId}
-                        patientId={o.patientId}
-                      />
-                    </div>
-                    {(o.findings || o.impression) && (
-                      // "Open wide" at the top right; in a narrow box it takes its own line and the
-                      // result keeps the whole width (it used to float, squeezing the words beside it)
-                      <span className="border-border bg-card border-l-green-dot flex flex-row-reverse flex-wrap items-start gap-x-2 gap-y-0.5 rounded-md border border-l-2 px-3 py-2 text-[13px]">
-                        <span className="flex-none">
-                          <WideResult
-                            result={{
-                              test: o.test,
-                              patient: o.patient,
-                              station: t(`register.stations.${o.station}`, {
-                                defaultValue: o.station,
-                              }),
-                              findings: o.findings,
-                              impression: o.impression,
-                              verified: !!o.verified,
-                              by: o.resultBy,
-                              at: o.resultAt,
-                              orderedAt: o.orderedAt,
-                              reason: o.reason,
-                            }}
-                          />
-                        </span>
-                        <span className="min-w-0 flex-[1_1_8rem]">
-                          {o.findings && <span className="block">{o.findings}</span>}
-                          {o.impression && (
-                            <span className="block font-semibold">{o.impression}</span>
-                          )}
-                          <span className="text-ink-3 block text-xs">
-                            {[
-                              o.verified ? t('clinical.verified') : t('clinical.notVerified'),
-                              o.resultBy,
-                              o.resultAt && when(o.resultAt),
-                            ]
-                              .filter(Boolean)
-                              .join(' · ')}
-                          </span>
-                        </span>
-                      </span>
-                    )}
-                  </div>
-                )
-              })}
+              {paged.slice.map((b, i) => (
+                <OrdersBlock key={b.key} block={b} i={i} />
+              ))}
             </div>
           )}
           <Pager {...paged} onPage={paged.setPage} />

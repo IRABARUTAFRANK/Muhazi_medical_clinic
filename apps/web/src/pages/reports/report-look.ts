@@ -1,6 +1,7 @@
 import {
   Banknote,
   ClipboardList,
+  FilePen,
   FlaskConical,
   IdCard,
   Package,
@@ -24,6 +25,9 @@ export const GROUP_LOOK: Record<ReportGroupName, { icon: LucideIcon; hue: Hue }>
   reception: { icon: ClipboardList, hue: 'coral' },
   staff: { icon: IdCard, hue: 'navy' },
 }
+
+/** 0197: the sheets printed empty, to write by hand (the first group of the list). */
+export const SHEETS_LOOK: { icon: LucideIcon; hue: Hue } = { icon: FilePen, hue: 'violet' }
 
 /** The database is older than the report's function. */
 export const needsDbUpdate = (e: unknown) =>

@@ -74,7 +74,7 @@ export interface SafetySummary {
   /** The patient notes (alerts written on the file). */
   alerts: string | null
   flags: Record<string, unknown>
-  /** Chronic ICD-10 groups, or the same diagnosis on two visits. */
+  /** Long-lasting conditions, or the same diagnosis on two visits (`icd10` is never shown). */
   chronic: { text: string; icd10: string | null; since: string; lastAt: string }[]
   /** Medicines of the open visit and those whose prescribed days are not over. */
   medications: {
