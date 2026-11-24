@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ReactNode } from 'react'
+import { useId, useState, type CSSProperties, type ReactNode } from 'react'
 import {
   Activity,
   AlarmClock,
@@ -37,6 +37,8 @@ import {
   type QueueCounts,
   type QueueRow,
 } from '@mmc/shared'
+import { FoldHeading } from '@/components/dash/fold-heading'
+import { foldHeaderClass } from '@/components/dash/kit-style'
 import { Empty, Hint, Panel, Pill } from '@/components/dash/kit'
 import { triageIcon, type Tint } from '@/components/dash/kit-style'
 import { Button, actionLink, buttonVariants } from '@/components/ui/button'
@@ -694,8 +696,9 @@ function InboxResult({
 
 /**
  * The results of one patient's visit together ("the file of that patient"): the patient once,
- * how many results, the visit one press away, and "seen" for all of them with one press. A
- * single result stays the plain row.
+ * how many results, the visit one press away, and "seen" for all of them with one press. Every
+ * patient starts closed (the name, how many results and how many not seen yet, a single result
+ * too) and opens with a press.
  */
 function ResultsBlock({
   block,
@@ -710,11 +713,13 @@ function ResultsBlock({
   const actions = useHomeActions()
   const confirm = useConfirm()
   const [busy, setBusy] = useState(false)
+  const [open, setOpen] = useState(false)
+  const bodyId = useId()
   const { rows } = block
   const first = rows[0]
   if (!first) return null
-  if (rows.length === 1) return <InboxResult result={first} i={i} onError={onError} />
   const toRead = rows.filter((r) => r.verified && !r.reviewed)
+  const notVerified = rows.filter((r) => !r.verified).length
   const seenAll = async () => {
     if (
       !(await confirm({
@@ -737,33 +742,58 @@ function ResultsBlock({
       aria-label={t('lab.block.aria', { patient: first.name })}
       className="border-border my-1.5 flex min-w-0 flex-col rounded-lg border text-[14px] first:mt-0 last:mb-0"
     >
-      <header className="border-border bg-hover flex flex-wrap items-center gap-x-2.5 gap-y-1.5 rounded-t-[7px] border-b px-3 py-2">
-        <span className="min-w-[min(160px,100%)] flex-1">
-          <span className="block font-semibold break-words">{first.name}</span>
-          <span className="text-ink-3 block text-[13px]">
-            {t('home.resultsCount', { count: rows.length })}
+      <header
+        className={cn(
+          'flex flex-wrap items-center gap-x-2.5 gap-y-1.5 px-3 py-2',
+          foldHeaderClass(open),
+        )}
+      >
+        {/* the whole line opens and closes the patient's results */}
+        <FoldHeading
+          open={open}
+          onToggle={() => setOpen((v) => !v)}
+          controls={bodyId}
+          what="results"
+          // a narrow panel: the patient and the toggle on one line, the buttons under them
+          className="basis-full gap-x-2.5"
+        >
+          <span className="min-w-[min(160px,100%)] flex-1">
+            <span className="block font-semibold break-words">{first.name}</span>
+            <span className="text-ink-3 block text-[13px]">
+              {[
+                t('lab.block.results', { count: rows.length }),
+                toRead.length > 0 ? t('lab.block.notSeen', { count: toRead.length }) : null,
+                notVerified > 0 ? `${t('home.unverified')}: ${notVerified}` : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
           </span>
-        </span>
-        {toRead.length > 1 && (
+        </FoldHeading>
+        {open && toRead.length > 1 && (
           <Button size="sm" variant="tint-mint" loading={busy} onClick={() => void seenAll()}>
             <Check size={14} aria-hidden="true" />
             {t('home.markAllSeen', { count: toRead.length })}
           </Button>
         )}
-        <StaffLink
-          to="/app/visit"
-          search={{ encounter: first.encounterId }}
-          className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
-        >
-          <FileText size={14} aria-hidden="true" />
-          {t('common.open')}
-        </StaffLink>
+        {open && (
+          <StaffLink
+            to="/app/visit"
+            search={{ encounter: first.encounterId }}
+            className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
+          >
+            <FileText size={14} aria-hidden="true" />
+            {t('common.open')}
+          </StaffLink>
+        )}
       </header>
-      <div className="flex flex-col">
-        {rows.map((r, n) => (
-          <InboxResult key={r.id} result={r} i={i + n} grouped onError={onError} />
-        ))}
-      </div>
+      {open && (
+        <div id={bodyId} className="flex flex-col">
+          {rows.map((r, n) => (
+            <InboxResult key={r.id} result={r} i={i + n} grouped onError={onError} />
+          ))}
+        </div>
+      )}
     </section>
   )
 }

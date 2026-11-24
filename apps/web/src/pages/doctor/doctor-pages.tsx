@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useId, useState, type CSSProperties } from 'react'
 import {
   Printer,
   Ban,
@@ -17,6 +17,8 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { addDays, formatDate, formatTime, isoDate, type StaffUser } from '@mmc/shared'
+import { FoldHeading } from '@/components/dash/fold-heading'
+import { foldHeaderClass } from '@/components/dash/kit-style'
 import { Empty, Panel, Pill } from '@/components/dash/kit'
 import type { Tint } from '@/components/dash/kit-style'
 import { BannerChip, PageBanner } from '@/components/dash/page-banner'
@@ -349,15 +351,16 @@ function OrderRow({
 /**
  * "The file of that patient" on the doctor's side: the tests I requested at one patient's visit
  * together, with their results inside. One heading with the patient, when they were requested,
- * how many tests and where they stand, and the visit (or the patient file) one press away. A
- * visit with a single test stays the plain row.
+ * how many tests and where they stand, and the visit (or the patient file) one press away. Every
+ * patient starts closed (the name and how many tests, a single test too) and opens with a press.
  */
 function OrdersBlock({ block, i }: { block: VisitBlock<MyOrder>; i: number }) {
   const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const bodyId = useId()
   const { rows } = block
   const first = rows[0]
   if (!first) return null
-  if (rows.length === 1) return <OrderRow order={first} i={i} />
   const hits = partialHits(block)
   const times = rows.map((o) => new Date(o.orderedAt).getTime())
   const earliest = Math.min(...times)
@@ -372,31 +375,41 @@ function OrdersBlock({ block, i }: { block: VisitBlock<MyOrder>; i: number }) {
       className="border-border anim-enter my-2 flex min-w-0 flex-col rounded-lg border first:mt-0 last:mb-0"
       style={{ '--i': Math.min(i, 12) } as CSSProperties}
     >
-      <header className="border-border bg-hover flex flex-wrap items-center gap-x-3 gap-y-2 rounded-t-[7px] border-b px-3 py-2.5">
-        <span className="min-w-[min(200px,100%)] flex-1">
-          <span className="block text-[15px] font-semibold">{first.patient}</span>
-          <span className="text-ink-3 block text-[13px]">
-            {[
-              first.fileNumber,
-              oneMoment
-                ? t('lab.block.orderedAt', { when: when(new Date(earliest).toISOString()) })
-                : null,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
+      <header
+        className={cn(
+          'flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5',
+          foldHeaderClass(open),
+        )}
+      >
+        {/* the whole line opens and closes the patient's tests */}
+        <FoldHeading open={open} onToggle={() => setOpen((v) => !v)} controls={bodyId}>
+          <span className="min-w-[min(200px,100%)] flex-1">
+            <span className="block text-[15px] font-semibold">{first.patient}</span>
+            <span className="text-ink-3 block text-[13px]">
+              {[
+                first.fileNumber,
+                oneMoment
+                  ? t('lab.block.orderedAt', { when: when(new Date(earliest).toISOString()) })
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
+            <span className="text-ink-2 block text-[13px] font-medium">
+              {[
+                t('lab.block.tests', { count: rows.length }),
+                ...states.map((s) => `${t(`lab.status.${s.state}`)}: ${s.count}`),
+              ].join(' · ')}
+            </span>
           </span>
-          <span className="text-ink-2 block text-[13px] font-medium">
-            {[
-              t('lab.block.tests', { count: rows.length }),
-              ...states.map((s) => `${t(`lab.status.${s.state}`)}: ${s.count}`),
-            ].join(' · ')}
-          </span>
-        </span>
-        <VisitLink
-          open={rows.some((o) => o.visitOpen)}
-          encounterId={first.encounterId}
-          patientId={first.patientId}
-        />
+        </FoldHeading>
+        {open && (
+          <VisitLink
+            open={rows.some((o) => o.visitOpen)}
+            encounterId={first.encounterId}
+            patientId={first.patientId}
+          />
+        )}
         {hits && (
           <span className="text-primary flex basis-full items-start gap-1.5 text-[13px] font-medium">
             <Search size={14} aria-hidden="true" className="mt-0.5 flex-none" />
@@ -404,17 +417,19 @@ function OrdersBlock({ block, i }: { block: VisitBlock<MyOrder>; i: number }) {
           </span>
         )}
       </header>
-      <div className="flex flex-col">
-        {rows.map((o, n) => (
-          <OrderRow
-            key={o.id}
-            order={o}
-            i={i + n}
-            grouped={{ orderedAt: !oneMoment }}
-            hit={hits ? hits.has(o.id) : null}
-          />
-        ))}
-      </div>
+      {open && (
+        <div id={bodyId} className="flex flex-col">
+          {rows.map((o, n) => (
+            <OrderRow
+              key={o.id}
+              order={o}
+              i={i + n}
+              grouped={{ orderedAt: !oneMoment }}
+              hit={hits ? hits.has(o.id) : null}
+            />
+          ))}
+        </div>
+      )}
     </section>
   )
 }

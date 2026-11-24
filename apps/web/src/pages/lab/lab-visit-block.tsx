@@ -2,7 +2,6 @@ import { useId, useState, type CSSProperties } from 'react'
 import {
   ArrowUpRight,
   BellRing,
-  ChevronDown,
   FlaskConical,
   Printer,
   Search,
@@ -10,6 +9,8 @@ import {
   TestTube,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { FoldHeading } from '@/components/dash/fold-heading'
+import { foldHeaderClass } from '@/components/dash/kit-style'
 import { Pill } from '@/components/dash/kit'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { StaffLink } from '@/components/staff/staff-link'
@@ -213,33 +214,14 @@ export function LabVisitBlock({
       <header
         className={cn(
           'flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5',
-          open ? 'rounded-t-[7px] border-b' : 'rounded-[7px]',
-          urgent
-            ? 'border-red/30 bg-red-bg/60'
-            : open
-              ? 'border-border bg-hover'
-              : 'border-border bg-card hover:bg-hover',
+          foldHeaderClass(open, urgent),
         )}
       >
         {folded ? (
           // the whole line opens and closes the patient's tests
-          <button
-            type="button"
-            aria-expanded={open}
-            aria-controls={bodyId}
-            onClick={() => setOpen((v) => !v)}
-            className="focus-visible:ring-primary/40 -m-1 flex min-w-[min(240px,100%)] flex-1 cursor-pointer flex-wrap items-center gap-x-3 gap-y-2 rounded-md p-1 text-left focus-visible:ring-2 focus-visible:outline-none"
-          >
+          <FoldHeading open={open} onToggle={() => setOpen((v) => !v)} controls={bodyId}>
             {heading}
-            <span className="text-primary ml-auto inline-flex flex-none items-center gap-1 text-[13px] font-semibold">
-              {t(open ? 'lab.block.hide' : 'lab.block.show')}
-              <ChevronDown
-                size={16}
-                aria-hidden="true"
-                className={cn('transition-transform', open && 'rotate-180')}
-              />
-            </span>
-          </button>
+          </FoldHeading>
         ) : (
           heading
         )}

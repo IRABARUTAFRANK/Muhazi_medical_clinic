@@ -4397,7 +4397,12 @@
       "notMarked": "Non marqués comme prélevés : {{list}}",
       "aria": "Les examens de {{patient}}",
       "show": "Voir les examens",
-      "hide": "Masquer les examens"
+      "hide": "Masquer les examens",
+      "showResults": "Voir les résultats",
+      "hideResults": "Masquer les résultats",
+      "results_one": "{{count}} résultat",
+      "results_other": "{{count}} résultats",
+      "notSeen": "Pas encore vus : {{count}}"
     }
   },
   "finance": {

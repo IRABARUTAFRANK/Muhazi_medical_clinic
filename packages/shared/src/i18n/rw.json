@@ -4406,7 +4406,12 @@
       "notMarked": "Ntibyemejwe ko byafashwe: {{list}}",
       "aria": "Ibizamini bya {{patient}}",
       "show": "Reba ibizamini",
-      "hide": "Hisha ibizamini"
+      "hide": "Hisha ibizamini",
+      "showResults": "Reba ibisubizo",
+      "hideResults": "Hisha ibisubizo",
+      "results_one": "Igisubizo {{count}}",
+      "results_other": "Ibisubizo {{count}}",
+      "notSeen": "Bitararebwa: {{count}}"
     }
   },
   "finance": {

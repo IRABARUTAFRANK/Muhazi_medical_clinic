@@ -4397,7 +4397,12 @@
       "notMarked": "Not marked as taken: {{list}}",
       "aria": "The tests of {{patient}}",
       "show": "Show the tests",
-      "hide": "Hide the tests"
+      "hide": "Hide the tests",
+      "showResults": "Show the results",
+      "hideResults": "Hide the results",
+      "results_one": "{{count}} result",
+      "results_other": "{{count}} results",
+      "notSeen": "Not seen yet: {{count}}"
     }
   },
   "finance": {

@@ -273,3 +273,15 @@ export const triageIcon: Record<string, LucideIcon> = {
   green: CircleCheck,
   none: CircleDashed,
 }
+
+/** The look of a patient block's heading that opens and closes (fold-heading.tsx): closed it is a
+ * plain line, open it is the grey top of the block; an urgent block stays red either way. */
+export const foldHeaderClass = (open: boolean, urgent = false) =>
+  [
+    open ? 'rounded-t-[7px] border-b' : 'rounded-[7px]',
+    urgent
+      ? 'border-red/30 bg-red-bg/60'
+      : open
+        ? 'border-border bg-hover'
+        : 'border-border bg-card hover:bg-hover',
+  ].join(' ')
