@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { directions, type DispenseLabel } from './dispense-label'
 import { pieceContentFromText, takeHomeCount } from './dose'
-import { defaultUnit, doseOf, partOf, piecesFill, proposeFor, unitChoices } from './order-dose'
+import { defaultUnit, doseOf, partOf, unitChoices } from './order-dose'
 import {
   dayChoices,
   everyHoursOf,
@@ -17,72 +17,13 @@ import { summarizeOrder } from './order-summary'
 const para = pieceContentFromText({ name: 'Paracetamol', strength: '500 mg', unit: 'tab' })
 const syrup = pieceContentFromText({ name: 'Cough syrup', strength: '100 ml', unit: 'bottle' })
 
-describe('the pieces fields follow the dose (review 0198)', () => {
-  const half = (e: { part: number }) => (e.part > 0 ? String(e.part) : '')
-  const free = { quantity: false, part: false }
-  it('an exact dose fills the fields not typed in', () => {
-    const p = proposeFor({ amount: 750, unit: 'mg' }, para, 'half')
-    expect(piecesFill(p, free, half)).toEqual({ quantity: '1', part: '0.5' })
-    expect(piecesFill(p, { quantity: true, part: false }, half)).toEqual({ part: '0.5' })
-  })
-  it('a dose with no exact count empties them: no number left from an earlier dose', () => {
-    // 1 g gave 2 tablets; then 750 mg of a tablet given whole only: "type how many", not 2
-    expect(piecesFill(proposeFor({ amount: 750, unit: 'mg' }, para, 'whole'), free, null)).toEqual({
-      quantity: '',
-      part: '',
-    })
-    expect(piecesFill(proposeFor({ amount: 1, unit: 'scoop' }, para, 'half'), free, half)).toEqual({
-      quantity: '',
-      part: '',
-    })
-    // what the doctor typed stays
-    expect(
-      piecesFill(
-        proposeFor({ amount: 750, unit: 'mg' }, para, 'whole'),
-        { quantity: true, part: true },
-        null,
-      ),
-    ).toEqual({})
-  })
-  it('no dose: the fields stay as they are', () => {
-    expect(
-      piecesFill(
-        proposeFor(doseOf({ amount: '', unit: 'mg', other: '' }), para, 'half'),
-        free,
-        half,
-      ),
-    ).toEqual({})
-  })
-})
-
-describe('the dose on an order (0198)', () => {
-  it('1 g of Paracetamol 500 mg proposes 2 tablets; 250 mg ½ with halves, nothing whole only', () => {
-    expect(proposeFor(doseOf({ amount: '1', unit: 'g', other: '' }), para, 'half')).toMatchObject({
-      kind: 'exact',
-      whole: 2,
-      part: 0,
-    })
-    expect(proposeFor({ amount: 250, unit: 'mg' }, para, 'half')).toMatchObject({
-      kind: 'exact',
-      whole: 0,
-      part: 0.5,
-    })
-    expect(proposeFor({ amount: 250, unit: 'mg' }, para, 'whole')).toMatchObject({
-      kind: 'notExact',
-    })
-  })
-  it('5 ml of a 100 ml syrup: no whole bottle and 5 ml by measure', () => {
-    expect(proposeFor({ amount: 5, unit: 'ml' }, syrup, 'measure')).toMatchObject({
-      kind: 'exact',
-      whole: 0,
-      partMl: 5,
-    })
+describe('the dose on an order: words for the nurse (after 0198)', () => {
+  it('the unit offered first and the units of the list', () => {
     expect(defaultUnit(syrup)).toBe('ml')
     expect(defaultUnit(para)).toBe('mg')
     expect(unitChoices(para)).toContain('tablet')
-  })
-  it('a unit that does not convert proposes nothing', () => {
-    expect(proposeFor({ amount: 2, unit: 'IU' }, para, 'half')).toEqual({ kind: 'noLink' })
+    expect(doseOf({ amount: '1', unit: 'g', other: '' })).toEqual({ amount: 1, unit: 'g' })
+    expect(doseOf({ amount: '', unit: 'mg', other: '' })).toBeNull()
   })
   it('the part typed: only what the medicine allows', () => {
     expect(partOf('half', '0.5', null)).toBe(0.5)

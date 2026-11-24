@@ -1,20 +1,16 @@
 import {
   COUNT_UNITS,
-  contentMl,
   normUnit,
-  piecesForDose,
-  splitPieces,
   unitFamily,
   type DoseAmount,
-  type DosePieces,
   type PartMode,
   type PieceContent,
 } from './dose'
 
 /**
- * 0198 · The dose on an order of step 6 (DESIGN §A.5, §B): what the doctor types (a number and
- * a unit from the list, or "other" with its words) turned into the pieces to give — proposed
- * only when exact and allowed by how the medicine is given in parts. Pure (lib/dose.ts below).
+ * 0198 · The dose on an order of step 6: what the doctor types (a number and a unit from the
+ * list, or "other" with its words), words for the nurse. It is never turned into the pieces to
+ * give (Frank, after 0198): the doctor types how many. Pure (lib/dose.ts below).
  */
 
 /** The unit select's last choice: words typed by the doctor. */
@@ -63,75 +59,6 @@ export function defaultUnit(p: PieceContent | null | undefined): string {
   const c = normUnit(p?.content?.unit)
   if (c) return unitFamily(c) === 'volume' ? 'ml' : c
   return pieceUnitOf(p)
-}
-
-export type DoseProposal =
-  /** Fill in `whole` pieces and the part (0.5…; by measure: `partMl` ml). */
-  | {
-      kind: 'exact'
-      whole: number
-      part: number
-      partMl: number | null
-      pieces: number
-      how: DosePieces['how']
-      measure: DosePieces['measure']
-    }
-  /** The units convert, but not into a number of pieces this medicine is given in (1⅓). */
-  | { kind: 'notExact'; pieces: number; how: DosePieces['how']; measure: DosePieces['measure'] }
-  /** Only the measure is known (10 ml of a syrup whose bottle is not known). */
-  | { kind: 'measureOnly'; measure: { amount: number; unit: string } }
-  /** The unit does not turn into pieces of this medicine. */
-  | { kind: 'noLink' }
-
-/**
- * What the form proposes for a dose with the way of giving in parts that applies now (`mode`:
- * the medicine's, or 'whole' when parts cannot be given — a database without 0198).
- */
-export function proposeFor(
-  dose: DoseAmount | null,
-  piece: PieceContent | null | undefined,
-  mode: PartMode,
-): DoseProposal | null {
-  if (!dose || !piece) return null
-  const r = piecesForDose(dose, piece)
-  if (!r) return { kind: 'noLink' }
-  if (r.pieces == null)
-    return r.measure ? { kind: 'measureOnly', measure: r.measure } : { kind: 'noLink' }
-  const s = splitPieces(r.pieces, mode, contentMl(piece))
-  return s.ok
-    ? {
-        kind: 'exact',
-        whole: s.whole,
-        part: s.part,
-        partMl: s.partMl,
-        pieces: r.pieces,
-        how: r.how,
-        measure: r.measure,
-      }
-    : { kind: 'notExact', pieces: r.pieces, how: r.how, measure: r.measure }
-}
-
-/**
- * What a dose just typed puts in the pieces fields the doctor has not typed in himself: the
- * proposal when it is exact; nothing (empty fields, "type how many") when the dose gives no exact
- * count — never the number proposed for an earlier dose, nor the 1 the form starts with, left as
- * if it were this dose's (review 0198). No dose: the fields stay as they are.
- */
-export function piecesFill(
-  p: DoseProposal | null,
-  touched: { quantity: boolean; part: boolean },
-  partValue: ((e: Extract<DoseProposal, { kind: 'exact' }>) => string) | null,
-): { quantity?: string; part?: string } {
-  const out: { quantity?: string; part?: string } = {}
-  if (!p) return out
-  if (p.kind === 'exact') {
-    if (!touched.quantity) out.quantity = String(p.whole)
-    if (!touched.part && partValue) out.part = partValue(p)
-  } else {
-    if (!touched.quantity) out.quantity = ''
-    if (!touched.part) out.part = ''
-  }
-  return out
 }
 
 /** A count unit of the list (tablet, bottle, puff…) — the dose is then itself a number of pieces. */

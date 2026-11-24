@@ -36,18 +36,16 @@ import {
   type NurseOrderKind,
 } from '@/lib/api/nurse-orders'
 import {
-  amountText,
   contentMl,
   partFigure,
   partModeOf,
   partPrice as rulePartPrice,
   pieceContentOf,
   takeHomeCount,
-  unitFamily,
   type DoseItem,
   type PartMode,
 } from '@/lib/dose'
-import { doseUnitLabel, pieceContentText } from '@/lib/dose-words'
+import { doseUnitLabel } from '@/lib/dose-words'
 import { fractionText } from '@/lib/fraction'
 import { useNow } from '@/lib/hooks'
 import {
@@ -56,14 +54,10 @@ import {
   defaultUnit,
   doseOf,
   emptyDose,
-  isCountUnit,
   numberOf,
   partOf,
   pieceUnitOf,
-  piecesFill,
-  proposeFor,
   unitChoices,
-  type DoseProposal,
   type DoseValue,
 } from '@/lib/order-dose'
 import {
@@ -116,10 +110,8 @@ const emptyForm = (kind: NurseOrderKind) => ({
   // proposed from it and stay editable (a number typed is never overwritten)
   dose: emptyDose(),
   quantity: '1',
-  quantityTouched: false,
   /** ½ ¼ ¾ as "0.5"…, or the ml of a bottle by measure; '' = none. */
   part: '',
-  partTouched: false,
   /** The price of the part changed on the order, and why. */
   partPriceOn: false,
   partPrice: '',
@@ -143,23 +135,18 @@ const emptyForm = (kind: NurseOrderKind) => ({
 })
 type Form = ReturnType<typeof emptyForm>
 
-/** The part field's value for a proposal ("0.5", or the ml "5" by measure; '' for none). */
-/** A unit of volume (ml, l): the dose is then said in ml. */
-const unitOfFamilyVolume = (u: string) => unitFamily(u) === 'volume'
-
-const partValueOf = (p: Extract<DoseProposal, { kind: 'exact' }>, mode: PartMode) =>
-  p.part > 0 ? (mode === 'measure' ? String(p.partMl ?? '') : String(p.part)) : ''
-
 /**
  * Step 6 (0127; 0193; 0198): the orders carried out here — MEDICAL ACTS (an injection, a dressing,
  * an IV line…; from the clinic's treatments so it is billed) and MEDICINES of the clinic's stock,
  * given here and/or taken home. For one nurse, all of them, or the doctor himself. The box above
  * Send says what will happen; every field says what it does. Below: each order, with Undo.
  *
- * 0198: the DOSE is a number and a unit (1 g): the pieces to give are worked out from what one
- * piece holds (2 tablets of 500 mg) and stay editable; a medicine given in parts may be given as
+ * 0198: the DOSE is a number and a unit (1 g), words for the nurse: it never works out the pieces
+ * (Frank: a strength read wrong must not change what leaves the stock) — the doctor types how many
+ * tablets; a medicine given in parts may be given as
  * ½ (¼, ¾) of a tablet or some ml of a bottle, with the price of the part (changeable, with a
- * reason). The take-home count is worked out from the dose each time × how often × days. GIVE AT
+ * reason). The take-home count is worked out from a dose each time typed in the medicine's own
+ * pieces × how often × days. GIVE AT
  * (now or a time up to 7 days ahead) and REPEAT (every N hours: N times, N days or until stopped)
  * — the nurse records each time. Without 0198 in the database the form is the one of 0193.
  *
@@ -240,8 +227,6 @@ export function NurseOrdersStep({
   const mode: PartMode = partsOn ? itemMode : 'whole'
   const pieceMl = contentMl(piece)
   const units = unitChoices(piece)
-  const proposalOf = (v: DoseValue) => proposeFor(doseOf(v), piece, mode)
-  const proposal = showHere && f.kind === 'drug' ? proposalOf(f.dose) : null
 
   const here = showHere ? Number(f.quantity || 0) : 0
   const home = showHome ? Number(f.homeQuantity || 0) : 0
@@ -316,88 +301,26 @@ export function NurseOrdersStep({
   const homeBoxes =
     pack && home > 0 && !notWhole ? packsText(t, home, pack.size, pack.packUnit) : null
 
-  // ---------------------------------------------------------------- the dose → the pieces
-  /** The dose typed: the pieces proposed fill the fields the doctor has not typed in. */
-  const setDose = (v: DoseValue) =>
-    setF((x) => {
-      const p = proposalOf(v)
-      // an exact count fills the fields not typed in; a dose with none empties them (review 0198)
-      const patch: Partial<Form> = {
-        dose: v,
-        ...piecesFill(
-          p,
-          { quantity: x.quantityTouched, part: x.partTouched },
-          partsOn ? (e) => partValueOf(e, mode) : null,
-        ),
-      }
-      return { ...x, ...patch }
-    })
-  const proposedWhat =
-    proposal?.kind === 'exact'
-      ? [
-          proposal.whole > 0 ? `${proposal.whole} ${unit}` : null,
-          proposal.part > 0
-            ? mode === 'measure'
-              ? partFigure(proposal.part, mode, pieceMl)
-              : `${partFigure(proposal.part, mode)} ${unit}`
-            : null,
-        ]
-          .filter(Boolean)
-          .join(' + ')
-      : null
-  const differsFromProposal =
-    proposal?.kind === 'exact' &&
-    (f.quantity !== String(proposal.whole) || (partsOn && f.part !== partValueOf(proposal, mode)))
-  /** "= 2 tab of 500 mg", "= 10 ml = 0.1 bottle of 100 ml", or why nothing is proposed. */
-  const proposalText = (() => {
-    if (!proposal || !piece) return null
-    const doseWords = doseOf(f.dose)
-    const doseText = doseWords ? `${doseWords.amount} ${doseWords.unit}` : ''
-    switch (proposal.kind) {
-      case 'exact':
-      case 'notExact': {
-        const count = fractionText(proposal.pieces, i18n.language)
-        if (proposal.kind === 'notExact')
-          return t('nurseOrders.doseNotExact', { dose: doseText, exact: count, unit })
-        // "= …": a sign, the same in every language
-        if (proposal.measure && piece.content)
-          return `= ${t('nurseOrders.doseMeasure', {
-            measure: amountText(proposal.measure.amount, proposal.measure.unit),
-            count,
-            unit,
-            content: amountText(piece.content.amount, piece.content.unit),
-          })}`
-        if (proposal.how === 'strength' && piece.strength)
-          return `= ${t('nurseOrders.doseOf', {
-            count,
-            unit,
-            strength: amountText(piece.strength.amount, piece.strength.unit),
-          })}`
-        return `= ${count} ${unit}`
-      }
-      case 'measureOnly':
-        return t('nurseOrders.doseMeasureOnly', {
-          measure: amountText(proposal.measure.amount, proposal.measure.unit),
-          unit,
-        })
-      default:
-        return t('nurseOrders.doseNoLink', { unit })
-    }
-  })()
-  const holds = piece && piece.source !== 'none' ? pieceContentText(t, piece) : ''
+  // ---------------------------------------------------------------- the dose
+  // Frank (after 0198): the dose is words for the nurse, never turned into tablets — a strength
+  // read wrong, or a dose no tablet gives, must not change what leaves the stock. The doctor types
+  // the pieces himself.
+  const setDose = (v: DoseValue) => setF((x) => ({ ...x, dose: v }))
 
   // ---------------------------------------------------------------- the take-home count (B)
-  // the patient may cut a tablet or measure a syrup at home: the count is rounded up anyway
-  const homeMode: PartMode = pieceMl ? 'measure' : itemMode
-  const homeProposalOf = (v: DoseValue) => proposeFor(doseOf(v), piece, homeMode)
-  const takeOf = (x: Form) => {
-    const p = homeProposalOf(x.homeDose)
-    return takeHomeCount({
-      each: p?.kind === 'exact' ? p.pieces : null,
+  // Worked out only from a dose each time typed in the medicine's own pieces ("1 tab, twice a day,
+  // 5 days" = 10, rounded up for halves); a dose in mg or ml is not turned into pieces.
+  const pieceUnit = pieceUnitOf(piece)
+  const eachOf = (v: DoseValue): number | null => {
+    const d = doseOf(v)
+    return d && v.unit === pieceUnit ? d.amount : null
+  }
+  const takeOf = (x: Form) =>
+    takeHomeCount({
+      each: eachOf(x.homeDose),
       frequency: x.homeFrequency,
       days: numberOf(x.homeDays),
     })
-  }
   /** How to take it at home changed: the count follows while the doctor has not typed one. */
   const setHome = (patch: Partial<Form>) =>
     setF((x) => {
@@ -408,14 +331,9 @@ export function NurseOrdersStep({
       if (!next.homeTouched) next.homeQuantity = c ? String(c.total) : ''
       return next
     })
-  const homeP = showHome && f.kind === 'drug' ? homeProposalOf(f.homeDose) : null
   const take = showHome ? takeOf(f) : null
-  const eachText =
-    homeP?.kind === 'exact'
-      ? homeP.measure && unitOfFamilyVolume(homeP.measure.unit)
-        ? amountText(homeP.measure.amount, homeP.measure.unit)
-        : `${fractionText(homeP.pieces, i18n.language)} ${unit}`
-      : ''
+  const each = showHome && f.kind === 'drug' ? eachOf(f.homeDose) : null
+  const eachText = each != null ? `${fractionText(each, i18n.language)} ${unit}` : ''
   const workedOut = (() => {
     if (!showHome || f.kind !== 'drug') return null
     if (f.homeFrequency === 'PRN') return t('nurseOrders.homeWhenNeeded')
@@ -436,18 +354,11 @@ export function NurseOrdersStep({
         })}`
       : line
   })()
-  /** The words of the dose each time, printed on the label: "1 tab (500 mg)", "10 ml", "2 puffs". */
+  /** The words of the dose each time, printed on the label as typed: "1 tab", "10 ml", "500 mg". */
   const homeDoseWords = (): string => {
     const v = f.homeDose
-    const d = doseOf(v)
-    if (!d) return ''
-    const typed = `${v.amount} ${v.unit === OTHER_UNIT ? v.other.trim() : doseUnitLabel(t, v.unit)}`
-    if (v.unit === OTHER_UNIT || isCountUnit(v.unit) || homeP?.kind !== 'exact') return typed
-    if (homeP.measure && unitOfFamilyVolume(homeP.measure.unit)) {
-      const m = amountText(homeP.measure.amount, homeP.measure.unit)
-      return homeP.how === 'volume' ? m : `${m} (${typed})`
-    }
-    return `${fractionText(homeP.pieces, i18n.language)} ${unit} (${typed})`
+    if (!doseOf(v)) return ''
+    return `${v.amount} ${v.unit === OTHER_UNIT ? v.other.trim() : doseUnitLabel(t, v.unit)}`
   }
   /** The dose given here in words (`dose`, read by every screen that prints it). */
   const hereDoseWords = (): string => {
@@ -538,9 +449,7 @@ export function NurseOrdersStep({
       dose: emptyDose(defaultUnit(pc)),
       homeDose: emptyDose(it ? (pc?.content ? defaultUnit(pc) : pieceUnitOf(pc)) : ''),
       quantity: '1',
-      quantityTouched: false,
       part: '',
-      partTouched: false,
       partPriceOn: false,
       partPrice: '',
       partPriceWhy: '',
@@ -807,7 +716,7 @@ export function NurseOrdersStep({
                     <legend className="px-1">
                       <PartTitle title={t('nurseOrders.hereTitle')} />
                     </legend>
-                    {/* 0198: the dose as a number and a unit; the pieces are worked out from it */}
+                    {/* the dose: a number and a unit for the nurse; it counts no tablets */}
                     <Hinted hint={t('nurseOrders.doseHint')}>
                       <DoseInput
                         label={t('nurseOrders.doseWords')}
@@ -816,55 +725,13 @@ export function NurseOrdersStep({
                         units={units}
                       />
                     </Hinted>
-                    {(proposalText || holds) && (
-                      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px]">
-                        {proposalText && (
-                          <span
-                            aria-live="polite"
-                            className={
-                              proposal?.kind === 'exact'
-                                ? 'text-ink min-w-0 font-semibold'
-                                : 'text-amber min-w-0 font-semibold'
-                            }
-                          >
-                            {proposalText}
-                          </span>
-                        )}
-                        {holds && (
-                          <span className="text-ink-3 min-w-0 text-xs">
-                            {piece?.source === 'name'
-                              ? `${holds} · ${t('dose.readFromName')}`
-                              : holds}
-                          </span>
-                        )}
-                        {differsFromProposal && proposedWhat && proposal?.kind === 'exact' && (
-                          <Button
-                            size="sm"
-                            variant="tint-grey"
-                            onClick={() =>
-                              set({
-                                quantity: String(proposal.whole),
-                                quantityTouched: false,
-                                part: partsOn ? partValueOf(proposal, mode) : f.part,
-                                partTouched: false,
-                              })
-                            }
-                          >
-                            <RotateCcw size={14} aria-hidden="true" />
-                            {t('nurseOrders.useCount', { count: proposedWhat })}
-                          </Button>
-                        )}
-                      </div>
-                    )}
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
                       <Hinted hint={t('nurseOrders.hereAmountHint')}>
                         <Field
                           label={t('nurseOrders.hereAmount', { unit })}
                           inputMode="numeric"
                           value={f.quantity}
-                          onChange={(e) =>
-                            set({ quantity: amount(e.target.value), quantityTouched: true })
-                          }
+                          onChange={(e) => set({ quantity: amount(e.target.value) })}
                         />
                       </Hinted>
                       {/* 0198: a part of a piece, when the medicine may be given in parts */}
@@ -875,15 +742,13 @@ export function NurseOrdersStep({
                               label={t('nurseOrders.andPartMl')}
                               inputMode="decimal"
                               value={f.part}
-                              onChange={(e) =>
-                                set({ part: amount(e.target.value), partTouched: true })
-                              }
+                              onChange={(e) => set({ part: amount(e.target.value) })}
                             />
                           ) : (
                             <Select
                               label={t('nurseOrders.andPart')}
                               value={f.part}
-                              onChange={(e) => set({ part: e.target.value, partTouched: true })}
+                              onChange={(e) => set({ part: e.target.value })}
                             >
                               <option value="">{t('nurseOrders.partNone')}</option>
                               {(mode === 'quarter' ? [0.25, 0.5, 0.75] : [0.5]).map((x) => (
@@ -978,13 +843,15 @@ export function NurseOrdersStep({
                       title={t('nurseOrders.howAtHome')}
                       hint={t('nurseOrders.howAtHomeHint')}
                     />
-                    {/* 0198: the dose each time as a number and a unit: the count is worked out */}
-                    <DoseInput
-                      label={t('nurseOrders.homeDose')}
-                      value={f.homeDose}
-                      onChange={(v) => setHome({ homeDose: v })}
-                      units={units}
-                    />
+                    {/* the dose each time: typed in the medicine's pieces, the count is worked out */}
+                    <Hinted hint={t('nurseOrders.homeDoseHint', { unit })}>
+                      <DoseInput
+                        label={t('nurseOrders.homeDose')}
+                        value={f.homeDose}
+                        onChange={(v) => setHome({ homeDose: v })}
+                        units={units}
+                      />
+                    </Hinted>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,2fr)]">
                       <Select
                         label={t('nurseOrders.homeOften')}
