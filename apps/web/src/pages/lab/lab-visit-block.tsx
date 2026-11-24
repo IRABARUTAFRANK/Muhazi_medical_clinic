@@ -1,7 +1,8 @@
-import { useState, type CSSProperties } from 'react'
+import { useId, useState, type CSSProperties } from 'react'
 import {
   ArrowUpRight,
   BellRing,
+  ChevronDown,
   FlaskConical,
   Printer,
   Search,
@@ -32,6 +33,9 @@ const SAME_MOMENT_MS = 2 * 60_000
  * they stand; what concerns the patient once is there, once (Call, Work on, the sample taken for
  * all the tests, every result on one report). Under it each test with its own state and steps.
  * A visit with a single test stays the plain row it always was.
+ *
+ * `folded` (the laboratory worklist): every patient starts closed, one line with the ticket, the
+ * name and how many tests; a press opens the block as above (a single test too), another closes it.
  */
 export function LabVisitBlock({
   block,
@@ -40,6 +44,7 @@ export function LabVisitBlock({
   desk = false,
   onSaved,
   also,
+  folded = false,
 }: {
   block: VisitBlock<LabOrder>
   i?: number
@@ -49,6 +54,8 @@ export function LabVisitBlock({
   onSaved?: (where: 'open' | 'done') => void
   /** How many other tests of the same visit are in the other list (done, or still to do). */
   also?: { done?: number; open?: number }
+  /** Start closed: one line with the patient and how many tests, opened with a press. */
+  folded?: boolean
 }) {
   const { t } = useTranslation()
   const actions = useLabActions()
@@ -59,6 +66,8 @@ export function LabVisitBlock({
   const openReport = useLabReport(desk)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [open, setOpen] = useState(!folded)
+  const bodyId = useId()
   const { rows } = block
   const first = rows[0]
   if (!first) return null
@@ -71,8 +80,9 @@ export function LabVisitBlock({
       .filter(Boolean)
       .join(' · ') || null
 
-  // a single test: the row as it always was (nothing to put together)
-  if (rows.length === 1)
+  // a single test: the row as it always was (nothing to put together), except where every patient
+  // starts closed
+  if (rows.length === 1 && !folded)
     return (
       <LabOrderRow order={first} i={i} now={now} desk={desk} onSaved={onSaved} note={alsoNote} />
     )
@@ -155,6 +165,42 @@ export function LabVisitBlock({
     }
   }
 
+  // the ticket, the patient, who asked and since when, how many tests and where they stand
+  const heading = (
+    <>
+      <Pill tint={urgent ? 'coral' : 'violet'} icon={urgent ? Siren : FlaskConical}>
+        {first.ticket ?? '—'}
+      </Pill>
+      <span className="min-w-[min(200px,100%)] flex-1">
+        <span className="block text-[15px] font-semibold">{first.patient}</span>
+        <span className="text-ink-3 block text-[13px]">
+          {[
+            [ageOf(first.birthDate), sexLetterOf(first)].filter(Boolean).join(' '),
+            first.fileNumber,
+            oneRequester ? t('lab.block.orderedBy', { name: requesters[0] }) : null,
+            oneMoment && oldest != null
+              ? t('lab.waitingFor', {
+                  time: formatDuration(minutesSince(new Date(oldest).toISOString(), now), t),
+                })
+              : null,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </span>
+        <span className="text-ink-2 block text-[13px] font-medium">
+          {[
+            t(desk ? 'lab.block.requests' : 'lab.block.tests', { count: rows.length }),
+            // "Waiting for sample" is the laboratory's word: not said of a dressing or an injection
+            ...(desk ? [] : states.map((s) => `${t(`lab.status.${s.state}`)}: ${s.count}`)),
+            alsoNote,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </span>
+      </span>
+    </>
+  )
+
   return (
     <section
       aria-label={t('lab.block.aria', { patient: first.patient })}
@@ -166,91 +212,90 @@ export function LabVisitBlock({
     >
       <header
         className={cn(
-          'flex flex-wrap items-center gap-x-3 gap-y-2 rounded-t-[7px] border-b px-3 py-2.5',
-          urgent ? 'border-red/30 bg-red-bg/60' : 'border-border bg-hover',
+          'flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5',
+          open ? 'rounded-t-[7px] border-b' : 'rounded-[7px]',
+          urgent
+            ? 'border-red/30 bg-red-bg/60'
+            : open
+              ? 'border-border bg-hover'
+              : 'border-border bg-card hover:bg-hover',
         )}
       >
-        <Pill tint={urgent ? 'coral' : 'violet'} icon={urgent ? Siren : FlaskConical}>
-          {first.ticket ?? '—'}
-        </Pill>
-        <span className="min-w-[min(200px,100%)] flex-1">
-          <span className="block text-[15px] font-semibold">{first.patient}</span>
-          <span className="text-ink-3 block text-[13px]">
-            {[
-              [ageOf(first.birthDate), sexLetterOf(first)].filter(Boolean).join(' '),
-              first.fileNumber,
-              oneRequester ? t('lab.block.orderedBy', { name: requesters[0] }) : null,
-              oneMoment && oldest != null
-                ? t('lab.waitingFor', {
-                    time: formatDuration(minutesSince(new Date(oldest).toISOString(), now), t),
-                  })
-                : null,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </span>
-          <span className="text-ink-2 block text-[13px] font-medium">
-            {[
-              t(desk ? 'lab.block.requests' : 'lab.block.tests', { count: rows.length }),
-              // "Waiting for sample" is the laboratory's word: not said of a dressing or an injection
-              ...(desk ? [] : states.map((s) => `${t(`lab.status.${s.state}`)}: ${s.count}`)),
-              alsoNote,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </span>
-        </span>
-        <span className="flex flex-wrap gap-1">
-          {toSample.length > 1 && (
-            <Button
-              size="sm"
-              variant="success"
-              loading={busy}
-              onClick={() => void sampleAll()}
-              title={t('lab.block.sampleAllHint')}
-            >
-              <TestTube size={14} aria-hidden="true" />
-              {t('lab.block.sampleAll', { count: toSample.length })}
-            </Button>
-          )}
-          {toCall && (
-            <Button
-              size="sm"
-              variant="tint-amber"
-              loading={call.isPending}
-              onClick={() => void callPatient(toCall)}
-              title={t('lab.callHint')}
-            >
-              <BellRing size={14} aria-hidden="true" />
-              {t('common.call')}
-            </Button>
-          )}
-          {reports.map(([signer, list]) => (
-            <Button
-              key={signer}
-              size="sm"
-              variant="tint-grey"
-              onClick={() => {
-                setError(null)
-                if (!openReport(list)) setError(t('report.popupBlocked'))
-              }}
-              title={t('lab.block.printAllHint')}
-            >
-              <Printer size={14} aria-hidden="true" />
-              {signed.size > 1
-                ? t('lab.block.printAllBy', { name: signer, count: list.length })
-                : t('lab.block.printAll', { count: list.length })}
-            </Button>
-          ))}
-          <StaffLink
-            to="/app/visit"
-            search={{ encounter: first.encounterId }}
-            className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
+        {folded ? (
+          // the whole line opens and closes the patient's tests
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls={bodyId}
+            onClick={() => setOpen((v) => !v)}
+            className="focus-visible:ring-primary/40 -m-1 flex min-w-[min(240px,100%)] flex-1 cursor-pointer flex-wrap items-center gap-x-3 gap-y-2 rounded-md p-1 text-left focus-visible:ring-2 focus-visible:outline-none"
           >
-            <ArrowUpRight size={14} aria-hidden="true" />
-            {t('visits.openVisit')}
-          </StaffLink>
-        </span>
+            {heading}
+            <span className="text-primary ml-auto inline-flex flex-none items-center gap-1 text-[13px] font-semibold">
+              {t(open ? 'lab.block.hide' : 'lab.block.show')}
+              <ChevronDown
+                size={16}
+                aria-hidden="true"
+                className={cn('transition-transform', open && 'rotate-180')}
+              />
+            </span>
+          </button>
+        ) : (
+          heading
+        )}
+        {open && (
+          <span className="flex flex-wrap gap-1">
+            {toSample.length > 1 && (
+              <Button
+                size="sm"
+                variant="success"
+                loading={busy}
+                onClick={() => void sampleAll()}
+                title={t('lab.block.sampleAllHint')}
+              >
+                <TestTube size={14} aria-hidden="true" />
+                {t('lab.block.sampleAll', { count: toSample.length })}
+              </Button>
+            )}
+            {toCall && (
+              <Button
+                size="sm"
+                variant="tint-amber"
+                loading={call.isPending}
+                onClick={() => void callPatient(toCall)}
+                title={t('lab.callHint')}
+              >
+                <BellRing size={14} aria-hidden="true" />
+                {t('common.call')}
+              </Button>
+            )}
+            {reports.map(([signer, list]) => (
+              <Button
+                key={signer}
+                size="sm"
+                variant="tint-grey"
+                onClick={() => {
+                  setError(null)
+                  if (!openReport(list)) setError(t('report.popupBlocked'))
+                }}
+                title={t('lab.block.printAllHint')}
+              >
+                <Printer size={14} aria-hidden="true" />
+                {signed.size > 1
+                  ? t('lab.block.printAllBy', { name: signer, count: list.length })
+                  : t('lab.block.printAll', { count: list.length })}
+              </Button>
+            ))}
+            <StaffLink
+              to="/app/visit"
+              search={{ encounter: first.encounterId }}
+              className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
+            >
+              <ArrowUpRight size={14} aria-hidden="true" />
+              {t('visits.openVisit')}
+            </StaffLink>
+          </span>
+        )}
         {hits && (
           <span className="text-primary flex basis-full items-start gap-1.5 text-[13px] font-medium">
             <Search size={14} aria-hidden="true" className="mt-0.5 flex-none" />
@@ -266,20 +311,22 @@ export function LabVisitBlock({
           </p>
         )}
       </header>
-      <div className="flex flex-col">
-        {rows.map((o, n) => (
-          <LabOrderRow
-            key={o.id}
-            order={o}
-            i={i + n}
-            now={now}
-            desk={desk}
-            onSaved={onSaved}
-            grouped={{ orderedBy: !oneRequester, waiting: !oneMoment }}
-            hit={hits ? hits.has(o.id) : null}
-          />
-        ))}
-      </div>
+      {open && (
+        <div id={bodyId} className="flex flex-col">
+          {rows.map((o, n) => (
+            <LabOrderRow
+              key={o.id}
+              order={o}
+              i={i + n}
+              now={now}
+              desk={desk}
+              onSaved={onSaved}
+              grouped={{ orderedBy: !oneRequester, waiting: !oneMoment }}
+              hit={hits ? hits.has(o.id) : null}
+            />
+          ))}
+        </div>
+      )}
     </section>
   )
 }

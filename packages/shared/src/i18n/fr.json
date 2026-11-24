@@ -4395,7 +4395,9 @@
       "alsoOpen_one": "{{count}} autre examen de cette visite reste à faire",
       "alsoOpen_other": "{{count}} autres examens de cette visite restent à faire",
       "notMarked": "Non marqués comme prélevés : {{list}}",
-      "aria": "Les examens de {{patient}}"
+      "aria": "Les examens de {{patient}}",
+      "show": "Voir les examens",
+      "hide": "Masquer les examens"
     }
   },
   "finance": {

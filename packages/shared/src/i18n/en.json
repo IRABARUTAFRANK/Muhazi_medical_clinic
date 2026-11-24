@@ -4395,7 +4395,9 @@
       "alsoOpen_one": "{{count}} other test of this visit is still to do",
       "alsoOpen_other": "{{count}} other tests of this visit are still to do",
       "notMarked": "Not marked as taken: {{list}}",
-      "aria": "The tests of {{patient}}"
+      "aria": "The tests of {{patient}}",
+      "show": "Show the tests",
+      "hide": "Hide the tests"
     }
   },
   "finance": {

@@ -41,7 +41,8 @@ const sortOrders = (rows: LabOrder[], sort: SortKey) =>
  * The full laboratory worklist: every open test (or the results given in a period, today by
  * default), searchable, by status and in the order chosen. The tests of one patient's visit stand
  * together as one block ("the file of that patient", lab-visit-block.tsx), 15 patients at a time;
- * each test is taken to its next step in its block.
+ * each patient starts closed (the name and how many tests) and opens with a press; each test is
+ * taken to its next step in its block.
  */
 export function LabPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
@@ -287,6 +288,7 @@ function LabWorklist({ user }: { user: StaffUser }) {
                   now={now}
                   also={tab === 'open' ? { done: inOther(b.key) } : { open: inOther(b.key) }}
                   onSaved={setSaved}
+                  folded
                 />
               ))}
             </div>
