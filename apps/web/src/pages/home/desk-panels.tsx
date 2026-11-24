@@ -22,6 +22,7 @@ import { usePeriod } from '@/lib/period'
 import { type Tint } from '@/components/dash/kit-style'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { OpenFileLink } from '@/components/clinical/file-panel'
+import { TaskRecordPart } from '@/components/clinical/task-record'
 import { Reveal } from '@/components/ui/reveal'
 import { Pager, ShownList } from '@/components/ui/list-tools'
 import { usePaged } from '@/lib/paging'
@@ -490,6 +491,8 @@ export function TasksPanel({
                       </Button>
                     </>
                   )}
+                  {/* 0200: what she gave or did for it: a medicine of the stock or an act */}
+                  <TaskRecordPart task={x} canRecord={canAct} />
                 </div>
               ))}
             </div>

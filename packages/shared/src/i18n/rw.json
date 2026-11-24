@@ -3807,7 +3807,11 @@
       "moved": "{{name}} yimuwe kuri {{from}} ajyanwa kuri {{bed}}",
       "ended": "{{name}} yasezerewe kuri {{bed}}: igitanda kigomba gusukurwa"
     },
-    "nurseOrderLate": "Byakerewe: {{title}} cya {{name}} cyagombaga gutangwa saa {{time}}"
+    "nurseOrderLate": "Byakerewe: {{title}} cya {{name}} cyagombaga gutangwa saa {{time}}",
+    "taskRecorded": "{{by}} yanditse {{what}}",
+    "taskRecordedDone": "{{by}} yanditse {{what}} kandi yakoze igikorwa",
+    "taskRecordedFor": "ku gikorwa wasabye “{{title}}”",
+    "taskRecordedEvenSo": "byari byaramaze gutegekwa cyangwa gutangwa"
   },
   "identity": {
     "aria": "Winjiye: {{name}}"
@@ -8739,7 +8743,11 @@
     "f870e47f": "Uyu murwayi aracyari ku gitanda: banza umusezerere (igitanda kibe ubusa, nta yindi minsi yiyongera).",
     "6186abac": "Ntibyemewe: igitanda gitangwa na muganga uvura umurwayi, umuforomo ukora mu buforomo cyangwa umuyobozi.",
     "f114260a": "Umurwayi asanzwe ari kuri iki gitanda.",
-    "ed42d244": "Uyu murwayi ntari ku gitanda."
+    "ed42d244": "Uyu murwayi ntari ku gitanda.",
+    "81bdaba7": "Muganga yamaze gutegeka ibi kuri uyu murwayi kandi ntibirakorwa: andika ko iryo tegeko ryatanzwe, cyangwa uvuge impamvu ubyandika uko byagenda kose.",
+    "d6cb69e2": "Ibi byamaze guhabwa uyu murwayi mu masaha 12 ashize: vuga impamvu wongera kubyandika.",
+    "1fa403d9": "Ntibyemewe: iki gikorwa ni icy’undi muntu.",
+    "2a0e6b61": "Vuga impamvu ubyandika uko byagenda kose."
   },
   "panel": {
     "close": "Funga",
@@ -12205,5 +12213,55 @@
       "drop": "ibitonyanga",
       "puff": "inshuro zo guhumeka"
     }
+  },
+  "taskRecord": {
+    "open": "Andika ibyo natanze cyangwa nakoze",
+    "title": "Ibyo watanze cyangwa wakoze kuri iki gikorwa",
+    "hint": "Umuti uri mu bubiko bw’ivuriro cyangwa igikorwa cy’ubuvuzi, watanze cyangwa wakoze ubu: umuti uva mu bubiko kandi byombi bijya kuri fagitire, nk’itegeko rya muganga ryanditswe ko ryatanzwe. Muganga arabimenyeshwa.",
+    "kind": "Icyo ari cyo",
+    "kindDrug": "Umuti",
+    "kindAct": "Igikorwa cy’ubuvuzi",
+    "medicine": "Umuti watanzwe",
+    "medicineHint": "Ibiri mu bubiko bw’ivuriro gusa.",
+    "medicinePick": "Hitamo umuti",
+    "howMany": "Umubare watanzwe ({{unit}})",
+    "dose": "Igipimo (mu magambo)",
+    "dosePh": "1 g",
+    "act": "Igikorwa cyakozwe",
+    "actPick": "Hitamo igikorwa",
+    "howManyAct": "Umubare kuri fagitire",
+    "note": "Icyitonderwa",
+    "notePh": "Watanzwe saa 14:10, nta kibazo",
+    "dupOrdered": "{{by}} yamaze gutegeka “{{what}}” kuri uyu murwayi saa {{time}}, kandi ntikirakorwa. Andika ko iryo tegeko ryatanzwe aho kuryandika bundi bushya, kugira ngo ryandikwe rimwe gusa.",
+    "dupGiven": "“{{what}}” yamaze guhabwa uyu murwayi saa {{time}} na {{by}}.",
+    "giveThat": "Andika ko iryo tegeko ryatanzwe",
+    "giveThatBody": "Itegeko rya muganga ryandikwa ko ryatanzwe nawe ubu: ibyo rivuga biva mu bubiko kandi bijya kuri fagitire. Nta kintu cyandikwa kabiri.",
+    "gaveThat": "“{{what}}”: itegeko rya muganga ryanditswe ko ryatanzwe.",
+    "notMine": "Iryo tegeko ni irya {{name}}: musabe aryandike ko ryatanzwe.",
+    "evenSo": "Ni ikindi gipimo: kandika uko byagenda kose",
+    "why": "Kubera iki?",
+    "whyPh": "Umurwayi yaruse igipimo cya mbere",
+    "evenSoWas": "cyanditswe uko byagenda kose: {{why}}",
+    "short": "Ububiko bw’ivuriro bufite {{count}} {{unit}} gusa kandi wanditse {{asked}}: andika ibyatanzwe koko.",
+    "sumDrug": "{{count}} {{unit}} biva mu bubiko bw’ivuriro bijya kuri fagitire: {{amount}} ku giciro cy’amafaranga.",
+    "sumDrugNoPrice": "{{count}} {{unit}} biva mu bubiko bw’ivuriro. Nta giciro cyashyizweho: nta kijya kuri fagitire.",
+    "sumAct": "Kuri fagitire: {{amount}} ku giciro cy’amafaranga.",
+    "taskDone": "Igikorwa “{{title}}” cyarangiye",
+    "send": "Kandika",
+    "cancel": "Reka",
+    "confirmTitle": "Kwandika “{{what}}” kuri {{name}}?",
+    "confirmDrug": "Byatanzwe nawe, ubu: biva mu bubiko bw’ivuriro bijya kuri fagitire. Ushobora kubisubiza inyuma uyu munsi.",
+    "confirmAct": "Byakozwe nawe, ubu: bijya kuri fagitire. Ushobora kubisubiza inyuma uyu munsi.",
+    "confirmYes": "Yego, kandika",
+    "saved": "Byanditswe: {{what}}. Kuri fagitire: {{amount}}.",
+    "savedNotBilled": "Byanditswe: {{what}}. Nta kijya kuri fagitire (ntikiri ku rutonde rw’ibiciro, nta giciro, cyangwa fagitire yarafunzwe).",
+    "savedDone": "Igikorwa cyarangiye.",
+    "recordedLine": "Byanditswe: {{what}} saa {{time}}, na {{name}}",
+    "onOrder": "Byanditswe n’umuforomo ku gikorwa “{{title}}”",
+    "errMedicine": "Hitamo umuti watanzwe.",
+    "errAct": "Hitamo igikorwa cyakozwe, cyangwa ucyandike.",
+    "errQuantity": "Vuga umubare: umubare wuzuye (ibinini, ampule, amacupa).",
+    "errDuplicate": "Byamaze gutegekwa cyangwa gutangwa: andika ko iryo tegeko ryatanzwe, cyangwa uhitemo “kandika uko byagenda kose”.",
+    "errWhy": "Vuga impamvu ucyandika uko byagenda kose."
   }
 }

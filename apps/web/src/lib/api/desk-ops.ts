@@ -179,6 +179,32 @@ export interface OpenTask {
   forName?: string | null
   /** It was sent to me by name (0131). */
   forMe?: boolean
+  /**
+   * 0200: what the nurse recorded for it (a medicine given, an act done). Absent before the
+   * database has 0200: then nothing can be recorded for a task.
+   */
+  recorded?: TaskRecorded[]
+}
+
+/** One medicine given or act done, recorded by the nurse for a task (0200). */
+export interface TaskRecorded {
+  id: string
+  kind: 'act' | 'drug'
+  text: string
+  quantity: number
+  unit: string | null
+  at: string
+  by: string | null
+  status: string
+}
+
+/** Sample mode: what a nurse records is listed under its task (and the task done, if she says so). */
+export function sampleRecordForTask(taskId: string, item: TaskRecorded, done: boolean) {
+  const i = sampleTasks.findIndex((x) => x.id === taskId)
+  if (i < 0) return
+  if (done) sampleTasks.splice(i, 1)
+  else
+    sampleTasks[i] = { ...sampleTasks[i]!, recorded: [...(sampleTasks[i]!.recorded ?? []), item] }
 }
 
 // the local calendar day (toISOString is UTC: between midnight and 02:00 it gave yesterday)
@@ -280,6 +306,7 @@ const sampleTasks: OpenTask[] = [
     encounterId: 'e-1',
     patient: 'Uwase Claudine',
     by: 'Dr. Mukamana Béatrice',
+    recorded: [],
   },
   {
     id: 't-2',
@@ -290,6 +317,7 @@ const sampleTasks: OpenTask[] = [
     encounterId: 'e-3',
     patient: 'Mugisha Kevin',
     by: 'Dr. Mukamana Béatrice',
+    recorded: [],
   },
 ]
 

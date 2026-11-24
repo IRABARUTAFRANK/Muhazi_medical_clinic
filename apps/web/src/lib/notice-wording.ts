@@ -188,6 +188,30 @@ export function useWording() {
           }),
           body: [p.name, p.reason].filter(Boolean).join(' · ') || null,
         }
+      // 0200: the nurse recorded what she gave or did for my task (and maybe ticked it off)
+      case 'task_recorded': {
+        const qty = Number(p.quantity ?? 1)
+        const what =
+          p.kind === 'drug'
+            ? `${p.what ?? ''} × ${qty} ${p.unit ?? ''}`.trim()
+            : qty > 1
+              ? `${p.what ?? ''} × ${qty}`
+              : String(p.what ?? '')
+        return {
+          title: t(String(p.done) === 'true' ? 'notify.taskRecordedDone' : 'notify.taskRecorded', {
+            by: p.by ?? '',
+            what,
+          }),
+          body:
+            [
+              p.name,
+              t('notify.taskRecordedFor', { title: p.title ?? '' }),
+              String(p.evenSo) === 'true' ? t('notify.taskRecordedEvenSo') : null,
+            ]
+              .filter(Boolean)
+              .join(' · ') || null,
+        }
+      }
       // 0141: an ultrasound a colleague asks me to do
       // 0145: treatments made from a list with no cash price yet
       // 0179: a salary due in a few days, or overdue

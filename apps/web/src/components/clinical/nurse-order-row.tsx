@@ -454,6 +454,13 @@ export function NurseOrderRow({
             </span>
           )}
           {o.notes && <span className="text-ink-2 block text-[13px]">{o.notes}</span>}
+          {/* 0200: written by the nurse after doing it, for a task of the doctor */}
+          {o.taskId && (
+            <span className="text-ink-2 block text-[13px]">
+              {t('taskRecord.onOrder', { title: o.taskTitle ?? '' })}
+              {o.recordedWhy ? ` · ${t('taskRecord.evenSoWas', { why: o.recordedWhy })}` : ''}
+            </span>
+          )}
           <span className="text-ink-3 mt-0.5 flex flex-wrap items-center gap-x-2 text-xs">
             {o.assignedTo ? (
               <UserRound size={12} aria-hidden="true" />

@@ -3798,7 +3798,11 @@
       "moved": "{{name}} moved from {{from}} to {{bed}}",
       "ended": "The stay of {{name}} in {{bed}} has ended: the bed is to be cleaned"
     },
-    "nurseOrderLate": "Late: {{title}} for {{name}} was due at {{time}}"
+    "nurseOrderLate": "Late: {{title}} for {{name}} was due at {{time}}",
+    "taskRecorded": "{{by}} recorded {{what}}",
+    "taskRecordedDone": "{{by}} recorded {{what}} and did the task",
+    "taskRecordedFor": "for your task “{{title}}”",
+    "taskRecordedEvenSo": "it had already been ordered or given"
   },
   "identity": {
     "aria": "Signed in: {{name}}"
@@ -8730,7 +8734,11 @@
     "f870e47f": "This patient is still in a bed: end the stay first (the bed is freed and no more days are added).",
     "6186abac": "Not allowed: a bed is given by the treating doctor, a nurse of the nursing desk or the manager.",
     "f114260a": "The patient is already in this bed.",
-    "ed42d244": "This patient is not in a bed."
+    "ed42d244": "This patient is not in a bed.",
+    "81bdaba7": "The doctor already ordered this for this patient and it is still to do: mark that order given, or say why you record it even so.",
+    "d6cb69e2": "This was already given to this patient in the last 12 hours: say why you record it again.",
+    "1fa403d9": "Not allowed: this task is for someone else.",
+    "2a0e6b61": "Say why you record it even so."
   },
   "panel": {
     "close": "Close",
@@ -12196,5 +12204,55 @@
       "drop": "drops",
       "puff": "puffs"
     }
+  },
+  "taskRecord": {
+    "open": "Record what I gave or did",
+    "title": "What you gave or did for this task",
+    "hint": "A medicine from the clinic’s stock or a medical act, given or done by you now: the medicine leaves the stock and both go on the bill, as an order of the doctor marked given. The doctor is told.",
+    "kind": "What it is",
+    "kindDrug": "Medicine",
+    "kindAct": "Medical act",
+    "medicine": "Medicine given",
+    "medicineHint": "Only what the clinic’s stock holds.",
+    "medicinePick": "Choose the medicine",
+    "howMany": "How many given ({{unit}})",
+    "dose": "Dose (words)",
+    "dosePh": "1 g",
+    "act": "Act done",
+    "actPick": "Choose the act",
+    "howManyAct": "How many on the bill",
+    "note": "Note",
+    "notePh": "Given at 14:10, no reaction",
+    "dupOrdered": "{{by}} already ordered “{{what}}” for this patient at {{time}}, and it is still to do. Mark that order given instead, so it is recorded once.",
+    "dupGiven": "“{{what}}” was already given to this patient at {{time}} by {{by}}.",
+    "giveThat": "Mark that order given",
+    "giveThatBody": "The doctor’s order is marked given by you now: what it says leaves the stock and goes on the bill. Nothing is recorded twice.",
+    "gaveThat": "“{{what}}”: the doctor’s order is marked given.",
+    "notMine": "That order is for {{name}}: ask them to mark it given.",
+    "evenSo": "It is another dose: record it even so",
+    "why": "Why?",
+    "whyPh": "The patient vomited the first dose",
+    "evenSoWas": "recorded even so: {{why}}",
+    "short": "The clinic’s stock holds only {{count}} {{unit}} and you wrote {{asked}}: write what was really given.",
+    "sumDrug": "{{count}} {{unit}} leave the clinic’s stock and go on the bill: {{amount}} at the cash price.",
+    "sumDrugNoPrice": "{{count}} {{unit}} leave the clinic’s stock. No price is set for it: nothing goes on the bill.",
+    "sumAct": "On the bill: {{amount}} at the cash price.",
+    "taskDone": "The task “{{title}}” is done",
+    "send": "Record it",
+    "cancel": "Cancel",
+    "confirmTitle": "Record “{{what}}” for {{name}}?",
+    "confirmDrug": "Given by you, now: it leaves the clinic’s stock and goes on the bill. You can undo it today.",
+    "confirmAct": "Done by you, now: it goes on the bill. You can undo it today.",
+    "confirmYes": "Yes, record it",
+    "saved": "Recorded: {{what}}. On the bill: {{amount}}.",
+    "savedNotBilled": "Recorded: {{what}}. Nothing on the bill (not in the price list, no price, or the bill is closed).",
+    "savedDone": "The task is done.",
+    "recordedLine": "Recorded: {{what}} at {{time}}, by {{name}}",
+    "onOrder": "Recorded by the nurse for the task “{{title}}”",
+    "errMedicine": "Choose the medicine that was given.",
+    "errAct": "Choose the act that was done, or write it.",
+    "errQuantity": "Say how many: a whole number of pieces (tablets, ampoules, bottles).",
+    "errDuplicate": "It is already ordered or given: mark that order given, or tick “record it even so”.",
+    "errWhy": "Say why you record it even so."
   }
 }

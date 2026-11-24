@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardBody, CardHeader, Row } from '@/components/ui/card'
 import { Field } from '@/components/ui/field'
 import { NurseRecipient } from '@/components/clinical/nurse-recipient'
+import { TaskRecordPart } from '@/components/clinical/task-record'
 import { useDeskOps, useVisitTasks } from '@/lib/api/desk-ops'
 import { useOrderNurses } from '@/lib/api/nurse-orders'
 import { useConfirm } from '@/lib/confirm'
@@ -252,6 +253,8 @@ export function NurseTaskCard({
               )}
             </>
           )}
+          {/* 0200: what the nurse gave or did for it — recorded by her, seen by the doctor */}
+          <TaskRecordPart task={x} canRecord={nurse} />
         </Row>
       ))}
     </Card>

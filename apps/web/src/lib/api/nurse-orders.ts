@@ -167,6 +167,11 @@ export interface NurseOrder {
   /** Repeated every … minutes; null: once. */
   everyMinutes?: number | null
   untilStopped?: boolean
+  /** 0200: recorded by the nurse after doing it, for this task of the doctor (null: an order). */
+  taskId?: string | null
+  taskTitle?: string | null
+  /** 0200: why she recorded it although it was ordered or just given. */
+  recordedWhy?: string | null
   /** The earliest planned time not recorded (null: over, or all recorded). */
   nextDueAt?: string | null
   late?: boolean

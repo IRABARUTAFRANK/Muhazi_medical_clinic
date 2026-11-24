@@ -3798,7 +3798,11 @@
       "moved": "{{name}} change du lit {{from}} au lit {{bed}}",
       "ended": "Le séjour de {{name}} dans le lit {{bed}} est terminé : le lit est à nettoyer"
     },
-    "nurseOrderLate": "En retard : {{title}} pour {{name}} était prévu à {{time}}"
+    "nurseOrderLate": "En retard : {{title}} pour {{name}} était prévu à {{time}}",
+    "taskRecorded": "{{by}} a enregistré {{what}}",
+    "taskRecordedDone": "{{by}} a enregistré {{what}} et a fait la tâche",
+    "taskRecordedFor": "pour votre tâche « {{title}} »",
+    "taskRecordedEvenSo": "c’était déjà prescrit ou donné"
   },
   "identity": {
     "aria": "Session ouverte : {{name}}"
@@ -8730,7 +8734,11 @@
     "f870e47f": "Ce patient est encore dans un lit : terminez d’abord le séjour (le lit est libéré et aucun jour n’est plus ajouté).",
     "6186abac": "Non autorisé : un lit est donné par le médecin traitant, une infirmière des soins infirmiers ou le gestionnaire.",
     "f114260a": "Le patient est déjà dans ce lit.",
-    "ed42d244": "Ce patient n’est pas dans un lit."
+    "ed42d244": "Ce patient n’est pas dans un lit.",
+    "81bdaba7": "Le médecin a déjà prescrit cela pour ce patient et c’est encore à faire : marquez cet ordre comme donné, ou dites pourquoi vous l’enregistrez quand même.",
+    "d6cb69e2": "Cela a déjà été donné à ce patient dans les 12 dernières heures : dites pourquoi vous l’enregistrez encore.",
+    "1fa403d9": "Non autorisé : cette tâche est pour quelqu’un d’autre.",
+    "2a0e6b61": "Dites pourquoi vous l’enregistrez quand même."
   },
   "panel": {
     "close": "Fermer",
@@ -12196,5 +12204,55 @@
       "drop": "gouttes",
       "puff": "bouffées"
     }
+  },
+  "taskRecord": {
+    "open": "Enregistrer ce que j’ai donné ou fait",
+    "title": "Ce que vous avez donné ou fait pour cette tâche",
+    "hint": "Un médicament du stock de la clinique ou un acte médical, donné ou fait par vous maintenant : le médicament sort du stock et les deux vont sur la facture, comme un ordre du médecin marqué donné. Le médecin est prévenu.",
+    "kind": "Ce que c’est",
+    "kindDrug": "Médicament",
+    "kindAct": "Acte médical",
+    "medicine": "Médicament donné",
+    "medicineHint": "Seulement ce que le stock de la clinique contient.",
+    "medicinePick": "Choisir le médicament",
+    "howMany": "Combien donnés ({{unit}})",
+    "dose": "Dose (en mots)",
+    "dosePh": "1 g",
+    "act": "Acte fait",
+    "actPick": "Choisir l’acte",
+    "howManyAct": "Combien sur la facture",
+    "note": "Note",
+    "notePh": "Donné à 14 h 10, pas de réaction",
+    "dupOrdered": "{{by}} a déjà prescrit « {{what}} » pour ce patient à {{time}}, et c’est encore à faire. Marquez plutôt cet ordre comme donné, pour qu’il soit enregistré une seule fois.",
+    "dupGiven": "« {{what}} » a déjà été donné à ce patient à {{time}} par {{by}}.",
+    "giveThat": "Marquer cet ordre comme donné",
+    "giveThatBody": "L’ordre du médecin est marqué donné par vous maintenant : ce qu’il dit sort du stock et va sur la facture. Rien n’est enregistré deux fois.",
+    "gaveThat": "« {{what}} » : l’ordre du médecin est marqué donné.",
+    "notMine": "Cet ordre est pour {{name}} : demandez-lui de le marquer donné.",
+    "evenSo": "C’est une autre dose : l’enregistrer quand même",
+    "why": "Pourquoi ?",
+    "whyPh": "Le patient a vomi la première dose",
+    "evenSoWas": "enregistré quand même : {{why}}",
+    "short": "Le stock de la clinique n’a que {{count}} {{unit}} et vous avez écrit {{asked}} : écrivez ce qui a vraiment été donné.",
+    "sumDrug": "{{count}} {{unit}} sortent du stock de la clinique et vont sur la facture : {{amount}} au prix comptant.",
+    "sumDrugNoPrice": "{{count}} {{unit}} sortent du stock de la clinique. Aucun prix n’est fixé : rien ne va sur la facture.",
+    "sumAct": "Sur la facture : {{amount}} au prix comptant.",
+    "taskDone": "La tâche « {{title}} » est faite",
+    "send": "Enregistrer",
+    "cancel": "Annuler",
+    "confirmTitle": "Enregistrer « {{what}} » pour {{name}} ?",
+    "confirmDrug": "Donné par vous, maintenant : cela sort du stock de la clinique et va sur la facture. Vous pouvez l’annuler aujourd’hui.",
+    "confirmAct": "Fait par vous, maintenant : cela va sur la facture. Vous pouvez l’annuler aujourd’hui.",
+    "confirmYes": "Oui, enregistrer",
+    "saved": "Enregistré : {{what}}. Sur la facture : {{amount}}.",
+    "savedNotBilled": "Enregistré : {{what}}. Rien sur la facture (hors liste de prix, pas de prix, ou facture clôturée).",
+    "savedDone": "La tâche est faite.",
+    "recordedLine": "Enregistré : {{what}} à {{time}}, par {{name}}",
+    "onOrder": "Enregistré par l’infirmier pour la tâche « {{title}} »",
+    "errMedicine": "Choisissez le médicament qui a été donné.",
+    "errAct": "Choisissez l’acte qui a été fait, ou écrivez-le.",
+    "errQuantity": "Dites combien : un nombre entier d’unités (comprimés, ampoules, flacons).",
+    "errDuplicate": "C’est déjà prescrit ou donné : marquez cet ordre comme donné, ou cochez « l’enregistrer quand même ».",
+    "errWhy": "Dites pourquoi vous l’enregistrez quand même."
   }
 }

@@ -31191,6 +31191,306 @@ await step('0198: tidy — the visits of these checks leave no trace for the oth
   return 'done'
 })
 // @@t198-end
+// @@t200-begin
+// ---------------------------------------------------------------- 0200 the nurse records what she gave or did for a task
+const t200 = {}
+const type200 = {
+  p_task_id: 'uuid',
+  p_kind: 'text',
+  p_item_id: 'uuid',
+  p_service_id: 'uuid',
+  p_text: 'text',
+  p_quantity: 'numeric',
+  p_dose: 'text',
+  p_route: 'text',
+  p_note: 'text',
+  p_even_so: 'boolean',
+  p_why: 'text',
+  p_task_done: 'boolean',
+}
+/** record_for_task with named arguments, each with its type (PGlite cannot guess them). */
+const recSql200 = (args) => {
+  const keys = Object.keys(args)
+  return [
+    `select record_for_task(${keys.map((k, i) => `${k} => $${i + 1}::${type200[k]}`).join(', ')}) as j`,
+    keys.map((k) => args[k]),
+  ]
+}
+const rec200 = async (who, args) => {
+  const [sql, params] = recSql200(args)
+  return as193(who, sql, params)
+}
+const recHint200 = async (who, args) => {
+  const [sql, params] = recSql200(args)
+  return hintAs(who, sql, params)
+}
+const task200 = async (title, assignedTo = null) => {
+  await as(t127.doc)
+  const id = (
+    await one(`select create_task_for($1, $2, null, null, $3) as id`, [t200.v, title, assignedTo])
+  ).id
+  await asAdmin()
+  return id
+}
+await step('0200: the migration runs (twice); who may record', async () => {
+  await asAdmin()
+  const sql = await readFile(
+    path.join(migrationsDir, '20270219090000_nurse_records_for_task.sql'),
+    'utf8',
+  )
+  await db.exec(sql)
+  await db.exec(sql)
+  const sig =
+    'record_for_task(uuid, text, uuid, uuid, text, numeric, text, text, text, boolean, text, boolean)'
+  const fx = (who, f) => `has_function_privilege('${who}', '${f}', 'execute')`
+  const r = await one(
+    `select ${fx('authenticated', sig)} as rec, ${fx('anon', sig)} as rec_anon,
+            (select count(*)::int from information_schema.columns
+              where table_name = 'nurse_order' and column_name in ('task_id', 'recorded_why')) as cols`,
+  )
+  if (!r.rec || r.rec_anon || r.cols !== 2) throw new Error(json198(r))
+  return 'record_for_task for a signed-in person (not anon); the order has its task and the reason "even so"'
+})
+await step(
+  '0200 A: the nurse records 2 tablets for a task — they leave the stock and go on the bill; the doctor is told; the task lists what was recorded',
+  async () => {
+    t200.v = await t127.ov(t127.doc)
+    t200.task = await task200('Give Paracetamol 1 g now')
+    const s0 = await stock198(t198.para)
+    const j = await rec200(t127.nurseA, {
+      p_task_id: t200.task,
+      p_kind: 'drug',
+      p_item_id: t198.para,
+      p_quantity: 2,
+      p_dose: '1 g',
+      p_route: 'oral',
+    })
+    t200.o1 = j.id
+    const lines = await live198(j.id)
+    const row = await one(
+      `select status, task_id, created_by, assigned_to, dose, route from nurse_order where id = $1`,
+      [j.id],
+    )
+    const notice = await one(
+      `select count(*)::int as n, max(params->>'what') as what, max(params->>'done') as done from notification
+          where kind = 'task_recorded' and recipient_user = $1 and params->>'orderId' = $2`,
+      [t127.doc, j.id],
+    )
+    await as(t127.nurseB)
+    const tasks = (await one(`select open_tasks() as j`)).j
+    await asAdmin()
+    const t = tasks.find((x) => x.id === t200.task) ?? {}
+    const r = {
+      stock: s0 - (await stock198(t198.para)),
+      bill: lines.map((l) => [l.q, l.p]),
+      row: [
+        row.status,
+        row.task_id === t200.task,
+        row.created_by === t127.nurseA,
+        row.assigned_to === t127.nurseA,
+        row.dose,
+        row.route,
+      ],
+      json: [j.taskTitle, j.status, j.charged, Number(j.billed)],
+      notice: [notice.n, notice.what, notice.done],
+      listed: (t.recorded ?? []).map((x) => [x.text, Number(x.quantity), x.status]),
+      open: !!t.id,
+    }
+    if (
+      r.stock !== 2 ||
+      json198(r.bill) !== json198([[2, 50]]) ||
+      json198(r.row) !== json198(['done', true, true, true, '1 g', 'oral']) ||
+      json198(r.json) !== json198(['Give Paracetamol 1 g now', 'done', true, 100]) ||
+      json198(r.notice) !== json198([1, 'Paracetamol 198 500 mg', 'false']) ||
+      r.listed.length !== 1 ||
+      r.listed[0][1] !== 2 ||
+      !r.open
+    )
+      throw new Error(json198(r))
+    return `2 tablets out of the stock, one bill line 2 × 50; the order is done, hers, for the task ("${r.json[0]}"); the doctor gets one notice; the task stays open and lists what was recorded (seen by Nurse B too)`
+  },
+)
+await step(
+  '0200 B: the same thing twice — what the doctor ordered and is still to do, or what was just given, is refused with the way out; even so needs a reason; the task is done in the same press',
+  async () => {
+    // the doctor's own order of Metronidazole, still to do
+    const o = await plan198(t127.doc, {
+      p_encounter_id: t200.v,
+      p_kind: 'drug',
+      p_item_id: t198.metro,
+      p_quantity: 1,
+    })
+    const ordered = await recHint200(t127.nurseA, {
+      p_task_id: t200.task,
+      p_kind: 'drug',
+      p_item_id: t198.metro,
+      p_quantity: 1,
+    })
+    const given = await recHint200(t127.nurseA, {
+      p_task_id: t200.task,
+      p_kind: 'drug',
+      p_item_id: t198.para,
+      p_quantity: 1,
+    })
+    const noWhy = await recHint200(t127.nurseA, {
+      p_task_id: t200.task,
+      p_kind: 'drug',
+      p_item_id: t198.para,
+      p_quantity: 1,
+      p_even_so: true,
+    })
+    const s0 = await stock198(t198.para)
+    const j = await rec200(t127.nurseA, {
+      p_task_id: t200.task,
+      p_kind: 'drug',
+      p_item_id: t198.para,
+      p_quantity: 1,
+      p_even_so: true,
+      p_why: 'vomited the first dose',
+      p_task_done: true,
+    })
+    const task = await one(
+      `select done_at is not null as done, done_by from internal_task where id = $1`,
+      [t200.task],
+    )
+    await as(t127.nurseA)
+    const still = (await one(`select open_tasks() as j`)).j.some((x) => x.id === t200.task)
+    await asAdmin()
+    const doneNotice = await one(
+      `select max(params->>'done') as done, max(params->>'evenSo') as even from notification
+          where kind = 'task_recorded' and params->>'orderId' = $1`,
+      [j.id],
+    )
+    const after = await recHint200(t127.nurseA, {
+      p_task_id: t200.task,
+      p_kind: 'drug',
+      p_item_id: t198.para,
+      p_quantity: 1,
+      p_even_so: true,
+      p_why: 'again',
+    })
+    const r = {
+      ordered,
+      given,
+      noWhy,
+      docOrder: (await order198(o.id)).status,
+      stock: s0 - (await stock198(t198.para)),
+      why: j.recordedWhy,
+      task: [task.done, task.done_by === t127.nurseA, still],
+      notice: [doneNotice.done, doneNotice.even],
+      after,
+    }
+    if (
+      r.ordered !== '22023/already_ordered' ||
+      r.given !== '22023/already_given' ||
+      r.noWhy !== '22023/why_needed' ||
+      r.docOrder !== 'open' ||
+      r.stock !== 1 ||
+      r.why !== 'vomited the first dose' ||
+      json198(r.task) !== json198([true, true, false]) ||
+      json198(r.notice) !== json198(['true', 'true']) ||
+      r.after !== 'P0002/'
+    )
+      throw new Error(json198(r))
+    return 'the doctor’s Metronidazole still to do: 22023/already_ordered (his order untouched); Paracetamol given a minute ago: 22023/already_given; even so without a reason: 22023/why_needed; with "vomited the first dose": recorded (1 tablet out), the reason kept, the task done by her and gone from the list, one notice saying done and even so; the task done: P0002'
+  },
+)
+await step(
+  '0200 C: a medical act — of the price list billed, in words not billed; who may record (not the cashier, not on a closed visit); not enough stock: nothing recorded',
+  async () => {
+    const task = await task200('Injection and a dressing', t127.nurseB)
+    const inj = await rec200(t127.nurseB, {
+      p_task_id: task,
+      p_kind: 'act',
+      p_service_id: t193.inj,
+    })
+    const words = await rec200(t127.nurseB, {
+      p_task_id: task,
+      p_kind: 'act',
+      p_text: 'Wound cleaning 200',
+    })
+    const cashier = await recHint200(staff.cashier, {
+      p_task_id: task,
+      p_kind: 'act',
+      p_text: 'Wound cleaning 200 b',
+    })
+    const n0 = (await one(`select count(*)::int as n from nurse_order where task_id = $1`, [task]))
+      .n
+    const short = await recHint200(t127.nurseB, {
+      p_task_id: task,
+      p_kind: 'drug',
+      p_item_id: t198.zinc,
+      p_quantity: 1000,
+    })
+    const n1 = (await one(`select count(*)::int as n from nurse_order where task_id = $1`, [task]))
+      .n
+    const r = {
+      inj: [inj.status, inj.charged, Number(inj.billed)],
+      words: [words.status, words.charged, words.notBilled],
+      cashier,
+      short,
+      kept: n1 - n0,
+    }
+    if (
+      json198(r.inj) !== json198(['done', true, 1000]) ||
+      json198(r.words) !== json198(['done', false, 'not_in_price_list']) ||
+      r.cashier !== '42501/' ||
+      r.short !== 'MS003/room_short' ||
+      r.kept !== 0
+    )
+      throw new Error(json198(r))
+    t200.task2 = task
+    return 'Injection 193 done and billed 1,000; "Wound cleaning 200" in words done, not billed (not in the price list); the cashier 42501; 1,000 tablets of Zinc: MS003/room_short and nothing written'
+  },
+)
+await step(
+  '0200 D: Undo of a recorded medicine — the tablets go back, the line leaves the bill, the order is cancelled (never a new to-do) and leaves the task’s list',
+  async () => {
+    const s0 = await stock198(t198.para)
+    await as193(t127.nurseA, `select undo_nurse_order($1, $2) as j`, [
+      t200.o1,
+      'recorded twice by mistake',
+    ])
+    const row = await one(`select status, end_reason from nurse_order where id = $1`, [t200.o1])
+    await as(t127.nurseA)
+    const mine = (await one(`select nurse_orders_for_me() as j`)).j
+    await asAdmin()
+    const r = {
+      stock: (await stock198(t198.para)) - s0,
+      lines: (await live198(t200.o1)).length,
+      row: [row.status, row.end_reason],
+      todo: (mine ?? []).some((x) => x.id === t200.o1 && x.status === 'open'),
+    }
+    // the visit closes: recording for its open task is refused
+    await asAdmin()
+    await db.query(`update encounter set status = 'closed', closed_at = now() where id = $1`, [
+      t200.v,
+    ])
+    const closed = await recHint200(t127.nurseB, {
+      p_task_id: t200.task2,
+      p_kind: 'act',
+      p_service_id: t193.inj,
+    })
+    await db.query(`update encounter set status = 'open', closed_at = null where id = $1`, [t200.v])
+    r.closed = closed
+    if (
+      r.stock !== 2 ||
+      r.lines !== 0 ||
+      json198(r.row) !== json198(['cancelled', 'undone: recorded twice by mistake']) ||
+      r.todo ||
+      r.closed !== 'P0002/'
+    )
+      throw new Error(json198(r))
+    return '2 tablets back in the stock, no line left on the bill; the order cancelled "undone: recorded twice by mistake", not on her list to do; a closed visit: P0002'
+  },
+)
+await step('0200: tidy — the visit of these checks leaves no trace for the others', async () => {
+  await asAdmin()
+  await db.query(`update queue_entry set deleted_at = now() where encounter_id = $1`, [t200.v])
+  await db.query(`update encounter set deleted_at = now() where id = $1`, [t200.v])
+  return 'done'
+})
+// @@t200-end
 finish()
 
 function finish() {
