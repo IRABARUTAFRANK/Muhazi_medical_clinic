@@ -46,6 +46,16 @@ import {
   type PackDraft,
 } from './pack-draft'
 import { PackagingFields } from './packaging-fields'
+import { DoseFields } from './dose-fields'
+import {
+  doseChanged,
+  doseDraftOf,
+  doseInput,
+  doseProblem,
+  emptyDose,
+  type DoseDraft,
+  type DoseWords,
+} from './dose-draft'
 import {
   errText,
   itemName,
@@ -78,6 +88,8 @@ interface ALine {
   newKind: 'medicine' | 'supply'
   /** The package and how it is sold (0107): filled from the item or the list, changeable. */
   pack: PackDraft
+  /** 0198: what one piece holds (as saved for the item; empty for a new one), changeable. */
+  dose: DoseDraft
   batchNo: string
   expiry: string
   /** As typed: pieces, or whole packs (qtyIn 'packs'). */
@@ -96,6 +108,7 @@ const newLine = (pick = '', pack: PackDraft = emptyPack()): ALine => ({
   newForm: '',
   newKind: 'medicine',
   pack,
+  dose: emptyDose(),
   batchNo: '',
   expiry: '',
   quantity: '',
@@ -182,6 +195,10 @@ export function AddStockForm({
     const it = items.find((i) => i.id === preset?.item)
     return [it ? { ...newLine(it.id, packDraftOf(it)), packFrom: 'item' } : newLine()]
   })
+  // 0198: what one piece of each clinic medicine holds, as saved (the medicines list carries it);
+  // the database has 0198 when the list carries the columns
+  const doseOf = (itemId: string) => medicines.find((m) => m.id === itemId)?.dose
+  const doseReady = medicines.length === 0 || medicines.some((m) => m.dose !== undefined)
   const [msg, setMsg] = useState<Msg | null>(null)
   const [badLine, setBadLine] = useState<number | null>(null)
   const today = todayIso()
@@ -305,6 +322,8 @@ export function AddStockForm({
     set(key, {
       pick: value,
       pack,
+      // 0198: as saved for a clinic item; a new one starts empty (the name's reading is proposed)
+      dose: doseDraftOf(it ? doseOf(it.id) : null),
       packFrom,
       cost,
       costFrom,
@@ -353,6 +372,27 @@ export function AddStockForm({
   const totalUnits = filled.reduce((s, l) => s + quantityOf(l), 0)
   const totalCost = filled.reduce((s, l) => s + costOf(l), 0)
 
+  /** 0198: a medicine (not a product): what one piece holds is shown on its line. */
+  const isMedicine = (l: ALine) =>
+    !!l.pick && (l.pick === 'new' ? l.newKind === 'medicine' : itemOf(l)?.kind !== 'supply')
+  /** The words the strength is read from and the mode "by its form" worked out with. */
+  const doseWords = (l: ALine): DoseWords => {
+    const it = itemOf(l)
+    const pk = packInput(l.pack)
+    const med = it ? medicines.find((m) => m.id === it.id) : undefined
+    return {
+      name: it ? it.name : l.newName,
+      strength: it ? it.strength : l.newStrength,
+      form: it ? (med?.form ?? null) : l.newForm,
+      unit: pk.unit,
+      saleMode: pk.saleMode,
+      packSize: pk.packSize,
+    }
+  }
+  /** The line changes what one piece holds (saved with set_item_dose after the delivery). */
+  const doseNow = (l: ALine) =>
+    doseReady && isMedicine(l) && doseChanged(l.dose, itemOf(l) ? doseOf(l.pick) : null)
+
   const check = (): string | null => {
     if (!storeId) return t('stock.errors.store')
     if (filled.length === 0) return t('stockDelivery.errors.noLines')
@@ -366,6 +406,10 @@ export function AddStockForm({
       if (isNew(l) && l.newName.trim().length < 2) return bad(t('stockPage.add.errors.newName'))
       {
         const p = packProblem(t, l.pack)
+        if (p) return bad(p)
+      }
+      if (doseNow(l)) {
+        const p = doseProblem(t, l.dose, doseWords(l))
         if (p) return bad(p)
       }
       if (!l.batchNo.trim()) return bad(t('stockPage.add.errors.batch'))
@@ -472,8 +516,25 @@ export function AddStockForm({
         locationId: isManager && storeId !== main?.id ? storeId : null,
         note: note.trim() || undefined,
       })
+      // 0198: then what one piece holds, for each line that changes it (add_stock gives each
+      // line's item, a new one too); the stock is in, whatever happens here
+      const doseErrors: string[] = []
+      for (const [k, l] of lines.entries()) {
+        const itemId = r.lines[k]?.itemId
+        if (!itemId || !doseNow(l)) continue
+        try {
+          await actions.setItemDose.mutateAsync({ itemId, ...doseInput(l.dose) })
+        } catch (err) {
+          doseErrors.push(
+            t('dose.stockSaveFailed', {
+              item: doseWords(l).name,
+              error: err instanceof Error ? err.message : String(err),
+            }),
+          )
+        }
+      }
       setMsg({
-        ok: true,
+        ok: doseErrors.length === 0,
         text: [
           t('stockPage.add.saved', {
             count: lines.length,
@@ -482,6 +543,7 @@ export function AddStockForm({
             store: storeName,
           }),
           r.priceIgnored ? t('stockPage.add.priceIgnored') : '',
+          ...doseErrors,
         ]
           .filter(Boolean)
           .join(' '),
@@ -563,6 +625,7 @@ export function AddStockForm({
                           newStrength: '',
                           newForm: '',
                           pack: emptyPack(),
+                          dose: emptyDose(),
                           packFrom: undefined,
                           qtyIn: 'pieces',
                           cost: l.costFrom ? '' : l.cost,
@@ -580,6 +643,7 @@ export function AddStockForm({
                       set(l.key, {
                         pick: l.pick === 'new' ? '' : 'new',
                         pack: emptyPack(),
+                        dose: emptyDose(),
                         packFrom: undefined,
                         qtyIn: 'pieces',
                         cost: l.costFrom ? '' : l.cost,
@@ -713,6 +777,19 @@ export function AddStockForm({
                         </span>
                       ) : undefined
                     }
+                  />
+                )}
+                {isMedicine(l) && (
+                  <DoseFields
+                    key={`dose-${l.pick}`}
+                    idPrefix={`add-dose-${l.key}`}
+                    value={l.dose}
+                    onChange={(dose) => set(l.key, { dose })}
+                    words={doseWords(l)}
+                    piecePrice={pk.piecePrice}
+                    ready={doseReady}
+                    collapsible
+                    defaultOpen={isNew(l)}
                   />
                 )}
                 {/* the quantity and the cost carry a small chooser beside the field: they get the

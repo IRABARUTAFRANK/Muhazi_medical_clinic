@@ -1,6 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { DayRange } from './lab'
-import { apiError, isMissingFunction, sampleRefusal } from './errors'
+import { apiError, isMissingFunction, NotReadyError, sampleRefusal } from './errors'
+import { sampleItemDoses, sampleOpenPieces, type OpenPiece } from './sample-dose'
+import {
+  itemDoseFromJson,
+  partModeBy,
+  type ItemDose,
+  type PartMode,
+  type PartPriceRule,
+} from '@/lib/dose'
 import { queryClient } from '@/lib/query-client'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
@@ -1620,6 +1628,61 @@ export function useDeliveryDetail(id: string | null) {
 }
 
 // ---------------------------------------------------------------- actions
+/**
+ * 0198: the pieces opened for a part (a cut tablet, an opened bottle), of one store or all: they
+ * left the stock when opened; what is left is used first by the next part. Empty on a database
+ * without 0198 and for a reader who may not see them (the stock screens then say nothing).
+ */
+export function useOpenPieces(locationId: string | null = null, enabled = true) {
+  return useQuery({
+    queryKey: [...KEY, 'open-pieces', locationId],
+    enabled,
+    staleTime: 30_000,
+    queryFn: async (): Promise<OpenPiece[]> => {
+      if (!supabase)
+        return sampleOpenPieces
+          .filter((p) => !locationId || p.storeId === locationId)
+          .map((p) => ({ ...p }))
+      const { data, error } = await supabase.rpc('open_pieces', { p_location_id: locationId })
+      if (error) {
+        // an older database, or a reader without the right: nothing to show
+        if (isMissingFunction(error) || error.code === '42501') return []
+        throw apiError(error)
+      }
+      return ((data ?? []) as Record<string, unknown>[]).map((p) => ({
+        id: String(p.id),
+        itemId: String(p.itemId),
+        item: String(p.item ?? ''),
+        storeId: String(p.storeId),
+        store: (p.store as string | null) ?? null,
+        left: num(p.left),
+        leftText: String(p.leftText ?? ''),
+        batchNo: (p.batchNo as string | null) ?? null,
+        expiry: (p.expiry as string | null) ?? null,
+        openedAt: String(p.openedAt ?? ''),
+        openedBy: (p.openedBy as string | null) ?? null,
+      }))
+    },
+  })
+}
+
+/** What set_item_dose takes (0198): the whole block; null clears. */
+export interface ItemDoseInput {
+  itemId: string
+  doseAmount: number | null
+  doseUnit: string | null
+  dosePer: number | null
+  dosePerUnit: string | null
+  contentAmount: number | null
+  contentUnit: string | null
+  /** null: by its form. */
+  partMode: PartMode | null
+  partPriceRule: PartPriceRule
+  halfPrice: number | null
+  quarterPrice: number | null
+  measurePrice: number | null
+}
+
 export function useStockActions() {
   const qc = useQueryClient()
   const refresh = () => {
@@ -2233,6 +2296,86 @@ export function useStockActions() {
     },
     onSuccess: refreshAll,
   })
+  /**
+   * 0198: what one piece holds, how it may be given in parts and the price of a part (the
+   * manager, the price or catalogue right, or the stock keeper). Before db:apply: NotReadyError.
+   */
+  const setItemDose = useMutation({
+    mutationFn: async (i: ItemDoseInput): Promise<ItemDose | null> => {
+      if (!supabase) {
+        const it = sampleItems.find((x) => x.id === i.itemId)
+        const boxOnly = it?.saleMode === 'pack' && (it.packSize ?? 1) >= 2
+        // the database's own refusal, in the reader's language
+        if (boxOnly && i.partMode && i.partMode !== 'whole')
+          throw apiError({
+            message: 'a medicine sold only by the whole box is given in whole pieces',
+            code: '22023',
+            hint: 'box_only_whole',
+          })
+        const now = partModeBy({
+          partMode: i.partMode,
+          saleMode: it?.saleMode,
+          packSize: it?.packSize,
+          text: [it?.name, it?.strength, it?.unit].filter(Boolean).join(' '),
+          contentUnit: i.contentUnit,
+          contentAmount: i.contentAmount,
+        })
+        const d: ItemDose = {
+          doseAmount: i.doseAmount,
+          doseUnit: i.doseUnit,
+          dosePer: i.dosePer,
+          dosePerUnit: i.dosePerUnit,
+          contentAmount: i.contentAmount,
+          contentUnit: i.contentUnit,
+          partMode: i.partMode,
+          partModeNow: now,
+          partPriceRule: i.partPriceRule,
+          halfPrice: i.halfPrice,
+          quarterPrice: i.quarterPrice,
+          measurePrice: i.measurePrice,
+          doseSetAt: new Date().toISOString(),
+        }
+        sampleItemDoses[i.itemId] = d
+        return d
+      }
+      const { data, error } = await supabase.rpc('set_item_dose', {
+        p_item_id: i.itemId,
+        p_dose_amount: i.doseAmount,
+        p_dose_unit: i.doseUnit,
+        p_dose_per: i.dosePer,
+        p_dose_per_unit: i.dosePerUnit,
+        p_content_amount: i.contentAmount,
+        p_content_unit: i.contentUnit,
+        p_part_mode: i.partMode,
+        p_part_price_rule: i.partPriceRule,
+        p_half_price: i.halfPrice,
+        p_quarter_price: i.quarterPrice,
+        p_measure_price: i.measurePrice,
+      })
+      if (error) {
+        if (isMissingFunction(error)) throw new NotReadyError()
+        throw apiError(error)
+      }
+      return data ? itemDoseFromJson(data as Record<string, unknown>) : null
+    },
+    onSuccess: refreshAll,
+  })
+  /**
+   * 0198: "Throw away the rest" of an opened piece (gone off, spilled), with the reason. No stock
+   * movement: the piece left the stock when it was opened.
+   */
+  const closeOpenPiece = useMutation({
+    mutationFn: async (i: { id: string; reason: string }) => {
+      if (!supabase) {
+        const k = sampleOpenPieces.findIndex((p) => p.id === i.id)
+        if (k < 0) throw sampleRefusal('notFound', 'P0002')
+        sampleOpenPieces.splice(k, 1)
+        return null
+      }
+      return call('close_open_piece', { p_id: i.id, p_reason: i.reason.trim() })
+    },
+    onSuccess: refresh,
+  })
   /** The shelf was counted: the store's stock becomes that count (difference kept with its reason). */
   const adjust = useMutation({
     mutationFn: (i: { itemId: string; locationId: string; counted: number; reason: string }) => {
@@ -2306,6 +2449,8 @@ export function useStockActions() {
     setReorderLevel,
     setPackPrice,
     setPackaging,
+    setItemDose,
+    closeOpenPiece,
     adjust,
     setLocationActive,
   }

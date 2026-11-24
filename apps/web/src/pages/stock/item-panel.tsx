@@ -7,10 +7,12 @@ import {
   Package,
   PackageMinus,
   PackagePlus,
+  Scissors,
   SlidersHorizontal,
+  Trash2,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { formatDate, formatNumber, formatRwf } from '@mmc/shared'
+import { formatDate, formatDayMonth, formatNumber, formatRwf, formatTime } from '@mmc/shared'
 import { Empty } from '@/components/dash/kit'
 import { card, tableCell, tableHead, tableRow } from '@/components/dash/kit-style'
 import { Badge } from '@/components/ui/badge'
@@ -21,7 +23,9 @@ import { Select } from '@/components/ui/select'
 import { SidePanel } from '@/components/ui/side-panel'
 import { useNotOnList } from '@/lib/api/reference-list'
 import { useItemBatches } from '@/lib/api/rooms'
-import { useStockActions, type StockItem, type StockLocation } from '@/lib/api/stock'
+import { useOpenPieces, useStockActions, type StockItem, type StockLocation } from '@/lib/api/stock'
+import type { OpenPiece } from '@/lib/api/sample-dose'
+import { openPieceText } from '@/lib/dose-words'
 import { useConfirm } from '@/lib/confirm'
 import { cn } from '@/lib/utils'
 import { LevelEditor } from './reorder-tab'
@@ -184,6 +188,8 @@ function ItemBody({
         ))}
       </dl>
 
+      <OpenPieces item={item} manage={manage} />
+
       <Batches item={item} locations={locations} showCost={showCost} />
 
       {manage && (
@@ -214,6 +220,93 @@ function ItemBody({
         </section>
       )}
     </div>
+  )
+}
+
+/* ---------------------------------------------------------------- opened pieces (0198) */
+/**
+ * The pieces of this medicine opened for a part (a cut tablet, an opened bottle): they left the
+ * stock when opened, the rest is used first by the next part. "Throw away the rest" when it is
+ * gone off (the stock keeper, the manager). Nothing shown when none is open (or before 0198).
+ */
+function OpenPieces({ item, manage }: { item: StockItem; manage: boolean }) {
+  const { t, i18n } = useTranslation()
+  const { data: all = [] } = useOpenPieces()
+  const actions = useStockActions()
+  const confirm = useConfirm()
+  const [msg, setMsg] = useState<Msg | null>(null)
+  const open = all.filter((p) => p.itemId === item.id)
+  if (open.length === 0 && !msg) return null
+  const throwAway = async (p: OpenPiece) => {
+    setMsg(null)
+    const left = openPieceText(t, p, item.unit, i18n.language)
+    const answer = await confirm({
+      title: t('dose.throwTitle', { item: itemName(item), left }),
+      body: t('dose.throwBody'),
+      confirmLabel: t('dose.throwYes'),
+      tone: 'danger',
+      input: { label: t('dose.throwWhy'), required: true, maxLength: 200 },
+    })
+    if (!answer.ok) return
+    if (answer.value.trim().length < 3)
+      return setMsg({ ok: false, text: t('stock.errors.countWhy') })
+    try {
+      await actions.closeOpenPiece.mutateAsync({ id: p.id, reason: answer.value })
+      setMsg({ ok: true, text: t('dose.thrown', { item: itemName(item) }) })
+    } catch (err) {
+      setMsg({ ok: false, text: errText(err) })
+    }
+  }
+  return (
+    <section className="flex flex-col gap-2">
+      <h3 className="text-ink m-0 flex items-center gap-2 text-[16px] font-semibold">
+        <Scissors size={16} aria-hidden="true" className="text-amber" />
+        {t('dose.openTitle')}
+      </h3>
+      <p className="text-ink-3 m-0 text-[12.5px]">{t('dose.openLead')}</p>
+      {open.map((p) => {
+        const at = p.openedAt ? new Date(p.openedAt) : null
+        return (
+          <div
+            key={p.id}
+            className={cn(card, 'flex flex-row flex-wrap items-center gap-x-3 gap-y-1.5 p-3')}
+          >
+            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span className="text-ink text-[14px] font-semibold">
+                {openPieceText(t, p, item.unit, i18n.language)}
+              </span>
+              <span className="text-ink-3 text-[12px]">
+                {[
+                  t('dose.openLine', {
+                    store: p.store ?? '',
+                    at: at ? `${formatDayMonth(at)} ${formatTime(at)}` : '—',
+                    by: p.openedBy ?? '—',
+                  }),
+                  p.batchNo,
+                  p.expiry ? formatDate(new Date(p.expiry)) : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </span>
+            </span>
+            {manage && (
+              <Button
+                size="sm"
+                variant="tint-coral"
+                loading={
+                  actions.closeOpenPiece.isPending && actions.closeOpenPiece.variables?.id === p.id
+                }
+                onClick={() => void throwAway(p)}
+              >
+                <Trash2 size={14} aria-hidden="true" />
+                {t('dose.throwAway')}
+              </Button>
+            )}
+          </div>
+        )
+      })}
+      <MsgFlash msg={msg} onClose={() => setMsg(null)} />
+    </section>
   )
 }
 
@@ -431,6 +524,9 @@ function CountForm({ item, locations }: { item: StockItem; locations: StockLocat
   const [reason, setReason] = useState('')
   const [msg, setMsg] = useState<Msg | null>(null)
   const current = item.byLocation[locationId] ?? 0
+  // 0198: a piece opened for a part is not in the count (it left the stock when opened)
+  const { data: openPieces = [] } = useOpenPieces()
+  const hasOpen = openPieces.some((p) => p.itemId === item.id)
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setMsg(null)
@@ -499,6 +595,7 @@ function CountForm({ item, locations }: { item: StockItem; locations: StockLocat
         onChange={(e) => setReason(e.target.value)}
       />
       <p className="text-ink-3 m-0 text-[13px]">{t('stock.countNow', { count: current })}</p>
+      {hasOpen && <p className="text-amber m-0 text-[13px] font-medium">{t('dose.countNote')}</p>}
       <MsgFlash msg={msg} onClose={() => setMsg(null)} />
       <Button
         type="submit"

@@ -1,6 +1,7 @@
 import { formatDate, formatTime } from '@mmc/shared'
 import { outcomeOf } from './diagnosis-outcome'
 import type { ReportVisit } from './medical-report'
+import { isOnce, isRepeated } from './api/nurse-orders'
 import { orderAction, partLines, stateWord } from './order-words'
 
 /** What the medical report needs of a visit's record (visit_clinical, 0127): a loose shape so a
@@ -30,7 +31,8 @@ export interface SixStepsSource {
         dose: string | null
         route: string | null
         frequency: string | null
-        dosesPlanned: number
+        /** null: a repeated order until stopped (0198). */
+        dosesPlanned: number | null
         given: number
         notGiven: number
         status: 'open' | 'done' | 'not_done' | 'cancelled'
@@ -44,6 +46,11 @@ export interface SixStepsSource {
         homeFrequency?: string | null
         homeDays?: number | null
         homeInstructions?: string | null
+        /** 0198: repeated every … minutes; the part of a piece given here. */
+        everyMinutes?: number | null
+        untilStopped?: boolean
+        part?: number | null
+        partText?: string | null
         doses?: { given: boolean; by: string | null; at: string }[]
       }[]
     | null
@@ -98,30 +105,46 @@ export function sixStepsOfVisit(
       .map((o) =>
         // 0193: an order carried out once prints its parts (given here; to take home and how)
         // and who carried it out; an older order keeps its times
-        o.dosesPlanned <= 1
+        isOnce(o)
           ? {
               text: o.text,
               how: partLines(t, { ...o, quantity: Number(o.quantity ?? 1) }).join('; '),
               status: onceState(t, o),
             }
-          : {
-              text: o.text,
-              how: [
-                o.dose,
-                o.route ? route(o.route) : null,
-                o.frequency ? frequency(o.frequency) : null,
-                t('nurseOrders.times', { count: o.dosesPlanned }),
-              ]
-                .filter(Boolean)
-                .join(' · '),
-              status: t(
-                o.kind === 'drug' ? 'nurseOrders.progressDrug' : 'nurseOrders.progressAct',
-                {
-                  given: o.given,
-                  count: o.dosesPlanned,
-                },
-              ),
-            },
+          : isRepeated(o)
+            ? {
+                // 0198: a repeated order: what each time, how often, and how many were given
+                text: o.text,
+                how: partLines(t, { ...o, quantity: Number(o.quantity ?? 1) }).join('; '),
+                status:
+                  o.dosesPlanned == null
+                    ? t('nurseOrders.givenSoFar', { count: o.given })
+                    : t(
+                        o.kind === 'drug' ? 'nurseOrders.progressDrug' : 'nurseOrders.progressAct',
+                        {
+                          given: o.given,
+                          count: o.dosesPlanned,
+                        },
+                      ),
+              }
+            : {
+                text: o.text,
+                how: [
+                  o.dose,
+                  o.route ? route(o.route) : null,
+                  o.frequency ? frequency(o.frequency) : null,
+                  t('nurseOrders.times', { count: o.dosesPlanned ?? 0 }),
+                ]
+                  .filter(Boolean)
+                  .join(' · '),
+                status: t(
+                  o.kind === 'drug' ? 'nurseOrders.progressDrug' : 'nurseOrders.progressAct',
+                  {
+                    given: o.given,
+                    count: o.dosesPlanned,
+                  },
+                ),
+              },
       ),
   }
 }

@@ -7,6 +7,8 @@ import {
   type MedicineNameParts,
 } from '@/lib/medicine-name'
 import { apiError, isMissingFunction } from './errors'
+import { itemDoseFromRow, type ItemDose } from '@/lib/dose'
+import { sampleDoseOf } from './sample-dose'
 
 /**
  * The manager's catalogue: treatments (what the clinic treats, the cash price, the discount a
@@ -838,6 +840,11 @@ export interface Medicine {
   listPrice?: number | null
   ownPrice?: number | null
   listName?: string | null
+  /**
+   * 0198: what one piece holds and its parts, as set (null values: not set); undefined on a
+   * database without 0198 (the screens then read the strength from the name only).
+   */
+  dose?: ItemDose | null
 }
 export const sampleMedicines: Medicine[] = [
   {
@@ -889,7 +896,7 @@ export function useMedicines() {
     queryKey: MEDS,
     queryFn: async (): Promise<Medicine[]> => {
       // a copy: the screens see the medicine just added
-      if (!supabase) return sampleMedicines.map((m) => ({ ...m }))
+      if (!supabase) return sampleMedicines.map((m) => ({ ...m, dose: sampleDoseOf(m.id) }))
       const db = supabase
       // every column (0135 adds the list price): an older database still answers
       const rows = await allRows<{
@@ -919,6 +926,8 @@ export function useMedicines() {
         listPrice: num(r.list_price),
         ownPrice: num(r.own_price),
         listName: r.list_name ?? null,
+        // 0198: the columns of what one piece holds (absent on an older database)
+        dose: itemDoseFromRow(r as unknown as Record<string, unknown>) ?? undefined,
       }))
     },
   })

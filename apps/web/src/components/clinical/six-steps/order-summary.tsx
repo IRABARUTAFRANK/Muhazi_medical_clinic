@@ -25,6 +25,8 @@ export function OrderSummary({
   act,
   actCount,
   packUnit,
+  partText,
+  home,
 }: {
   summary: Summary
   kind: 'act' | 'drug'
@@ -36,10 +38,14 @@ export function OrderSummary({
   act: string
   actCount: number
   packUnit: string | null
+  /** 0198: the part of a piece in words ("½ tab", "5 ml"). */
+  partText?: string | null
+  /** 0198: a repeated order: the pieces to take home (its own order). */
+  home?: number
 }) {
   const { t } = useTranslation()
   // nothing asked yet: nothing to say
-  if (kind === 'drug' ? s.pieces <= 0 : !act.trim()) return null
+  if (kind === 'drug' ? s.pieces <= 0 && s.part <= 0 && !home : !act.trim()) return null
   const Icon = s.tone === 'ok' ? ReceiptText : s.tone === 'typed' ? Info : CircleAlert
   return (
     <p
@@ -60,7 +66,7 @@ export function OrderSummary({
                 : 'nurseOrders.summaryGive',
           )}
         </b>{' '}
-        {summaryWords(t, s, { kind, unit, act, actCount, packUnit })}
+        {summaryWords(t, s, { kind, unit, act, actCount, packUnit, partText, home })}
       </span>
     </p>
   )

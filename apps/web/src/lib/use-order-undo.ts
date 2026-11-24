@@ -59,5 +59,25 @@ export function useOrderUndo() {
     useHanded.getState().dropSource(o.id)
     return undoMessage(t, o, res)
   }
-  return { undo, pending: actions.undo.isPending }
+  /**
+   * 0198: one recorded time of a repeated order (on the order, or on its bill line): a Given time
+   * back to the stock and off the bill; a Not given one withdrawn. The order goes on.
+   */
+  const undoTime = async (o: NurseOrder, doseId: string): Promise<string | null> => {
+    const tm = (o.times ?? []).find((x) => x.doseId === doseId)
+    const n = tm?.n ?? o.doses.find((d) => d.id === doseId)?.n ?? ''
+    const r = await confirm({
+      title: t('nurseOrders.undoTimeQ', { what: o.text, n }),
+      body: t(
+        tm?.state === 'not_given' ? 'nurseOrders.undoTimeNotGiven' : 'nurseOrders.undoTimeGiven',
+      ),
+      input: { label: t('nurseOrders.undoWhy'), required: true, multiline: true },
+      confirmLabel: t('nurseOrders.undoYes'),
+      tone: 'danger',
+    })
+    if (!r.ok) return null
+    await actions.undoTime.mutateAsync({ orderId: o.id, doseId, reason: r.value })
+    return t('nurseOrders.undoneTime', { what: o.text, n })
+  }
+  return { undo, undoTime, pending: actions.undo.isPending || actions.undoTime.isPending }
 }

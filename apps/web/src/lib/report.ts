@@ -652,6 +652,15 @@ const excelFmt = (col: ReportColumn | undefined): string | undefined => {
   }
 }
 
+/**
+ * A count's number format (0198): whole numbers as they are; a part of a piece (0.5, 0.25,
+ * 0.05) with up to 2 decimals, never rounded to one ("0.25" stays 0.25, not 0.3).
+ */
+const countFmt = (v: unknown): string =>
+  typeof v === 'number' && Math.abs(v * 100 - Math.round(v) * 100) >= 0.5
+    ? '#,##0.##'
+    : EXCEL.fmt.count
+
 /** Writes one value with its real type (number, Kigali wall-clock date, text). */
 function writeCell(cell: ExcelCell, c: Cell, col: ReportColumn | undefined) {
   const kind = col?.kind
@@ -671,7 +680,7 @@ function writeCell(cell: ExcelCell, c: Cell, col: ReportColumn | undefined) {
   if (typeof c === 'number') {
     cell.value = c
     const fmt = excelFmt(col) ?? EXCEL.fmt.count
-    if (fmt) cell.numFmt = fmt
+    if (fmt) cell.numFmt = fmt === EXCEL.fmt.count && col?.kind !== 'money' ? countFmt(c) : fmt
     if (col?.boldNegative && c < 0) cell.font = { ...EXCEL.font, bold: true }
     return
   }
@@ -792,7 +801,8 @@ function totalsRowExcel(
       const L = columnLetter(i + 1)
       cell.value = { formula: `SUBTOTAL(${fn},${L}${first}:${L}${last})`, result: value }
     } else cell.value = typeof value === 'number' ? value : String(value)
-    cell.numFmt = totalFmt(col, kind)
+    const fmt = totalFmt(col, kind)
+    cell.numFmt = fmt === EXCEL.fmt.count && col.kind !== 'money' ? countFmt(value) : fmt
   })
 }
 
@@ -876,8 +886,10 @@ function writeTable(
       if (i === 0) cell.value = total
       else if (t.totals!.includes(i)) {
         const L = columnLetter(i + 1)
-        cell.value = { formula: `SUM(${L}${first}:${L}${last})`, result: sumColumn(t, i) }
-        cell.numFmt = excelFmt(col) ?? EXCEL.fmt.count
+        const sum = sumColumn(t, i)
+        cell.value = { formula: `SUM(${L}${first}:${L}${last})`, result: sum }
+        const fmt = excelFmt(col) ?? EXCEL.fmt.count
+        cell.numFmt = fmt === EXCEL.fmt.count && col.kind !== 'money' ? countFmt(sum) : fmt
       }
     })
     next++
@@ -967,7 +979,8 @@ export async function buildWorkbook(report: Report): Promise<Workbook> {
         writeCell(ws.getCell(row + 1 + i, 1), f.label, figColumns[0])
         const v = ws.getCell(row + 1 + i, 2)
         writeCell(v, f.value, figColumns[1])
-        v.numFmt = Number.isInteger(f.value) || f.unit === 'RWF' ? EXCEL.fmt.count : '#,##0.0'
+        // 0198: a part of a piece keeps its 2 decimals (0.25 is not "0.3")
+        v.numFmt = f.unit === 'RWF' ? EXCEL.fmt.count : countFmt(f.value)
         writeCell(ws.getCell(row + 1 + i, 3), f.unit ?? '', figColumns[2])
         for (let c = 1; c <= 3; c++) {
           const cell = ws.getCell(row + 1 + i, c)

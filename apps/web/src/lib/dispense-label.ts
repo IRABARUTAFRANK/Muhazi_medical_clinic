@@ -9,6 +9,7 @@ import {
   type DocLabels,
   type TFn,
 } from './doc-style'
+import { doseFigure } from './fraction'
 
 /**
  * The dispensing labels (document standard v2, C6): one 70 x 40 mm sticker per medicine, all in
@@ -249,18 +250,16 @@ const unitKey = (unit: string | null | undefined): string | undefined =>
 /** 0.5, 1, 2.5: leading zero, no trailing zero. */
 const num = (n: number) => String(Math.round(n * 1000) / 1000)
 
-/** A dose figure for a patient: ½, ¼, ¾ and 1½ as fractions, other decimals in the language. */
-function doseFigure(n: number, lang: string): string {
-  const whole = Math.floor(n)
-  const rest = Math.round((n - whole) * 100) / 100
-  const glyph = rest === 0.5 ? '½' : rest === 0.25 ? '¼' : rest === 0.75 ? '¾' : null
-  if (rest === 0) return String(whole)
-  if (glyph) return whole ? `${whole}${glyph}` : glyph
-  return new Intl.NumberFormat(lang === 'fr' ? 'fr' : 'en', { maximumFractionDigits: 3 }).format(n)
-}
+// A dose figure for a patient (½, ¼, ¾ and 1½ as fractions): moved to fraction.ts (0198)
+export { doseFigure }
 
 /** "4 tablets", "half a tablet", "1½ tablets", "10 units" in the language of `t`. */
 function amountText(p: { n: number; unit: string }, t: TFn, lang: string): string {
+  // 0198: "1 tab (500 mg)" (the order form's take-home dose): the piece is worded in the label's
+  // language, the strength in brackets kept as written
+  const bracket = /^(.*?)\s*(\([^()]*\))$/.exec(p.unit)
+  if (bracket && unitKey(bracket[1]))
+    return `${amountText({ n: p.n, unit: bracket[1]! }, t, lang)} ${bracket[2]}`
   const key = unitKey(p.unit)
   const shown = doseFigure(p.n, lang)
   const en = key ? UNIT_EN[key] : undefined

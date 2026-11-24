@@ -66,7 +66,8 @@ import { DeskBlocks } from './home-desks'
 import { useHomeDesks } from './home-desks-rules'
 import { MyWorkPanel, WaitingForMePanel } from './my-panels'
 import { useState } from 'react'
-import { useMyNurseOrders } from '@/lib/api/nurse-orders'
+import { dueAtOf, useMyNurseOrders, type NurseOrder } from '@/lib/api/nurse-orders'
+import { kigaliDayOf } from '@/lib/order-plan'
 import { NurseOrderRow } from '@/components/clinical/nurse-order-row'
 import { useHanded } from '@/pages/stock/pharmacy/handed'
 import { HandedStrip } from '@/pages/stock/pharmacy/parts'
@@ -614,7 +615,8 @@ function NursingOrdersPanel() {
  * out with one press (Given / Handed over / Done) or Will not be done with the reason; the visit
  * opens beside it. A medicine handed over to take home keeps its label on the strip above the list
  * for the day (print, reprint), after the order has left the list. Shown at the nursing desk, or
- * whenever an order is sent to the nurse by name.
+ * whenever an order is sent to the nurse by name. 0198: ordered by time, in three groups — due now
+ * and late, later today, tomorrow and after — each with the patient's bed when in one.
  */
 function NurseOrdersSection({
   nursing,
@@ -634,7 +636,46 @@ function NurseOrdersSection({
   const addHanded = useHanded((s) => s.add)
   // 0193: its own kind, so the pharmacy's hand-overs (a nurse may also keep the pharmacy) stay apart
   const handedToday = useHanded((s) => s.groups.some((g) => g.kind === 'order'))
+  const now = useNow(60_000)
   if (!nursing && orders.length === 0 && !handedToday) return null
+  // 0198: by the time each is due (an order without a time is due since it was written)
+  const groups = orderGroups(orders, now)
+  const row = (o: NurseOrder) => (
+    <div key={o.id} className="flex flex-col gap-1.5">
+      <NurseOrderRow
+        order={o}
+        carryOut={canAct}
+        showPatient
+        myId={myId}
+        isManager={isManager}
+        onDone={(m) => {
+          setError(null)
+          setMessage(m)
+        }}
+        onError={setError}
+        onHanded={(_, label) =>
+          addHanded(
+            {
+              key: `order:${o.encounterId}`,
+              kind: 'order',
+              patient: { name: o.patient ?? '', fileNumber: o.fileNumber ?? '' },
+            },
+            label,
+            undefined,
+            o.id,
+          )
+        }
+      />
+      <StaffLink
+        to="/app/visit"
+        search={{ encounter: o.encounterId }}
+        className={cn(actionLink, 'self-start text-[13px]')}
+      >
+        {t('nurseOrders.openVisit')}
+        <ArrowRight size={14} aria-hidden="true" />
+      </StaffLink>
+    </div>
+  )
   return (
     <section className="flex flex-col gap-3">
       <SectionTitle icon={Syringe}>{t('nurseOrders.homeTitle')}</SectionTitle>
@@ -653,51 +694,52 @@ function NurseOrdersSection({
         {orders.length === 0 ? (
           <Empty>{t('nurseOrders.homeEmpty')}</Empty>
         ) : (
-          <ShownList items={orders} step={5}>
-            {(shown) => (
-              <div className="flex flex-col gap-2">
-                {shown.map((o) => (
-                  <div key={o.id} className="flex flex-col gap-1.5">
-                    <NurseOrderRow
-                      order={o}
-                      carryOut={canAct}
-                      showPatient
-                      myId={myId}
-                      isManager={isManager}
-                      onDone={(m) => {
-                        setError(null)
-                        setMessage(m)
-                      }}
-                      onError={setError}
-                      onHanded={(_, label) =>
-                        addHanded(
-                          {
-                            key: `order:${o.encounterId}`,
-                            kind: 'order',
-                            patient: { name: o.patient ?? '', fileNumber: o.fileNumber ?? '' },
-                          },
-                          label,
-                          undefined,
-                          o.id,
-                        )
-                      }
-                    />
-                    <StaffLink
-                      to="/app/visit"
-                      search={{ encounter: o.encounterId }}
-                      className={cn(actionLink, 'self-start text-[13px]')}
-                    >
-                      {t('nurseOrders.openVisit')}
-                      <ArrowRight size={14} aria-hidden="true" />
-                    </StaffLink>
-                  </div>
-                ))}
-              </div>
-            )}
-          </ShownList>
+          groups.map((g) => (
+            <div key={g.key} className="flex flex-col gap-2">
+              {/* the groups are named once any order is planned for later */}
+              {groups.length > 1 || g.key !== 'due' ? (
+                <span
+                  className={cn(
+                    'flex items-center gap-1.5 text-[13px] font-semibold',
+                    g.key === 'due' ? 'text-ink' : 'text-ink-2',
+                  )}
+                >
+                  <Clock size={14} aria-hidden="true" />
+                  {t(GROUP_WORD[g.key])} ({g.items.length})
+                </span>
+              ) : null}
+              <ShownList items={g.items} step={5}>
+                {(shown) => <div className="flex flex-col gap-2">{shown.map(row)}</div>}
+              </ShownList>
+            </div>
+          ))
         )}
         <Hint>{t('nurseOrders.homeHint')}</Hint>
       </Panel>
     </section>
   )
+}
+
+const GROUP_WORD = {
+  due: 'nurseOrders.groupDue',
+  today: 'nurseOrders.groupToday',
+  later: 'nurseOrders.groupLater',
+} as const
+/**
+ * 0198: the nurse's orders by time: due now and late (from 30 minutes before), later today,
+ * tomorrow and after — each group in the order of its times (the database's order is kept).
+ */
+function orderGroups(orders: NurseOrder[], now: number) {
+  const today = kigaliDayOf(now)
+  const out: { key: keyof typeof GROUP_WORD; items: NurseOrder[] }[] = [
+    { key: 'due', items: [] },
+    { key: 'today', items: [] },
+    { key: 'later', items: [] },
+  ]
+  for (const o of orders) {
+    const ms = Date.parse(dueAtOf(o))
+    const k = ms - now <= 30 * 60_000 ? 0 : kigaliDayOf(ms) === today ? 1 : 2
+    out[k]!.items.push(o)
+  }
+  return out.filter((g) => g.items.length > 0)
 }

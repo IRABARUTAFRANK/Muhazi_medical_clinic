@@ -44,6 +44,16 @@ import {
   type PackDraft,
 } from '../stock/pack-draft'
 import { PackagingFields } from '../stock/packaging-fields'
+import { DoseFields } from '../stock/dose-fields'
+import { partModeOf, pieceContentOf } from '@/lib/dose'
+import { partModeLabel, pieceContentText } from '@/lib/dose-words'
+import {
+  doseChanged,
+  doseDraftOf,
+  doseInput,
+  doseProblem,
+  type DoseDraft,
+} from '../stock/dose-draft'
 
 const errorBox =
   'border-red/30 bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[14px] font-medium'
@@ -73,6 +83,26 @@ export function MedicinesSection({ onNotice }: { onNotice: (text: string) => voi
   // the pack (pieces in one, the pack price) lives on the stock list
   const { data: stock } = useStockOverview()
   const packOf = (id: string) => stock?.items.find((i) => i.id === id)
+  /**
+   * 0198: what one piece holds and how it is given in parts ("500 mg per tablet · Halves"; read
+   * from the name until the manager keeps it). Nothing before the database has 0198.
+   */
+  const doseLine = (m: Medicine): string | null => {
+    if (m.dose === undefined) return null
+    const pk = packOf(m.id)
+    const words = { ...m, saleMode: pk?.saleMode, packSize: pk?.packSize }
+    const pc = pieceContentOf(words)
+    const mode = partModeOf(words)
+    if (pc.source === 'none' && mode === 'whole') return null
+    return [
+      pc.source === 'none'
+        ? null
+        : `${pieceContentText(t, pc)}${pc.source === 'name' ? ` (${t('dose.readFromName')})` : ''}`,
+      partModeLabel(t, mode),
+    ]
+      .filter(Boolean)
+      .join(' · ')
+  }
   const q = query.trim().toLowerCase()
   const shown = meds.filter(
     (m) =>
@@ -133,10 +163,11 @@ export function MedicinesSection({ onNotice }: { onNotice: (text: string) => voi
           key={editing === 'new' ? 'new' : editing.id}
           medicine={editing === 'new' ? null : editing}
           onClose={() => setEditing(null)}
-          onSaved={(name, id) => {
+          onSaved={(name, id, warning) => {
             const created = editing === 'new'
             setEditing(null)
-            onNotice(t('prices.meds.saved', { name }))
+            // 0198: saved, but not what one piece holds: say why
+            onNotice(warning ?? t('prices.meds.saved', { name }))
             setAdded(created && id ? { id, name } : null)
           }}
         />
@@ -212,6 +243,9 @@ export function MedicinesSection({ onNotice }: { onNotice: (text: string) => voi
                       .filter(Boolean)
                       .join(' · ')}
                   </span>
+                  {doseLine(m) && (
+                    <span className="text-primary block text-xs font-medium">{doseLine(m)}</span>
+                  )}
                 </span>
                 <span className="flex max-w-full flex-wrap items-center gap-x-3 gap-y-1">
                   <span className="text-primary text-[16px] font-semibold tabular-nums">
@@ -263,7 +297,7 @@ function MedicineForm({
 }: {
   medicine: Medicine | null
   onClose: () => void
-  onSaved: (name: string, id: string | null) => void
+  onSaved: (name: string, id: string | null, warning?: string) => void
 }) {
   const { t } = useTranslation()
   const actions = useMedicineActions()
@@ -289,6 +323,10 @@ function MedicineForm({
           piecePrice: medicine?.cashPrice != null ? String(medicine.cashPrice) : '',
         })
   const [error, setError] = useState<string | null>(null)
+  // 0198: what one piece holds, how it may be given in parts and the price of a part (only what is
+  // set; the strength read from the name is a proposal beside it)
+  const [typedDose, setDose] = useState<DoseDraft | null>(null)
+  const dose = typedDose ?? doseDraftOf(medicine?.dose)
   // each insurer on it: its own price, and the clinic's exception on it (0139)
   const insurance = useInsuranceEnabled()
   const { data: activeInsurers = [] } = useInsurers(true)
@@ -303,6 +341,19 @@ function MedicineForm({
     isError: refFailed,
   } = useMedicineReference(!medicine)
   const { data: meds = [] } = useMedicines()
+  // the database has 0198 (the list carries the columns): before db:apply, the reading only
+  const doseReady = medicine
+    ? medicine.dose !== undefined
+    : meds.length === 0 || meds.some((m) => m.dose !== undefined)
+  const pk0 = packInput(pack)
+  const doseWords = {
+    name,
+    strength,
+    form,
+    unit: pk0.unit,
+    saleMode: pk0.saleMode,
+    packSize: pk0.packSize,
+  }
   const [code, setCode] = useState('')
   const ref = code ? reference.find((r) => r.code === code) : undefined
   const clinicCodes = new Set(meds.map((m) => m.code))
@@ -331,6 +382,9 @@ function MedicineForm({
     if (name.trim().length < 2) return setError(t('prices.meds.errors.name'))
     const problem = packProblem(t, pack)
     if (problem) return setError(problem)
+    const doseNow = doseReady && doseChanged(dose, medicine?.dose)
+    const doseBad = doseNow ? doseProblem(t, dose, doseWords) : null
+    if (doseBad) return setError(doseBad)
     const pk = packInput(pack)
     // the cash price of one piece (a pack-only medicine: the pack price / pieces in one)
     const p = pk.piecePrice ?? 0
@@ -365,6 +419,17 @@ function MedicineForm({
         await stockActions.setPackaging.mutateAsync({ itemId, ...pk })
         void qc.invalidateQueries({ queryKey: ['stock'] })
       }
+      // 0198: after the package (a medicine sold only by the box is given whole)
+      let warning: string | undefined
+      if (itemId && doseNow) {
+        try {
+          await stockActions.setItemDose.mutateAsync({ itemId, ...doseInput(dose) })
+        } catch (err) {
+          warning = t('dose.saveFailed', {
+            error: err instanceof Error ? err.message : String(err),
+          })
+        }
+      }
       for (const c of itemId ? lines.changes() : []) {
         if (c.price !== undefined)
           await tariffActions.setPrice.mutateAsync({ payerId: c.payerId, itemId, price: c.price })
@@ -375,7 +440,7 @@ function MedicineForm({
             bookId: null,
           })
       }
-      onSaved(name.trim(), id || medicine?.id || null)
+      onSaved(name.trim(), id || medicine?.id || null, warning)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }
@@ -477,6 +542,14 @@ function MedicineForm({
             onChange={(e) => setForm(e.target.value)}
           />
           <PackagingFields idPrefix="med" value={pack} onChange={setPack} />
+          <DoseFields
+            idPrefix="med-dose"
+            value={dose}
+            onChange={setDose}
+            words={doseWords}
+            piecePrice={pk0.piecePrice}
+            ready={doseReady}
+          />
           {medicine?.listPrice != null && (
             <p className="border-navy/20 bg-blue-bg/60 text-ink-2 m-0 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-[13px]">
               <span className="min-w-0 flex-1">

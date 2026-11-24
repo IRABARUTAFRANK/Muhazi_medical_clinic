@@ -9,6 +9,8 @@ import {
   type VisitView,
 } from './privacy'
 import { isRoomStore, sampleIsManager, sampleStock } from './stock'
+import { sampleDoseOf } from './sample-dose'
+import { itemDoseFromRow, type ItemDose } from '@/lib/dose'
 import { sampleVisitNurseOrders, type NurseOrder } from './nurse-orders'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
@@ -1644,6 +1646,13 @@ export interface Item {
   form: string | null
   unit: string | null
   cashPrice: number | null
+  /** The word one piece is sold by, when it differs from the unit (0198 reads it). */
+  sellingUnit?: string | null
+  /**
+   * 0198: what one piece holds and its parts (lib/dose.ts reads them: pieceContentOf,
+   * partModeOf); undefined on a database without 0198.
+   */
+  dose?: ItemDose | null
 }
 export function useItems() {
   return useQuery({
@@ -1697,7 +1706,17 @@ export function useItems() {
             unit: 'tab',
             cashPrice: 40,
           },
-        ]
+          // 0198: a syrup given by the ml (a bottle of 100 ml)
+          {
+            id: 'it-6',
+            code: 'SYR100',
+            name: 'Cough syrup',
+            strength: '100 ml',
+            form: 'syrup',
+            unit: 'bottle',
+            cashPrice: 1500,
+          },
+        ].map((i): Item => ({ ...i, dose: sampleDoseOf(i.id) }))
       const { data, error } = await supabase
         .from('items_catalogue')
         .select('*')
@@ -1712,6 +1731,7 @@ export function useItems() {
           strength: string | null
           form: string | null
           unit: string | null
+          selling_unit?: string | null
           cash_price: number | string | null
         }[]
       ).map((r) => ({
@@ -1722,6 +1742,9 @@ export function useItems() {
         form: r.form,
         unit: r.unit,
         cashPrice: r.cash_price == null ? null : Number(r.cash_price),
+        sellingUnit: r.selling_unit ?? null,
+        // 0198 (absent on an older database)
+        dose: itemDoseFromRow(r as unknown as Record<string, unknown>) ?? undefined,
       }))
     },
   })

@@ -1,6 +1,9 @@
 import { formatRwf } from '@mmc/shared'
+import { kigaliDayMonth, kigaliDayOf } from './order-plan'
 import {
+  dueState,
   isOnce,
+  kigaliHM,
   orderParts,
   type GiveResult,
   type NotBilledWhy,
@@ -30,16 +33,81 @@ export type OrderLike = Pick<NurseOrder, 'kind' | 'quantity' | 'status' | 'doses
       | 'homeFrequency'
       | 'homeDays'
       | 'homeInstructions'
+      | 'everyMinutes'
+      | 'untilStopped'
+      | 'part'
+      | 'partText'
     >
   >
 
 /** What one press does: Given (a medicine, some or all here), Handed over (all to take home), Done (an act). */
 export type OrderAction = 'give' | 'hand' | 'done'
-export function orderAction(o: Pick<OrderLike, 'kind' | 'quantity' | 'homeQuantity'>): OrderAction {
+export function orderAction(
+  o: Pick<OrderLike, 'kind' | 'quantity' | 'homeQuantity'> & Partial<Pick<OrderLike, 'part'>>,
+): OrderAction {
   if (o.kind === 'act') return 'done'
   const { here, home } = orderParts(o)
-  return here <= 0 && home > 0 ? 'hand' : 'give'
+  // 0198: a part of a piece given here is given, not handed over
+  return here <= 0 && !(Number(o.part ?? 0) > 0) && home > 0 ? 'hand' : 'give'
 }
+
+/** 0198: what is given here each time: "2 tab", "2 tab + ½ tab", "5 ml" (null: nothing here). */
+export function hereWhat(t: TFn, o: OrderLike): string | null {
+  const { here } = orderParts(o)
+  const part = o.kind === 'drug' && Number(o.part ?? 0) > 0 ? o.partText || null : null
+  if (o.kind !== 'drug' || (here <= 0 && !part)) return null
+  return [here > 0 ? `${here} ${unitOf(t, o)}` : null, part].filter(Boolean).join(' + ')
+}
+
+/** 0198: a repeated order: "Every 8 hours · 9 times" / "Every 8 hours · until stopped". */
+export function repeatLine(t: TFn, o: OrderLike): string | null {
+  if (o.everyMinutes == null) return null
+  return [
+    everyWords(t, o.everyMinutes),
+    o.dosesPlanned == null || o.untilStopped
+      ? t('nurseOrders.untilStopped')
+      : t('nurseOrders.forTimes', { count: o.dosesPlanned }),
+  ].join(' · ')
+}
+/**
+ * 0198: when a time is to be given, for the nurse: "Due now" (from 30 minutes before to an hour
+ * after), "Late (due 14:00)" (more than an hour after), "At 14:00" / "Tomorrow at 08:00" (later).
+ */
+export function dueWords(
+  t: TFn,
+  iso: string,
+  now = Date.now(),
+): { state: 'due' | 'late' | 'later'; text: string } {
+  const state = dueState(iso, now)
+  const time = kigaliHM(iso)
+  if (state === 'due') return { state, text: t('nurseOrders.dueNow') }
+  if (state === 'late') return { state, text: t('nurseOrders.late', { time }) }
+  const ms = Date.parse(iso)
+  const day =
+    kigaliDayOf(ms) === kigaliDayOf(now)
+      ? null
+      : kigaliDayOf(ms) === kigaliDayOf(now + 24 * 3_600_000)
+        ? t('ops.appts.tomorrow')
+        : kigaliDayMonth(ms)
+  return {
+    state,
+    text: day ? t('nurseOrders.atDay', { day, time }) : t('nurseOrders.at', { time }),
+  }
+}
+
+/** "in 20 min", "in 1 h 20" (before a time planned later). */
+export function inWords(t: TFn, iso: string, now = Date.now()): string {
+  const min = Math.max(0, Math.round((Date.parse(iso) - now) / 60_000))
+  return min < 60
+    ? t('nurseOrders.inMinutes', { count: min })
+    : t('nurseOrders.inHours', { h: Math.floor(min / 60), m: String(min % 60).padStart(2, '0') })
+}
+
+/** "Every 8 hours" (whole hours), else "Every 90 min". */
+export const everyWords = (t: TFn, minutes: number) =>
+  minutes % 60 === 0
+    ? t('nurseOrders.everyHours', { count: minutes / 60 })
+    : t('nurseOrders.everyMinutes', { count: minutes })
 
 const unitOf = (t: TFn, o: Pick<OrderLike, 'unit'>) => o.unit || t('nurseOrders.unit')
 const routeWord = (t: TFn, r: string) => t(`clinical.routes.${r}`, { defaultValue: r })
@@ -48,9 +116,13 @@ const frequencyWord = (t: TFn, f: string) => t(`clinical.frequencies.${f}`, { de
 /** "Given here: 2 cap · 1 g · By mouth (oral)" (and how often, sent by a screen of before 0193). */
 export function hereLine(t: TFn, o: OrderLike): string | null {
   const { here } = orderParts(o)
-  if (o.kind !== 'drug' || here <= 0) return null
+  const what = hereWhat(t, o)
+  if (!what) return null
   return [
-    t('nurseOrders.partHere', { count: here, unit: unitOf(t, o) }),
+    // 0198: with a part of a piece: "Given here: 2 tab + ½ tab"
+    Number(o.part ?? 0) > 0
+      ? t('nurseOrders.partHereWhat', { what })
+      : t('nurseOrders.partHere', { count: here, unit: unitOf(t, o) }),
     o.dose,
     o.route ? routeWord(t, o.route) : null,
     o.frequency ? frequencyWord(t, o.frequency) : null,
@@ -80,9 +152,11 @@ export function actLine(t: TFn, o: OrderLike): string | null {
     ? t('nurseOrders.actBilled', { service: o.service, count: Number(o.quantity) || 1 })
     : t('nurseOrders.actNotBilled')
 }
-/** The lines that say what an order is (one-time orders, 0193). */
+/** The lines that say what an order is (one-time orders, 0193; repeated ones, 0198). */
 export function partLines(t: TFn, o: OrderLike): string[] {
-  return [hereLine(t, o), homeLine(t, o), actLine(t, o)].filter((x): x is string => !!x)
+  return [hereLine(t, o), homeLine(t, o), actLine(t, o), repeatLine(t, o)].filter(
+    (x): x is string => !!x,
+  )
 }
 
 /** The state of an order in words: To do / Given / Handed over / Done / Not done / Cancelled. */
@@ -121,6 +195,13 @@ export function giveBody(t: TFn, o: NurseOrder): string {
     return t(o.serviceId ? 'nurseOrders.doneBodyAct' : 'nurseOrders.doneBodyTyped')
   const { here, home, total } = orderParts(o)
   const unit = unitOf(t, o)
+  // 0198: with a part of a piece
+  if (Number(o.part ?? 0) > 0) {
+    const what = hereWhat(t, o) ?? ''
+    return home > 0
+      ? t('nurseOrders.giveBodyPartHome', { what, home, unit })
+      : t('nurseOrders.giveBodyPart', { what })
+  }
   if (here > 0 && home > 0) return t('nurseOrders.giveBodyBoth', { here, home, total, unit })
   if (home > 0) return t('nurseOrders.giveBodyHome', { count: home, unit })
   return t('nurseOrders.giveBodyHere', { count: here, unit })
@@ -186,6 +267,8 @@ export function undoBody(
 ): string {
   const given = o.doses.filter((d) => d.given)
   const units = given.reduce((s, d) => s + Number(d.quantity ?? 0) + Number(d.homeQuantity ?? 0), 0)
+  // 0198: a part goes back to its opened piece
+  const part = given.some((d) => Number(d.part ?? 0) > 0) && o.partText ? o.partText : null
   // an older database says only charged
   const onBill = given.some((d) => d.onBill ?? d.charged)
   const stock = o.kind === 'drug' && units > 0
@@ -204,6 +287,7 @@ export function undoBody(
           unit: unitOf(t, o),
         })
       : t(onBill ? 'nurseOrders.undoBackAct' : 'nurseOrders.undoNotOnBill'),
+    part ? t('nurseOrders.undoPartBack', { part }) : null,
     w.billClosed && onBill ? t('nurseOrders.undoCredit') : null,
     over
       ? t('nurseOrders.undoStays')

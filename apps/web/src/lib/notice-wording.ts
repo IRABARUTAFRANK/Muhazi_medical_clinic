@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatRwf, formatTime } from '@mmc/shared'
 import type { Notice } from '@/lib/api/notifications'
+import { kigaliClock } from '@/lib/order-plan'
 
 /** "5 min ago", "2 h ago", or the date for older ones. */
 export function useAgo() {
@@ -248,8 +249,27 @@ export function useWording() {
             p.name,
             // the orders written before 0193 were carried out several times
             num(p.times) > 1 ? t('nurseOrders.times', { count: num(p.times) }) : null,
+            // 0198: planned for later (more than 5 minutes after it was sent), repeated
+            p.firstAt && Date.parse(String(p.firstAt)) - Date.parse(n.at) > 5 * 60_000
+              ? t('nurseOrders.at', { time: kigaliClock(Date.parse(String(p.firstAt))) })
+              : null,
+            num(p.every) > 0
+              ? num(p.every) % 60 === 0
+                ? t('nurseOrders.everyHours', { count: num(p.every) / 60 })
+                : t('nurseOrders.everyMinutes', { count: num(p.every) })
+              : null,
             byText(p.by),
           ]),
+        }
+      // 0198: a time of an order more than an hour late, not recorded (told once per time)
+      case 'nurse_order_late':
+        return {
+          title: t('notify.nurseOrderLate', {
+            title: p.title ?? '',
+            name: p.name ?? '',
+            time: p.time ?? '',
+          }),
+          body: null,
         }
       case 'nurse_order_done': {
         // 0193: 'undone' — what was given or done was undone (back to the stock, off the bill)

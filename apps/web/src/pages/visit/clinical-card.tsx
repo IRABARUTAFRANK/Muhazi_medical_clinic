@@ -116,7 +116,7 @@ import { PastHistoryPanel } from '@/components/clinical/six-steps/past-history'
 import { NurseOrdersStep } from '@/components/clinical/six-steps/nurse-orders-step'
 import { BedStayStep } from '@/components/clinical/bed-stay'
 import { useBedActions, useVisitBed } from '@/lib/api/beds'
-import { isOnce, orderParts } from '@/lib/api/nurse-orders'
+import { isOnce, isRepeated, orderParts } from '@/lib/api/nurse-orders'
 import { DefinitivePick } from '@/components/clinical/six-steps/definitive-pick'
 
 const errorBox =
@@ -1403,10 +1403,13 @@ export function ClinicalCard({
         count: openOrders.length,
         list: openOrders
           .map((o) =>
-            // 0193: an order carried out once says what waits; an older one keeps its count
-            isOnce(o)
-              ? `${o.text} (${t(orderParts(o).home > 0 ? 'nurseOrders.openHomeShort' : 'nurseOrders.openShort')})`
-              : `${o.text} (${o.given + o.notGiven}/${o.dosesPlanned})`,
+            // 0193: an order carried out once says what waits; an older one keeps its count;
+            // 0198: a repeated one has times planned, which stop when the visit is finished
+            isRepeated(o)
+              ? `${o.text} (${t('nurseOrders.repeatOpenShort')})`
+              : isOnce(o)
+                ? `${o.text} (${t(orderParts(o).home > 0 ? 'nurseOrders.openHomeShort' : 'nurseOrders.openShort')})`
+                : `${o.text} (${o.given + o.notGiven}/${o.dosesPlanned ?? 0})`,
           )
           .join(', '),
       })
@@ -3030,6 +3033,8 @@ export function ClinicalCard({
               patientName={name}
               patientFile={patient?.fileNumber ?? null}
               visitOver={finished}
+              // 0198: a repeat on a patient not in a bed warns that the times stop with the visit
+              inBed={!!bedNow}
               // 0197: a medicine the clinic does not have: prescribed to buy outside instead
               onPrescribeOutside={(pick) => {
                 setMsgStep('plan')

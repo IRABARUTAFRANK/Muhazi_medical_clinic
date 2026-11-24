@@ -1,5 +1,5 @@
-import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
-import { PackageOpen, Pill, Plus, Send, Syringe, X } from 'lucide-react'
+import { useMemo, useState, type FormEvent } from 'react'
+import { PackageOpen, Pill, Plus, RotateCcw, Send, Syringe, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatRwf } from '@mmc/shared'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,12 @@ import { NurseOrderRow } from '@/components/clinical/nurse-order-row'
 import { NurseRecipient } from '@/components/clinical/nurse-recipient'
 import { EmptyNote } from '@/components/clinical/empty-note'
 import { OrderSummary } from '@/components/clinical/six-steps/order-summary'
+import {
+  DoseInput,
+  Hinted,
+  OrderWhen,
+  PartTitle,
+} from '@/components/clinical/six-steps/order-form-parts'
 import {
   listMedicineOption,
   medicineRefOption,
@@ -29,6 +35,47 @@ import {
   type NurseOrder,
   type NurseOrderKind,
 } from '@/lib/api/nurse-orders'
+import {
+  amountText,
+  contentMl,
+  partFigure,
+  partModeOf,
+  partPrice as rulePartPrice,
+  pieceContentOf,
+  takeHomeCount,
+  unitFamily,
+  type DoseItem,
+  type PartMode,
+} from '@/lib/dose'
+import { doseUnitLabel, pieceContentText } from '@/lib/dose-words'
+import { fractionText } from '@/lib/fraction'
+import { useNow } from '@/lib/hooks'
+import {
+  OTHER_UNIT,
+  decimal,
+  defaultUnit,
+  doseOf,
+  emptyDose,
+  isCountUnit,
+  numberOf,
+  partOf,
+  pieceUnitOf,
+  piecesFill,
+  proposeFor,
+  unitChoices,
+  type DoseProposal,
+  type DoseValue,
+} from '@/lib/order-dose'
+import {
+  everyHoursOf,
+  firstAtAllowed,
+  firstAtOf,
+  nextHalfHour,
+  planText,
+  timesOf,
+  whenText,
+  type WhenValue,
+} from '@/lib/order-plan'
 import { restOfBox, summarizeOrder, summaryWords } from '@/lib/order-summary'
 import { BUTTON_WORD, orderAction } from '@/lib/order-words'
 import { useConfirm } from '@/lib/confirm'
@@ -50,17 +97,38 @@ const LIST = 'list:'
 /** Where the patient takes the medicine (0193). */
 type Where = 'here' | 'home' | 'both'
 
+const emptyWhen = (): WhenValue => ({
+  giveAt: 'now',
+  atDay: '',
+  atTime: '',
+  repeat: 'once',
+  every: '8',
+  everyOther: '',
+  forKind: 'times',
+  forCount: '3',
+})
+
 const emptyForm = (kind: NurseOrderKind) => ({
   kind,
   where: 'here' as Where,
   itemId: '',
-  // given here: whole pieces, the dose and the route are words for the nurse
+  // given here (0198): the dose as a number and a unit; the whole pieces and a part of one are
+  // proposed from it and stay editable (a number typed is never overwritten)
+  dose: emptyDose(),
   quantity: '1',
-  dose: '',
+  quantityTouched: false,
+  /** ½ ¼ ¾ as "0.5"…, or the ml of a bottle by measure; '' = none. */
+  part: '',
+  partTouched: false,
+  /** The price of the part changed on the order, and why. */
+  partPriceOn: false,
+  partPrice: '',
+  partPriceWhy: '',
   route: 'oral',
-  // to take home: whole pieces and how to take them (no silent "three times a day")
+  // to take home: whole pieces, worked out from the dose each time × how often × days
   homeQuantity: '',
-  homeDose: '',
+  homeTouched: false,
+  homeDose: emptyDose(),
   homeFrequency: '',
   homeDays: '',
   homeInstructions: '',
@@ -68,37 +136,32 @@ const emptyForm = (kind: NurseOrderKind) => ({
   serviceId: '',
   text: '',
   actQuantity: '1',
+  // 0198: give at, repeat
+  when: emptyWhen(),
   assignedTo: ALL,
   notes: '',
 })
+type Form = ReturnType<typeof emptyForm>
 
-/** A field with its grey one-line hint under it: what it does. */
-function Hinted({ hint, children }: { hint: string; children: ReactNode }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-1">
-      {children}
-      <span className="text-ink-3 text-xs">{hint}</span>
-    </div>
-  )
-}
+/** The part field's value for a proposal ("0.5", or the ml "5" by measure; '' for none). */
+/** A unit of volume (ml, l): the dose is then said in ml. */
+const unitOfFamilyVolume = (u: string) => unitFamily(u) === 'volume'
 
-/** A small heading inside the form, with its hint. */
-function PartTitle({ title, hint }: { title: string; hint?: string }) {
-  return (
-    <span className="flex flex-col gap-0.5">
-      <span className="text-ink-2 text-[13px] font-semibold">{title}</span>
-      {hint && <span className="text-ink-3 text-xs">{hint}</span>}
-    </span>
-  )
-}
+const partValueOf = (p: Extract<DoseProposal, { kind: 'exact' }>, mode: PartMode) =>
+  p.part > 0 ? (mode === 'measure' ? String(p.partMl ?? '') : String(p.part)) : ''
 
 /**
- * Step 6 (0127; 0193): the orders carried out here — MEDICAL ACTS (an injection, a dressing, an IV
- * line…; from the clinic's treatments so it is billed) and MEDICINES of the clinic's stock, given
- * here and/or taken home (how many, the dose, and for home how to take it, printed on the label).
- * Each order is carried out ONCE: one press of Given / Handed over / Done takes everything from the
- * stock and puts it on the bill. For one nurse, all of them, or the doctor himself. The box above
+ * Step 6 (0127; 0193; 0198): the orders carried out here — MEDICAL ACTS (an injection, a dressing,
+ * an IV line…; from the clinic's treatments so it is billed) and MEDICINES of the clinic's stock,
+ * given here and/or taken home. For one nurse, all of them, or the doctor himself. The box above
  * Send says what will happen; every field says what it does. Below: each order, with Undo.
+ *
+ * 0198: the DOSE is a number and a unit (1 g): the pieces to give are worked out from what one
+ * piece holds (2 tablets of 500 mg) and stay editable; a medicine given in parts may be given as
+ * ½ (¼, ¾) of a tablet or some ml of a bottle, with the price of the part (changeable, with a
+ * reason). The take-home count is worked out from the dose each time × how often × days. GIVE AT
+ * (now or a time up to 7 days ahead) and REPEAT (every N hours: N times, N days or until stopped)
+ * — the nurse records each time. Without 0198 in the database the form is the one of 0193.
  *
  * 0197: the medicine list holds everything the clinic knows — its own medicines and products, the
  * official list and every uploaded list (each medicine once) — in two groups: in the clinic's
@@ -114,6 +177,7 @@ export function NurseOrdersStep({
   patientName,
   patientFile,
   visitOver = false,
+  inBed = false,
   onPrescribeOutside,
   onDone,
   onError,
@@ -129,6 +193,8 @@ export function NurseOrdersStep({
   patientFile?: string | null
   /** The visit is finished (Undo by a nurse then ends the order). */
   visitOver?: boolean
+  /** 0198: the patient is in a bed (a repeat on a day patient warns that times stop at the end). */
+  inBed?: boolean
   /** Opens the prescription form on this medicine (a clinic item's id, REF or LIST + code): the
    *  way out for one the clinic does not have in stock. */
   onPrescribeOutside?: (pick: string) => void
@@ -138,6 +204,7 @@ export function NurseOrdersStep({
   const { t, i18n } = useTranslation()
   const confirm = useConfirm()
   const actions = useNurseOrderActions()
+  const now = useNow(60_000)
   const [adding, setAdding] = useState(false)
   const [f, setF] = useState(() => emptyForm('drug'))
   const [err, setErr] = useState<string | null>(null)
@@ -152,7 +219,7 @@ export function NurseOrdersStep({
   const acts = treatments.filter(
     (x) => !x.orderStation && x.active !== false && x.code !== 'BED-STAY',
   )
-  const set = (patch: Partial<typeof f>) => setF((x) => ({ ...x, ...patch }))
+  const set = (patch: Partial<Form>) => setF((x) => ({ ...x, ...patch }))
   const item = items.find((x) => x.id === f.itemId)
   const service = acts.find((x) => x.id === f.serviceId)
   const pack = item ? (stock?.packs[item.id] ?? null) : null
@@ -160,10 +227,63 @@ export function NurseOrdersStep({
   const packWord = pack?.packUnit || t('nurseOrders.pack')
   const showHere = f.where !== 'home'
   const showHome = f.where !== 'here'
+
+  // 0198: what one piece holds and how it may be given in parts (the database's answer first)
+  const ready = !!stock?.ready198
+  const doseItem: DoseItem | null = item
+    ? { ...item, saleMode: pack?.mode ?? 'piece', packSize: pack?.size ?? null }
+    : null
+  const piece = doseItem ? pieceContentOf(doseItem) : null
+  const itemMode: PartMode = doseItem ? partModeOf(doseItem) : 'whole'
+  // a part is offered only when the database can take it (0198) and the medicine allows it
+  const partsOn = f.kind === 'drug' && ready && itemMode !== 'whole'
+  const mode: PartMode = partsOn ? itemMode : 'whole'
+  const pieceMl = contentMl(piece)
+  const units = unitChoices(piece)
+  const proposalOf = (v: DoseValue) => proposeFor(doseOf(v), piece, mode)
+  const proposal = showHere && f.kind === 'drug' ? proposalOf(f.dose) : null
+
   const here = showHere ? Number(f.quantity || 0) : 0
   const home = showHome ? Number(f.homeQuantity || 0) : 0
+  const part = partsOn && showHere ? partOf(mode, f.part, pieceMl) : 0
+  const partOk = part != null
+  const partN = part ?? 0
+  const partText =
+    partN > 0
+      ? mode === 'measure'
+        ? partFigure(partN, mode, pieceMl)
+        : `${partFigure(partN, mode)} ${unit}`
+      : null
+  // the price of the part by the medicine's rule (cash), and the one changed on the order
+  const rulePrice =
+    partN > 0 && item?.cashPrice != null
+      ? rulePartPrice(item.dose, partN, item.cashPrice, {
+          mode,
+          contentMl: pieceMl,
+          cash: true,
+        })
+      : null
+  const typedPrice = f.partPriceOn ? numberOf(f.partPrice) : null
+  const partPriceNow = f.partPriceOn ? typedPrice : rulePrice
+  const ruleWord =
+    item?.dose?.partPriceRule === 'whole'
+      ? t('nurseOrders.partRuleWhole', { unit })
+      : item?.dose?.partPriceRule === 'set' &&
+          item.cashPrice != null &&
+          rulePrice !== Math.round(item.cashPrice * partN)
+        ? t('nurseOrders.partRuleSet')
+        : t('nurseOrders.partRuleShare', { price: formatRwf(item?.cashPrice ?? 0), unit })
+
+  // 0198: give at and repeat (an act, or a medicine given here; never only to take home)
+  const whenOn = ready && (f.kind === 'act' || (showHere && !!item))
+  const w = f.when
+  const repeatOn = whenOn && w.repeat === 'repeat'
+  const hours = everyHoursOf(w)
+  const count = repeatOn ? timesOf(w, hours) : null
+  const firstIso = whenOn && w.giveAt === 'later' ? firstAtOf(w.atDay, w.atTime) : null
+
   // the button the nurse will press: Given / Handed over (all to take home) / Done
-  const action = orderAction({ kind: f.kind, quantity: here, homeQuantity: home })
+  const action = orderAction({ kind: f.kind, quantity: here, homeQuantity: home, part: partN })
   const actCount = Number(f.actQuantity || 0)
   const actName = service ? treatmentName(service, i18n.language) : f.text.trim()
   const summary = summarizeOrder({
@@ -176,11 +296,17 @@ export function NurseOrdersStep({
     service: !!service,
     servicePrice: service?.cashPrice ?? null,
     actCount,
+    part: partN,
+    partPrice: partPriceNow,
+    // the opened pieces hold less than the part: one more piece is opened
+    partOpens: partN > 0 && (stock?.open?.[item?.id ?? ''] ?? 0) < partN - 1e-9,
+    times: repeatOn && count != null ? (count === 'until' ? null : count) : undefined,
   })
   // a half or a decimal typed in a count is said at once, never turned into a bigger number
   const notWhole = f.kind === 'drug' && (!Number.isInteger(here) || !Number.isInteger(home))
   const blocked =
-    f.kind === 'drug' && (notWhole || summary.tone === 'short' || summary.tone === 'wholePacks')
+    f.kind === 'drug' &&
+    (notWhole || !partOk || summary.tone === 'short' || summary.tone === 'wholePacks')
   const restAll = f.where === 'both' && !notWhole ? restOfBox(here, pack?.size) : null
   // offered only when the stock really holds the rest of the box (1 tablet left of a box of 100
   // must not offer "the rest of the box goes home (99)")
@@ -189,6 +315,146 @@ export function NurseOrdersStep({
   // the take-home pieces in boxes ("1 box of 20"), when they make one or more
   const homeBoxes =
     pack && home > 0 && !notWhole ? packsText(t, home, pack.size, pack.packUnit) : null
+
+  // ---------------------------------------------------------------- the dose → the pieces
+  /** The dose typed: the pieces proposed fill the fields the doctor has not typed in. */
+  const setDose = (v: DoseValue) =>
+    setF((x) => {
+      const p = proposalOf(v)
+      // an exact count fills the fields not typed in; a dose with none empties them (review 0198)
+      const patch: Partial<Form> = {
+        dose: v,
+        ...piecesFill(
+          p,
+          { quantity: x.quantityTouched, part: x.partTouched },
+          partsOn ? (e) => partValueOf(e, mode) : null,
+        ),
+      }
+      return { ...x, ...patch }
+    })
+  const proposedWhat =
+    proposal?.kind === 'exact'
+      ? [
+          proposal.whole > 0 ? `${proposal.whole} ${unit}` : null,
+          proposal.part > 0
+            ? mode === 'measure'
+              ? partFigure(proposal.part, mode, pieceMl)
+              : `${partFigure(proposal.part, mode)} ${unit}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(' + ')
+      : null
+  const differsFromProposal =
+    proposal?.kind === 'exact' &&
+    (f.quantity !== String(proposal.whole) || (partsOn && f.part !== partValueOf(proposal, mode)))
+  /** "= 2 tab of 500 mg", "= 10 ml = 0.1 bottle of 100 ml", or why nothing is proposed. */
+  const proposalText = (() => {
+    if (!proposal || !piece) return null
+    const doseWords = doseOf(f.dose)
+    const doseText = doseWords ? `${doseWords.amount} ${doseWords.unit}` : ''
+    switch (proposal.kind) {
+      case 'exact':
+      case 'notExact': {
+        const count = fractionText(proposal.pieces, i18n.language)
+        if (proposal.kind === 'notExact')
+          return t('nurseOrders.doseNotExact', { dose: doseText, exact: count, unit })
+        // "= …": a sign, the same in every language
+        if (proposal.measure && piece.content)
+          return `= ${t('nurseOrders.doseMeasure', {
+            measure: amountText(proposal.measure.amount, proposal.measure.unit),
+            count,
+            unit,
+            content: amountText(piece.content.amount, piece.content.unit),
+          })}`
+        if (proposal.how === 'strength' && piece.strength)
+          return `= ${t('nurseOrders.doseOf', {
+            count,
+            unit,
+            strength: amountText(piece.strength.amount, piece.strength.unit),
+          })}`
+        return `= ${count} ${unit}`
+      }
+      case 'measureOnly':
+        return t('nurseOrders.doseMeasureOnly', {
+          measure: amountText(proposal.measure.amount, proposal.measure.unit),
+          unit,
+        })
+      default:
+        return t('nurseOrders.doseNoLink', { unit })
+    }
+  })()
+  const holds = piece && piece.source !== 'none' ? pieceContentText(t, piece) : ''
+
+  // ---------------------------------------------------------------- the take-home count (B)
+  // the patient may cut a tablet or measure a syrup at home: the count is rounded up anyway
+  const homeMode: PartMode = pieceMl ? 'measure' : itemMode
+  const homeProposalOf = (v: DoseValue) => proposeFor(doseOf(v), piece, homeMode)
+  const takeOf = (x: Form) => {
+    const p = homeProposalOf(x.homeDose)
+    return takeHomeCount({
+      each: p?.kind === 'exact' ? p.pieces : null,
+      frequency: x.homeFrequency,
+      days: numberOf(x.homeDays),
+    })
+  }
+  /** How to take it at home changed: the count follows while the doctor has not typed one. */
+  const setHome = (patch: Partial<Form>) =>
+    setF((x) => {
+      const next = { ...x, ...patch }
+      const c = takeOf(next)
+      // review 0198: no count any more (when needed, a dose that does not convert): the number
+      // worked out before is not left behind; the doctor types it
+      if (!next.homeTouched) next.homeQuantity = c ? String(c.total) : ''
+      return next
+    })
+  const homeP = showHome && f.kind === 'drug' ? homeProposalOf(f.homeDose) : null
+  const take = showHome ? takeOf(f) : null
+  const eachText =
+    homeP?.kind === 'exact'
+      ? homeP.measure && unitOfFamilyVolume(homeP.measure.unit)
+        ? amountText(homeP.measure.amount, homeP.measure.unit)
+        : `${fractionText(homeP.pieces, i18n.language)} ${unit}`
+      : ''
+  const workedOut = (() => {
+    if (!showHome || f.kind !== 'drug') return null
+    if (f.homeFrequency === 'PRN') return t('nurseOrders.homeWhenNeeded')
+    if (!take) return null
+    const total = `${take.total} ${unit}`
+    const line = take.once
+      ? t('nurseOrders.homeWorkedOutOnce', { each: eachText, total })
+      : t('nurseOrders.homeWorkedOut', {
+          each: eachText,
+          perDay: take.perDay,
+          days: take.days,
+          total,
+        })
+    return take.roundedUp
+      ? `${line} · ${t('nurseOrders.homeRoundedUp', {
+          exact: `${fractionText(take.exact, i18n.language)} ${unit}`,
+          total,
+        })}`
+      : line
+  })()
+  /** The words of the dose each time, printed on the label: "1 tab (500 mg)", "10 ml", "2 puffs". */
+  const homeDoseWords = (): string => {
+    const v = f.homeDose
+    const d = doseOf(v)
+    if (!d) return ''
+    const typed = `${v.amount} ${v.unit === OTHER_UNIT ? v.other.trim() : doseUnitLabel(t, v.unit)}`
+    if (v.unit === OTHER_UNIT || isCountUnit(v.unit) || homeP?.kind !== 'exact') return typed
+    if (homeP.measure && unitOfFamilyVolume(homeP.measure.unit)) {
+      const m = amountText(homeP.measure.amount, homeP.measure.unit)
+      return homeP.how === 'volume' ? m : `${m} (${typed})`
+    }
+    return `${fractionText(homeP.pieces, i18n.language)} ${unit} (${typed})`
+  }
+  /** The dose given here in words (`dose`, read by every screen that prints it). */
+  const hereDoseWords = (): string => {
+    const v = f.dose
+    if (!doseOf(v)) return ''
+    return `${v.amount} ${v.unit === OTHER_UNIT ? v.other.trim() : doseUnitLabel(t, v.unit)}`
+  }
 
   // the picker (0197): everything the clinic knows as a medicine or product, each once — those in
   // the clinic's stock first (how many, the box, the price), then those it does not have: its own
@@ -259,20 +525,61 @@ export function NurseOrdersStep({
   const pickedName = medicineOptions.find((o) => o.value === f.itemId)?.label ?? ''
   const notInStockText = t('nurseOrders.notInStock', { name: pickedName })
 
+  /** A medicine chosen: the dose starts in the unit of what one piece holds (mg, ml, tablet). */
+  const pickItem = (id: string) => {
+    const it = items.find((x) => x.id === id)
+    const p = stock?.packs[id]
+    const pc = it
+      ? pieceContentOf({ ...it, saleMode: p?.mode ?? 'piece', packSize: p?.size ?? null })
+      : null
+    setErr(null)
+    set({
+      itemId: id,
+      dose: emptyDose(defaultUnit(pc)),
+      homeDose: emptyDose(it ? (pc?.content ? defaultUnit(pc) : pieceUnitOf(pc)) : ''),
+      quantity: '1',
+      quantityTouched: false,
+      part: '',
+      partTouched: false,
+      partPriceOn: false,
+      partPrice: '',
+      partPriceWhy: '',
+      homeTouched: false,
+    })
+  }
+  const setWhen = (patch: Partial<WhenValue>) =>
+    setF((x) => {
+      const next = { ...x.when, ...patch }
+      // "At a time": the next half hour is proposed
+      if (patch.giveAt === 'later' && !next.atDay) {
+        const n = nextHalfHour(Date.now())
+        next.atDay = n.day
+        next.atTime = n.time
+      }
+      return { ...x, when: next }
+    })
+
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setErr(null)
     if (f.kind === 'drug') {
       if (notInStock) return setErr(`${notInStockText} ${t('nurseOrders.notInStockWays')}`)
       if (!item) return setErr(t('nurseOrders.errMedicine'))
-      if (notWhole) return setErr(t('nurseOrders.errWhole'))
-      if (here + home <= 0) return setErr(t('nurseOrders.errAmounts'))
+      if (notWhole) return setErr(t(partsOn ? 'nurseOrders.errWholePart' : 'nurseOrders.errWhole'))
+      if (!partOk) return setErr(t('nurseOrders.errPart', { unit }))
+      if (here + home + partN <= 0) return setErr(t('nurseOrders.errAmounts'))
       // "Both": each part has its number (never a take-home part dropped without a word)
-      if (f.where === 'both' && !(here > 0)) return setErr(t('nurseOrders.errHereAmount'))
+      if (f.where === 'both' && !(here + partN > 0)) return setErr(t('nurseOrders.errHereAmount'))
       if (f.where === 'both' && !(home > 0)) return setErr(t('nurseOrders.errHomeAmount'))
       const days = f.homeDays.trim()
       if (home > 0 && days && !(Number.isInteger(Number(days)) && +days >= 1 && +days <= 365))
         return setErr(t('nurseOrders.errHomeDays'))
+      if (
+        partN > 0 &&
+        f.partPriceOn &&
+        (typedPrice == null || typedPrice < 0 || f.partPriceWhy.trim().length < 3)
+      )
+        return setErr(t('nurseOrders.errPartPrice'))
       if (blocked)
         return setErr(
           summaryWords(t, summary, {
@@ -281,17 +588,25 @@ export function NurseOrdersStep({
             act: '',
             actCount,
             packUnit: pack?.packUnit ?? null,
+            partText,
           }),
         )
     } else {
       if (!service && f.text.trim().length < 2) return setErr(t('nurseOrders.errAct'))
       if (!(actCount > 0)) return setErr(t('nurseOrders.errActQty'))
     }
+    if (whenOn && w.giveAt === 'later' && !(firstIso && firstAtAllowed(firstIso, now)))
+      return setErr(t('nurseOrders.errFirstAt'))
+    if (repeatOn) {
+      if (!hours || count == null) return setErr(t('nurseOrders.errRepeat'))
+      if (f.kind === 'drug' && !(here + partN > 0)) return setErr(t('nurseOrders.errRepeatHere'))
+    }
     const nurse = nurses.find((n) => n.id === f.assignedTo)
     // "Me — I do it myself" (0133): the order is the doctor's; he marks it given or done below
     const self = f.assignedTo === myId
     const what =
       f.kind === 'drug' ? [item?.name, item?.strength].filter(Boolean).join(' ') : actName
+    const plan = repeatOn ? planText(t, w, now) : null
     if (
       !(await confirm({
         title: t('nurseOrders.sendQ', { what, name: patientName }),
@@ -313,19 +628,29 @@ export function NurseOrdersStep({
             act: actName,
             actCount,
             packUnit: pack?.packUnit ?? null,
+            partText,
+            home: repeatOn ? home : undefined,
           })}`,
-          t(
-            {
-              give: 'nurseOrders.sendOnce',
-              hand: 'nurseOrders.sendOnceHand',
-              done: 'nurseOrders.sendOnceAct',
-            }[action],
-          ),
+          // once: one press ends it; repeated: the plan of the times
+          plan ??
+            [
+              firstIso ? t('nurseOrders.at', { time: whenText(Date.parse(firstIso), now) }) : null,
+              t(
+                {
+                  give: 'nurseOrders.sendOnce',
+                  hand: 'nurseOrders.sendOnceHand',
+                  done: 'nurseOrders.sendOnceAct',
+                }[action],
+              ),
+            ]
+              .filter(Boolean)
+              .join(' · '),
         ].join(' '),
         confirmLabel: t(self ? 'nurseOrders.keepYes' : 'nurseOrders.sendYes'),
       }))
     )
       return
+    const dose = doseOf(f.dose)
     try {
       await actions.create.mutateAsync({
         encounterId,
@@ -337,10 +662,21 @@ export function NurseOrdersStep({
         itemName: item ? [item.name, item.strength].filter(Boolean).join(' ') : null,
         itemUnit: item?.unit ?? null,
         quantity: f.kind === 'drug' ? here : actCount,
-        dose: showHere ? f.dose : undefined,
+        dose: showHere && f.kind === 'drug' ? hereDoseWords() : undefined,
+        doseAmount: showHere && f.kind === 'drug' && dose ? dose.amount : null,
+        doseUnit: showHere && f.kind === 'drug' && dose ? dose.unit : null,
         route: showHere ? f.route : undefined,
+        partAmount: partN > 0 ? (mode === 'measure' ? numberOf(f.part) : partN) : null,
+        partUnit: partN > 0 ? (mode === 'measure' ? 'ml' : 'piece') : null,
+        partText,
+        partPrice: partN > 0 && f.partPriceOn ? typedPrice : null,
+        partPriceReason: partN > 0 && f.partPriceOn ? f.partPriceWhy.trim() : null,
+        firstAt: whenOn && w.giveAt === 'later' ? firstIso : null,
+        everyMinutes: repeatOn && hours ? hours * 60 : null,
+        times: repeatOn && typeof count === 'number' ? count : null,
+        untilStopped: repeatOn && count === 'until',
         homeQuantity: home,
-        homeDose: showHome ? f.homeDose : undefined,
+        homeDose: showHome ? homeDoseWords() : undefined,
         homeFrequency: showHome ? f.homeFrequency : undefined,
         homeDays: showHome && f.homeDays.trim() ? Number(f.homeDays) : null,
         homeInstructions: showHome ? f.homeInstructions : undefined,
@@ -370,7 +706,7 @@ export function NurseOrdersStep({
   }
 
   // numbers only; a dot or a comma is kept, so a half is refused in words instead of becoming 5
-  const amount = (v: string) => v.replace(/,/g, '.').replace(/[^\d.]/g, '')
+  const amount = (v: string) => decimal(v)
   return (
     <div className="flex flex-col gap-3">
       <span className="flex flex-wrap items-center gap-2">
@@ -417,10 +753,7 @@ export function NurseOrdersStep({
                   <SearchSelect
                     label={t('clinical.medicine')}
                     value={f.itemId}
-                    onChange={(v) => {
-                      setErr(null)
-                      set({ itemId: v })
-                    }}
+                    onChange={pickItem}
                     required
                     emptyLabel={t('clinical.pickMedicine')}
                     options={medicineOptions}
@@ -470,27 +803,98 @@ export function NurseOrdersStep({
                   </div>
                 )}
                 {!notInStock && showHere && (
-                  <fieldset className="border-border bg-card m-0 flex min-w-0 flex-col gap-2 rounded-md border p-2.5">
+                  <fieldset className="border-border bg-card m-0 flex min-w-0 flex-col gap-3 rounded-md border p-2.5">
                     <legend className="px-1">
                       <PartTitle title={t('nurseOrders.hereTitle')} />
                     </legend>
+                    {/* 0198: the dose as a number and a unit; the pieces are worked out from it */}
+                    <Hinted hint={t('nurseOrders.doseHint')}>
+                      <DoseInput
+                        label={t('nurseOrders.doseWords')}
+                        value={f.dose}
+                        onChange={setDose}
+                        units={units}
+                      />
+                    </Hinted>
+                    {(proposalText || holds) && (
+                      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px]">
+                        {proposalText && (
+                          <span
+                            aria-live="polite"
+                            className={
+                              proposal?.kind === 'exact'
+                                ? 'text-ink min-w-0 font-semibold'
+                                : 'text-amber min-w-0 font-semibold'
+                            }
+                          >
+                            {proposalText}
+                          </span>
+                        )}
+                        {holds && (
+                          <span className="text-ink-3 min-w-0 text-xs">
+                            {piece?.source === 'name'
+                              ? `${holds} · ${t('dose.readFromName')}`
+                              : holds}
+                          </span>
+                        )}
+                        {differsFromProposal && proposedWhat && proposal?.kind === 'exact' && (
+                          <Button
+                            size="sm"
+                            variant="tint-grey"
+                            onClick={() =>
+                              set({
+                                quantity: String(proposal.whole),
+                                quantityTouched: false,
+                                part: partsOn ? partValueOf(proposal, mode) : f.part,
+                                partTouched: false,
+                              })
+                            }
+                          >
+                            <RotateCcw size={14} aria-hidden="true" />
+                            {t('nurseOrders.useCount', { count: proposedWhat })}
+                          </Button>
+                        )}
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
                       <Hinted hint={t('nurseOrders.hereAmountHint')}>
                         <Field
                           label={t('nurseOrders.hereAmount', { unit })}
                           inputMode="numeric"
                           value={f.quantity}
-                          onChange={(e) => set({ quantity: amount(e.target.value) })}
+                          onChange={(e) =>
+                            set({ quantity: amount(e.target.value), quantityTouched: true })
+                          }
                         />
                       </Hinted>
-                      <Hinted hint={t('nurseOrders.doseHint')}>
-                        <Field
-                          label={t('nurseOrders.doseWords')}
-                          value={f.dose}
-                          onChange={(e) => set({ dose: e.target.value })}
-                          placeholder="1 g"
-                        />
-                      </Hinted>
+                      {/* 0198: a part of a piece, when the medicine may be given in parts */}
+                      {partsOn && (
+                        <Hinted hint={t('nurseOrders.andPartHint', { unit })}>
+                          {mode === 'measure' ? (
+                            <Field
+                              label={t('nurseOrders.andPartMl')}
+                              inputMode="decimal"
+                              value={f.part}
+                              onChange={(e) =>
+                                set({ part: amount(e.target.value), partTouched: true })
+                              }
+                            />
+                          ) : (
+                            <Select
+                              label={t('nurseOrders.andPart')}
+                              value={f.part}
+                              onChange={(e) => set({ part: e.target.value, partTouched: true })}
+                            >
+                              <option value="">{t('nurseOrders.partNone')}</option>
+                              {(mode === 'quarter' ? [0.25, 0.5, 0.75] : [0.5]).map((x) => (
+                                <option key={x} value={String(x)}>
+                                  {`${partFigure(x, mode)} ${unit}`}
+                                </option>
+                              ))}
+                            </Select>
+                          )}
+                        </Hinted>
+                      )}
                       <Hinted hint={t('nurseOrders.routeHint')}>
                         <Select
                           label={t('clinical.route')}
@@ -505,6 +909,64 @@ export function NurseOrdersStep({
                         </Select>
                       </Hinted>
                     </div>
+                    {/* 0198: the price of the part, by the medicine's rule, changeable with a reason */}
+                    {partN > 0 && partText && (
+                      <div className="flex min-w-0 flex-col gap-2 text-[13px]">
+                        <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
+                          <span className="text-ink min-w-0">
+                            {t('nurseOrders.partPrice', {
+                              part: partText,
+                              price:
+                                partPriceNow != null
+                                  ? formatRwf(partPriceNow)
+                                  : t('nurseOrders.whyNoPrice'),
+                            })}
+                            {!f.partPriceOn && rulePrice != null && (
+                              <span className="text-ink-3"> ({ruleWord})</span>
+                            )}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() =>
+                              set(
+                                f.partPriceOn
+                                  ? { partPriceOn: false, partPrice: '', partPriceWhy: '' }
+                                  : {
+                                      partPriceOn: true,
+                                      partPrice: rulePrice != null ? String(rulePrice) : '',
+                                    },
+                              )
+                            }
+                          >
+                            {t(
+                              f.partPriceOn
+                                ? 'nurseOrders.partPriceKeep'
+                                : 'nurseOrders.partPriceChange',
+                            )}
+                          </Button>
+                        </span>
+                        {f.partPriceOn && (
+                          <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+                            <Field
+                              label={t('nurseOrders.partPriceNew', { part: partText })}
+                              inputMode="numeric"
+                              value={f.partPrice}
+                              onChange={(e) =>
+                                set({ partPrice: e.target.value.replace(/\D/g, '') })
+                              }
+                            />
+                            <Hinted hint={t('nurseOrders.partPriceHint')}>
+                              <Field
+                                label={t('nurseOrders.partPriceWhy')}
+                                value={f.partPriceWhy}
+                                onChange={(e) => set({ partPriceWhy: e.target.value })}
+                              />
+                            </Hinted>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </fieldset>
                 )}
                 {!notInStock && showHome && (
@@ -512,51 +974,22 @@ export function NurseOrdersStep({
                     <legend className="px-1">
                       <PartTitle title={t('nurseOrders.takeHomeTitle')} />
                     </legend>
-                    <div className="flex flex-wrap items-end gap-3">
-                      <div className="min-w-[12rem] flex-[1_1_14rem]">
-                        <Hinted
-                          hint={t('nurseOrders.homeAmountHint', {
-                            button: t(BUTTON_WORD[f.where === 'home' ? 'hand' : 'give']),
-                          })}
-                        >
-                          <Field
-                            label={t('nurseOrders.homeAmount', { unit })}
-                            inputMode="numeric"
-                            value={f.homeQuantity}
-                            onChange={(e) => set({ homeQuantity: amount(e.target.value) })}
-                          />
-                        </Hinted>
-                      </div>
-                      {homeBoxes && (
-                        <span className="text-ink-2 pb-6 text-[13px]">= {homeBoxes}</span>
-                      )}
-                      {rest != null && (
-                        <Button
-                          size="sm"
-                          variant="tint-grey"
-                          className="mb-5"
-                          onClick={() => set({ homeQuantity: String(rest) })}
-                        >
-                          <PackageOpen size={14} aria-hidden="true" />
-                          {t('nurseOrders.restOfPack', { pack: packWord, count: rest })}
-                        </Button>
-                      )}
-                    </div>
                     <PartTitle
                       title={t('nurseOrders.howAtHome')}
                       hint={t('nurseOrders.howAtHomeHint')}
                     />
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
-                      <Field
-                        label={t('nurseOrders.homeDose')}
-                        value={f.homeDose}
-                        onChange={(e) => set({ homeDose: e.target.value })}
-                        placeholder={t('nurseOrders.homeDosePh')}
-                      />
+                    {/* 0198: the dose each time as a number and a unit: the count is worked out */}
+                    <DoseInput
+                      label={t('nurseOrders.homeDose')}
+                      value={f.homeDose}
+                      onChange={(v) => setHome({ homeDose: v })}
+                      units={units}
+                    />
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,2fr)]">
                       <Select
                         label={t('nurseOrders.homeOften')}
                         value={f.homeFrequency}
-                        onChange={(e) => set({ homeFrequency: e.target.value })}
+                        onChange={(e) => setHome({ homeFrequency: e.target.value })}
                       >
                         <option value="">{t('nurseOrders.homeOftenPick')}</option>
                         {FREQUENCIES.map((x) => (
@@ -569,15 +1002,67 @@ export function NurseOrdersStep({
                         label={t('nurseOrders.homeDays')}
                         inputMode="numeric"
                         value={f.homeDays}
-                        onChange={(e) => set({ homeDays: amount(e.target.value) })}
+                        onChange={(e) => setHome({ homeDays: amount(e.target.value) })}
                       />
                       <Field
+                        wrapperClassName="sm:col-span-2 xl:col-span-1"
                         label={t('nurseOrders.homeInstructions')}
                         value={f.homeInstructions}
                         onChange={(e) => set({ homeInstructions: e.target.value })}
                         placeholder={t('nurseOrders.homeInstructionsPh')}
                       />
                     </div>
+                    <div className="flex flex-wrap items-end gap-3">
+                      <div className="min-w-[12rem] flex-[1_1_14rem]">
+                        <Hinted
+                          hint={t('nurseOrders.homeAmountHint', {
+                            button: t(BUTTON_WORD[f.where === 'home' ? 'hand' : 'give']),
+                          })}
+                        >
+                          <Field
+                            label={t('nurseOrders.homeAmount', { unit })}
+                            inputMode="numeric"
+                            value={f.homeQuantity}
+                            onChange={(e) =>
+                              set({ homeQuantity: amount(e.target.value), homeTouched: true })
+                            }
+                          />
+                        </Hinted>
+                      </div>
+                      {homeBoxes && (
+                        <span className="text-ink-2 pb-6 text-[13px]">= {homeBoxes}</span>
+                      )}
+                      {rest != null && (
+                        <Button
+                          size="sm"
+                          variant="tint-grey"
+                          className="mb-5"
+                          onClick={() => set({ homeQuantity: String(rest), homeTouched: true })}
+                        >
+                          <PackageOpen size={14} aria-hidden="true" />
+                          {t('nurseOrders.restOfPack', { pack: packWord, count: rest })}
+                        </Button>
+                      )}
+                    </div>
+                    {workedOut && (
+                      <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px]">
+                        <span aria-live="polite" className="text-ink-2 min-w-0">
+                          {workedOut}
+                        </span>
+                        {take && f.homeQuantity !== String(take.total) && (
+                          <Button
+                            size="sm"
+                            variant="tint-grey"
+                            onClick={() =>
+                              set({ homeQuantity: String(take.total), homeTouched: false })
+                            }
+                          >
+                            <RotateCcw size={14} aria-hidden="true" />
+                            {t('nurseOrders.useCount', { count: take.total })}
+                          </Button>
+                        )}
+                      </span>
+                    )}
                   </fieldset>
                 )}
               </>
@@ -624,6 +1109,17 @@ export function NurseOrdersStep({
                 </Hinted>
               </div>
             )}
+            {/* 0198: when, and how often (not for a medicine only to take home) */}
+            {whenOn && !notInStock && (
+              <OrderWhen
+                value={w}
+                onChange={setWhen}
+                repeatable
+                inBed={inBed}
+                homeSplit={f.kind === 'drug' && f.where === 'both'}
+                now={now}
+              />
+            )}
             <Hinted hint={t('nurseOrders.notesHint')}>
               <Field
                 label={t('nurseOrders.notesLabel')}
@@ -633,12 +1129,14 @@ export function NurseOrdersStep({
               />
             </Hinted>
             {/* what will happen is said once a medicine is chosen (never "no price" for none) */}
-            {notInStock || (f.kind === 'drug' && !item) ? null : notWhole ? (
+            {notInStock || (f.kind === 'drug' && !item) ? null : notWhole || !partOk ? (
               <p
                 role="alert"
                 className="border-red bg-red-bg text-red m-0 rounded-md border px-3 py-2 text-[13px] font-semibold"
               >
-                {t('nurseOrders.errWhole')}
+                {notWhole
+                  ? t(partsOn ? 'nurseOrders.errWholePart' : 'nurseOrders.errWhole')
+                  : t('nurseOrders.errPart', { unit })}
               </p>
             ) : (
               <OrderSummary
@@ -649,6 +1147,8 @@ export function NurseOrdersStep({
                 act={actName}
                 actCount={actCount}
                 packUnit={pack?.packUnit ?? null}
+                partText={partText}
+                home={repeatOn ? home : undefined}
               />
             )}
             {err && (

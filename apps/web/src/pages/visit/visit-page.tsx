@@ -87,7 +87,7 @@ import { VisitFilesCard } from '@/components/clinical/supporting-files'
 import { FollowUpForm } from '@/components/clinical/follow-up-form'
 import { usePatientBookings } from '@/lib/api/follow-up'
 import { Reveal } from '@/components/ui/reveal'
-import { canUndoOrder } from '@/lib/api/nurse-orders'
+import { canUndoOrder, canUndoTime, isRepeated } from '@/lib/api/nurse-orders'
 import { useOrderUndo } from '@/lib/use-order-undo'
 
 const errorBox =
@@ -361,18 +361,21 @@ export function VisitPage({
     c.sourceType === 'nurse_order'
       ? (clinical?.nurseOrders ?? []).find((o) => o.id === c.sourceId)
       : undefined
-  const undoOrderLine = async (orderId: string) => {
+  const undoOrderLine = async (orderId: string, doseId?: string | null) => {
     const order = (clinical?.nurseOrders ?? []).find((o) => o.id === orderId)
     if (!order) return
     setActionError(null)
     try {
-      const m = await orderUndo.undo(order, {
-        myId: user.id,
-        isManager: isManagerUser,
-        patientName,
-        visitOver: closed,
-        billClosed: !!bill?.status && bill.status !== 'draft',
-      })
+      // 0198: a repeated order: only the time of this line
+      const m = doseId
+        ? await orderUndo.undoTime(order, doseId)
+        : await orderUndo.undo(order, {
+            myId: user.id,
+            isManager: isManagerUser,
+            patientName,
+            visitOver: closed,
+            billClosed: !!bill?.status && bill.status !== 'draft',
+          })
       if (m) setDone(m)
     } catch (e) {
       setActionError(describe(e))
@@ -858,7 +861,16 @@ export function VisitPage({
                         // 0193: a line made by an order of step 6 (its order, who may undo it)
                         const fromOrder = c.sourceType === 'nurse_order'
                         const order = orderOf(c)
-                        const mayUndo = !!order && canUndoOrder(order, user.id, isManagerUser)
+                        // 0198: a line of a repeated order is undone time by time (its own time)
+                        const lineTime =
+                          order && isRepeated(order) && c.doseId
+                            ? (order.times ?? []).find((x) => x.doseId === c.doseId)
+                            : undefined
+                        const mayUndo =
+                          !!order &&
+                          (isRepeated(order)
+                            ? !!lineTime && canUndoTime(lineTime, user.id, isManagerUser)
+                            : canUndoOrder(order, user.id, isManagerUser))
                         return (
                           <Row key={c.id} className="flex-wrap gap-x-4 gap-y-1 py-2">
                             <span className="min-w-[180px] flex-1">
@@ -921,7 +933,7 @@ export function VisitPage({
                                 variant="ghost"
                                 title={t('nurseOrders.undoOnBill')}
                                 disabled={orderUndo.pending}
-                                onClick={() => void undoOrderLine(order.id)}
+                                onClick={() => void undoOrderLine(order.id, lineTime?.doseId)}
                               >
                                 <Undo2 size={16} aria-hidden="true" />
                                 {t('nurseOrders.undo')}

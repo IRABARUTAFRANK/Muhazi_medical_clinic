@@ -24,7 +24,14 @@ import {
 import { Flash } from '@/components/ui/flash'
 import { ListBar, Pager } from '@/components/ui/list-tools'
 import { Seg } from '@/components/ui/seg'
-import { isLowStock, useStockAlerts, type StockItem, type StockOverview } from '@/lib/api/stock'
+import {
+  isLowStock,
+  useOpenPieces,
+  useStockAlerts,
+  type StockItem,
+  type StockOverview,
+} from '@/lib/api/stock'
+import { openPieceText } from '@/lib/dose-words'
 import { EXPIRY_WINDOW_DAYS, type StockTotals } from '@/lib/api/pharmacy'
 import { matches, usePaged } from '@/lib/paging'
 import { cn } from '@/lib/utils'
@@ -330,8 +337,10 @@ function StockList({
   openId: string | null
   onOpen: (id: string) => void
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const locations = overview?.locations ?? []
+  // 0198: the pieces opened for a part ("½ tablet open"): they left the stock when opened
+  const { data: openPieces = [] } = useOpenPieces()
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const rows = items
@@ -435,6 +444,13 @@ function StockList({
                           .filter(Boolean)
                           .join(' · ')}
                       </span>
+                      {openPieces
+                        .filter((p) => p.itemId === i.id)
+                        .map((p) => (
+                          <span key={p.id} className="text-amber block text-[12px] font-medium">
+                            {openPieceText(t, p, i.unit, i18n.language)}
+                          </span>
+                        ))}
                     </td>
                     <td
                       className={cn(

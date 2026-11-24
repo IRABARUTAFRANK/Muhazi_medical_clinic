@@ -22729,6 +22729,9 @@ const t135 = {}
 const json135 = (x) => JSON.stringify(x)
 await step('0135: the migration runs again on a database that already has it', async () => {
   await asAdmin()
+  // 0198 appended columns to items_catalogue: a view cannot lose a column, so the view is made
+  // again from 0135 (the 0198 steps put 0198 back on top)
+  await db.exec(`drop view if exists items_catalogue`)
   const sql = await readFile(
     path.join(migrationsDir, '20270115090000_clinic_price_lists.sql'),
     'utf8',
@@ -29799,6 +29802,1395 @@ await step(
   },
 )
 // @@t197-beds-end
+// @@t198-begin
+// ---------------------------------------------------------------- 0198 the dose and the pieces, parts of a piece, a time to give, repeated doses
+const t198 = {}
+const json198 = (x) => JSON.stringify(x)
+/** create_order_planned with named arguments (bound), plus `raw` arguments written as SQL. */
+const planSql198 = (args, raw = '') => {
+  const keys = Object.keys(args)
+  const parts = keys.map((k, i) => `${k} => $${i + 1}`)
+  if (raw) parts.push(raw)
+  return [`select create_order_planned(${parts.join(', ')}) as j`, keys.map((k) => args[k])]
+}
+const plan198 = async (who, args, raw = '') => {
+  const [sql, params] = planSql198(args, raw)
+  return as193(who, sql, params)
+}
+const planHint198 = async (who, args, raw = '') => {
+  const [sql, params] = planSql198(args, raw)
+  return hintAs(who, sql, params)
+}
+const stock198 = async (item) =>
+  Number((await one(`select usable_stock($1, $2) as n`, [item, t198.main])).n)
+/** The opened pieces of a medicine at the main pharmacy (open ones), oldest first. */
+const open198 = async (item) =>
+  (
+    await db.query(
+      `select id, left_part::float8 as left, opened_dose_id, movement_id, closed_reason
+         from open_piece where item_id = $1 and location_id = $2 and closed_at is null order by opened_at, id`,
+      [item, t198.main],
+    )
+  ).rows
+const lines198 = async (orderId) =>
+  (
+    await db.query(
+      `select id, description, quantity::float8 as q, unit_price::float8 as p, part::float8 as part,
+              patient_share::float8 as pat, insurer_share::float8 as ins, price_origin::text as origin,
+              manual_reason, nurse_order_dose_id, performed_by, deleted_at
+         from invoice_line where source_type = 'nurse_order' and source_id = $1 order by created_at, id`,
+      [orderId],
+    )
+  ).rows
+const live198 = async (orderId) => (await lines198(orderId)).filter((l) => !l.deleted_at)
+/** A drug order of the visit for Nurse A (named arguments added). */
+const drug198 = (enc, item, extra = {}) => ({
+  p_encounter_id: enc,
+  p_kind: 'drug',
+  p_item_id: item,
+  p_assigned_to: t127.nurseA,
+  ...extra,
+})
+const giveSql198 = `select give_nurse_order($1) as j`
+const timeSql198 = `select give_order_time($1, $2) as j`
+const skipSql198 = `select skip_order_time($1, $2, $3) as j`
+const undoTimeSql198 = `select undo_order_time($1, $2) as j`
+const doseSql198 = `select set_item_dose(p_item_id => $1, p_dose_amount => $2, p_dose_unit => $3, p_dose_per => $4,
+  p_dose_per_unit => $5, p_content_amount => $6, p_content_unit => $7, p_part_mode => $8,
+  p_part_price_rule => $9, p_half_price => $10, p_quarter_price => $11, p_measure_price => $12) as j`
+const doseArgs198 = (a) => [
+  a.item,
+  a.amount ?? null,
+  a.unit ?? null,
+  a.per ?? null,
+  a.perUnit ?? null,
+  a.content ?? null,
+  a.contentUnit ?? null,
+  a.mode ?? null,
+  a.rule ?? null,
+  a.half ?? null,
+  a.quarter ?? null,
+  a.measure ?? null,
+]
+/** Moves the first time of an order back (the form refuses a time in the past). */
+const shift198 = async (orderId, interval) => {
+  await asAdmin()
+  await db.query(`update nurse_order set first_at = now() - $2::interval where id = $1`, [
+    orderId,
+    interval,
+  ])
+}
+const order198 = async (id) => (await one(`select nurse_order_json($1) as j`, [id])).j
+// earlier steps re-ran older migrations (0127 six_steps, 0193, 0197 beds_stay, 0135 clinic_price_lists):
+// put 0198 back on top (twice)
+await step('0198: the migration runs again on a database that has it', async () => {
+  await asAdmin()
+  const sql = await readFile(
+    path.join(migrationsDir, '20270218090000_dose_parts_schedule.sql'),
+    'utf8',
+  )
+  await db.exec(sql)
+  await db.exec(sql)
+  const sig =
+    'create_order_planned(uuid, text, uuid, uuid, text, numeric, numeric, text, numeric, text, text, text, numeric, text, timestamptz, integer, integer, boolean, numeric, text, text, integer, text, uuid, text)'
+  const fx = (who, f) => `has_function_privilege('${who}', '${f}', 'execute')`
+  const r = await one(
+    `select ${fx('authenticated', sig)} as plan, ${fx('anon', sig)} as plan_anon,
+            ${fx('authenticated', 'give_order_time(uuid, integer, text, timestamptz)')} as give_x,
+            ${fx('authenticated', 'skip_order_time(uuid, integer, text)')} as skip_x,
+            ${fx('authenticated', 'undo_order_time(uuid, text)')} as undo_x,
+            ${fx('authenticated', 'order_times_catch_up()')} as catch_x,
+            ${fx('anon', 'order_times_catch_up()')} as catch_anon,
+            ${fx('authenticated', 'set_item_dose(uuid, numeric, text, numeric, text, numeric, text, text, text, numeric, numeric, numeric)')} as dose_x,
+            ${fx('authenticated', 'open_pieces(uuid)')} as open_x,
+            ${fx('authenticated', 'close_open_piece(uuid, text)')} as close_x,
+            ${fx('authenticated', 'take_part(uuid, uuid, numeric, uuid)')} as take_x,
+            ${fx('authenticated', 'return_parts(uuid[])')} as return_x,
+            ${fx('authenticated', 'add_part_charge_internal(uuid, station, uuid, numeric, text, numeric, text, uuid, uuid, text, uuid)')} as part_x,
+            ${fx('authenticated', 'order_times(uuid)')} as times_x,
+            ${fx('authenticated', 'carry_out_time(nurse_order, integer, timestamptz, timestamptz, text, uuid, numeric, numeric)')} as carry_x,
+            ${fx('authenticated', 'undo_order_doses(nurse_order, uuid[], text, boolean)')} as undo_int_x,
+            has_table_privilege('authenticated', 'open_piece', 'select') as piece_sel,
+            has_table_privilege('authenticated', 'open_piece_use', 'select') as use_sel,
+            has_table_privilege('authenticated', 'order_time_notice', 'select') as notice_sel,
+            (select count(*)::int from information_schema.columns where table_name = 'items_catalogue'
+               and column_name in ('dose_amount', 'content_amount', 'part_mode_now', 'part_price_rule', 'half_price')) as view_cols,
+            (select is_nullable from information_schema.columns where table_name = 'nurse_order'
+               and column_name = 'doses_planned') as planned_null,
+            (select count(*)::int from pg_trigger where tgname = 'encounter_orders_done') as trig`,
+  )
+  if (
+    !r.plan ||
+    r.plan_anon ||
+    !r.give_x ||
+    !r.skip_x ||
+    !r.undo_x ||
+    !r.catch_x ||
+    r.catch_anon ||
+    !r.dose_x ||
+    !r.open_x ||
+    !r.close_x ||
+    r.take_x ||
+    r.return_x ||
+    r.part_x ||
+    r.times_x ||
+    r.carry_x ||
+    r.undo_int_x ||
+    r.piece_sel ||
+    r.use_sel ||
+    r.notice_sel ||
+    r.view_cols !== 5 ||
+    r.planned_null !== 'YES' ||
+    r.trig !== 1
+  )
+    throw new Error(json198(r))
+  return 'no error; the order form, the times (give, not given, undo), the catch-up, the medicine’s piece and the opened pieces for a signed-in person (not anon); the stock, bill and times helpers internal; the opened pieces and late notices read only through functions; the catalogue has the new columns; a repeated order may run until stopped; the visit’s end trigger once'
+})
+await step(
+  '0198 seed: Paracetamol 500 mg (halves, 50 RWF), a syrup 250 mg/5 ml 100 ml (measure, 1,000 RWF), a box-only medicine, an insurer with its own piece price',
+  async () => {
+    await as(staff.manager)
+    const mk = async (name, price, strength, form, unit) =>
+      (
+        await one(`select upsert_item(null, $1, $2, $3, $4, $5) as id`, [
+          name,
+          price,
+          strength,
+          form,
+          unit,
+        ])
+      ).id
+    t198.para = await mk('Paracetamol 198', 50, '500 mg', 'tablet', 'tablet')
+    t198.syrup = await mk('Amoxicillin syrup 198', 1000, '250 mg/5 ml', 'syrup', 'bottle')
+    t198.box = await mk('Cotrim 198', 100, '480 mg', 'tablet', 'tablet')
+    await db.query(`select set_item_packaging($1, 10, 'pack', null, 1000, 'tablet', 'box')`, [
+      t198.box,
+    ])
+    t198.metro = await mk('Metronidazole 198', 40, '250 mg', 'tablet', 'tablet')
+    t198.zinc = await mk('Zinc 198', 30, '20 mg', 'tablet', 'tablet')
+    t198.caps = await mk('Omeprazole 198', 80, '20 mg', 'gastro-resistant capsule', 'capsule')
+    t198.ins = (
+      await one(
+        `select upsert_payer(null, 'Insurer 198', 'private', 85, '{}'::jsonb, true, 'INS198', false, 'cash_covered') as id`,
+      )
+    ).id
+    await db.query(`select set_insurer_price($1, null, $2, 40)`, [t198.ins, t198.para])
+    await asAdmin()
+    t198.main = (await one(`select main_pharmacy() as id`)).id
+    t198.today = (await one(`select (now() at time zone 'Africa/Kigali')::date::text as d`)).d
+    for (const [item, n, no] of [
+      [t198.para, 100, 'PA-198'],
+      [t198.syrup, 10, 'SY-198'],
+      [t198.box, 50, 'CO-198'],
+      [t198.metro, 50, 'ME-198'],
+      [t198.zinc, 20, 'ZN-198'],
+      [t198.caps, 20, 'OM-198'],
+    ])
+      await db.query(`select receive_batch($1, $2, $3, 10, $4, $5::date)`, [
+        item,
+        t198.main,
+        n,
+        no,
+        t97.day.d,
+      ])
+    t198.v = await t127.ov(t127.doc)
+    t198.vIns = await t127.ov(t127.doc)
+    await as(staff.cashier)
+    await db.query(`select set_visit_payer($1, $2, 'INS-198-1')`, [t198.vIns, t198.ins])
+    await asAdmin()
+    const s = [await stock198(t198.para), await stock198(t198.syrup), await stock198(t198.box)]
+    if (json198(s) !== json198([100, 10, 50])) throw new Error(json198(s))
+    return 'Paracetamol 198 (100, 50 a tablet; Insurer 198 pays 40), Amoxicillin syrup 198 (10 bottles, 1,000), Cotrim 198 (50, whole boxes of 10 only), Metronidazole 198, Zinc 198, Omeprazole 198 (gastro-resistant capsule); a cash visit and an insured visit (85 %) of Dr. Steps 127'
+  },
+)
+await step(
+  '0198 A: set_item_dose — the manager and the stock keeper set it; a nurse is refused; a box-only medicine cannot be given in parts; the catalogue view shows it',
+  async () => {
+    const para = await as193(
+      staff.manager,
+      doseSql198,
+      doseArgs198({ item: t198.para, amount: 500, unit: 'mg', mode: 'half' }),
+    )
+    const syrup = await as193(
+      staff.pharmacist,
+      doseSql198,
+      doseArgs198({
+        item: t198.syrup,
+        amount: 250,
+        unit: 'mg',
+        per: 5,
+        perUnit: 'ml',
+        content: 100,
+        contentUnit: 'ml',
+      }),
+    )
+    const nurse = await hintAs(
+      t127.nurseA,
+      doseSql198,
+      doseArgs198({ item: t198.para, amount: 1, unit: 'g' }),
+    )
+    const boxHalf = await hintAs(
+      staff.manager,
+      doseSql198,
+      doseArgs198({ item: t198.box, mode: 'half' }),
+    )
+    // written directly (not through Medicines and prices): refused, nothing changes
+    const direct = await msg193(staff.manager, `update item set dose_amount = 1 where id = $1`, [
+      t198.para,
+    ])
+    await as(t127.doc)
+    const cat = (
+      await db.query(
+        `select id, dose_amount::float8 as amount, dose_unit, dose_per::float8 as per, content_amount::float8 as content,
+                part_mode_now, part_price_rule from items_catalogue where id = any($1::uuid[])`,
+        [[t198.para, t198.syrup, t198.box, t198.metro, t198.caps]],
+      )
+    ).rows
+    await asAdmin()
+    const row = (id) => {
+      const c = cat.find((x) => x.id === id) ?? {}
+      return [c.amount, c.dose_unit, c.per, c.content, c.part_mode_now, c.part_price_rule]
+    }
+    const audit = (
+      await one(
+        `select count(*)::int as n from audit_event where entity = 'item' and entity_id = $1
+           and (after->>'doseAmount')::numeric = 500 and actor_id = $2`,
+        [t198.para, staff.manager],
+      )
+    ).n
+    const r = {
+      para: [Number(para.doseAmount), para.doseUnit, para.partModeNow, para.partPriceRule],
+      syrup: [syrup.partMode, syrup.partModeNow, Number(syrup.contentAmount)],
+      nurse,
+      boxHalf,
+      direct: [
+        direct.split('|')[0],
+        Number((await one(`select dose_amount from item where id = $1`, [t198.para])).dose_amount),
+      ],
+      cat: [row(t198.para), row(t198.syrup), row(t198.box), row(t198.metro), row(t198.caps)],
+      audit,
+    }
+    if (
+      json198(r.para) !== json198([500, 'mg', 'half', 'share']) ||
+      json198(r.syrup) !== json198([null, 'measure', 100]) ||
+      r.nurse !== '42501/' ||
+      r.boxHalf !== '22023/box_only_whole' ||
+      r.direct[1] !== 500 ||
+      json198(r.cat) !==
+        json198([
+          [500, 'mg', null, null, 'half', 'share'],
+          [250, 'mg', 5, 100, 'measure', 'share'],
+          [null, null, null, null, 'whole', 'share'],
+          [null, null, null, null, 'half', 'share'],
+          [null, null, null, null, 'whole', 'share'],
+        ]) ||
+      r.audit !== 1
+    )
+      throw new Error(json198(r))
+    return `the manager: Paracetamol 198 500 mg a tablet, halves; the stock keeper: the syrup 250 mg in 5 ml, 100 ml a bottle → by the ml (by its form); a nurse 42501; halves on a box-only medicine 22023/box_only_whole; written directly: nothing changes (${r.direct[0]}); the catalogue: 500 mg/half, 250 mg in 5 ml of 100 ml/measure, the box-only one whole, a plain tablet never set: halves by its form, a gastro-resistant capsule: whole; one line in the change log`
+  },
+)
+await step(
+  '0198 B: a one-time order with ½ tablet: one tablet leaves the stock, ½ is open, the bill has "· ½ tablet" at 25; the next ½ uses the open half (no stock movement) and closes it',
+  async () => {
+    const s0 = await stock198(t198.para)
+    const o1 = await plan198(
+      t127.doc,
+      drug198(t198.v, t198.para, {
+        p_quantity: 0,
+        p_part_amount: 0.5,
+        p_part_unit: 'piece',
+        p_dose_amount: 250,
+        p_dose_unit: 'mg',
+        p_route: 'oral',
+      }),
+    )
+    const g1 = await as193(t127.nurseA, giveSql198, [o1.id])
+    const s1 = await stock198(t198.para)
+    const open1 = await open198(t198.para)
+    const l1 = await live198(o1.id)
+    await as(t127.doc)
+    const rx = (await one(`select rx_stock() as j`)).j
+    await asAdmin()
+    const o2 = await plan198(
+      t127.doc,
+      drug198(t198.v, t198.para, { p_quantity: 0, p_part_amount: 0.5, p_part_unit: 'tablet' }),
+    )
+    const g2 = await as193(t127.nurseA, giveSql198, [o2.id])
+    const s2 = await stock198(t198.para)
+    const open2 = await open198(t198.para)
+    const moves2 = (
+      await one(`select count(*)::int as n from stock_movement where nurse_order_dose_id = $1`, [
+        g2.doseId,
+      ])
+    ).n
+    const l2 = await live198(o2.id)
+    // 1½: one whole tablet and a half (a second tablet opened)
+    const o3 = await plan198(
+      t127.doc,
+      drug198(t198.v, t198.para, { p_quantity: 1, p_part_amount: 0.5, p_part_unit: 'piece' }),
+    )
+    const g3 = await as193(t127.nurseA, giveSql198, [o3.id])
+    const s3 = await stock198(t198.para)
+    const open3 = await open198(t198.para)
+    const l3 = await live198(o3.id)
+    const r = {
+      o1: [
+        Number(o1.part),
+        o1.partText,
+        o1.dose,
+        Number(o1.doseAmount),
+        o1.doseUnit,
+        o1.partMode,
+        o1.timed,
+        o1.dosesPlanned,
+        o1.everyMinutes,
+      ],
+      g1: [g1.status, g1.charged, Number(g1.billed), Number(g1.doses?.[0]?.part)],
+      took1: s0 - s1,
+      open1: open1.map((p) => [p.left, p.opened_dose_id === g1.doseId]),
+      l1: l1.map((l) => [l.description, l.q, l.p, l.part, l.nurse_order_dose_id === g1.doseId]),
+      rxOpen: Number(rx.open?.[t198.para]),
+      took2: s1 - s2,
+      moves2,
+      open2: open2.length,
+      l2: l2.map((l) => [l.q, l.p, l.part]),
+      g2: [g2.status, Number(g2.billed)],
+      took3: s2 - s3,
+      open3: open3.map((p) => p.left),
+      l3: l3
+        .map((l) => [l.description, l.q, l.p, l.part])
+        .sort((x, y) => (x[3] ?? 0) - (y[3] ?? 0)),
+      g3: [g3.status, Number(g3.billed)],
+    }
+    t198.paraOpen = open3[0]?.id
+    if (
+      json198(r.o1) !== json198([0.5, '½ tablet', '250 mg', 250, 'mg', 'half', true, 1, null]) ||
+      json198(r.g1) !== json198(['done', true, 25, 0.5]) ||
+      r.took1 !== 1 ||
+      json198(r.open1) !== json198([[0.5, true]]) ||
+      json198(r.l1) !== json198([['Paracetamol 198 500 mg · ½ tablet', 1, 25, 0.5, true]]) ||
+      r.rxOpen !== 0.5 ||
+      r.took2 !== 0 ||
+      r.moves2 !== 0 ||
+      r.open2 !== 0 ||
+      json198(r.l2) !== json198([[1, 25, 0.5]]) ||
+      json198(r.g2) !== json198(['done', 25]) ||
+      r.took3 !== 2 ||
+      json198(r.open3) !== json198([0.5]) ||
+      json198(r.l3) !==
+        json198([
+          ['Paracetamol 198 500 mg', 1, 50, null],
+          ['Paracetamol 198 500 mg · ½ tablet', 1, 25, 0.5],
+        ]) ||
+      json198(r.g3) !== json198(['done', 75])
+    )
+      throw new Error(json198(r))
+    return '½ tablet (dose 250 mg, “½ tablet”, halves, a time to give, once): one press → 1 tablet out, ½ open (rx_stock open 0.5), one line “Paracetamol 198 500 mg · ½ tablet” 1 × 25 linked to the time; the next ½: no stock movement, the open half used up, 25; 1½: 2 tablets out (one whole, one opened), lines 50 and 25, ½ open'
+  },
+)
+await step(
+  '0198 C: 5 ml of the syrup: one bottle opened, 95 ml left; 2.5 ml then; a part bigger than what is left opens the next bottle',
+  async () => {
+    const s0 = await stock198(t198.syrup)
+    const give = async (ml) => {
+      const o = await plan198(
+        t127.doc,
+        drug198(t198.v, t198.syrup, {
+          p_quantity: 0,
+          p_part_amount: ml,
+          p_part_unit: 'ml',
+          p_dose_amount: ml * 50,
+          p_dose_unit: 'mg',
+        }),
+      )
+      const g = await as193(t127.nurseA, giveSql198, [o.id])
+      const ls = await live198(o.id)
+      const open = await open198(t198.syrup)
+      return {
+        o: [Number(o.part), o.partText, o.dose],
+        price: ls.map((l) => [l.p, l.description.endsWith(' · ' + o.partText)]),
+        open: open.map((p) => Math.round(p.left * 1000) / 1000),
+        stock: s0 - (await stock198(t198.syrup)),
+        status: g.status,
+      }
+    }
+    const c1 = await give(5)
+    const c2 = await give(2.5)
+    await as(t127.nurseA)
+    const list1 = ((await one(`select open_pieces() as j`)).j ?? []).filter(
+      (p) => p.itemId === t198.syrup,
+    )
+    await asAdmin()
+    const c3 = await give(95)
+    await as(t127.doc)
+    const rx = (await one(`select rx_stock() as j`)).j
+    await asAdmin()
+    await as(t127.nurseA)
+    const list = ((await one(`select open_pieces() as j`)).j ?? []).filter(
+      (p) => p.itemId === t198.syrup,
+    )
+    await asAdmin()
+    // the rest gone off: thrown away (with the reason), no stock movement
+    const noWhy = await msg193(t127.nurseA, `select close_open_piece($1, 'x')`, [list[0]?.id])
+    const thrown = await as193(t127.nurseA, `select close_open_piece($1, 'gone off 198') as j`, [
+      list[0]?.id,
+    ])
+    const after = await stock198(t198.syrup)
+    const again = await hintAs(t127.nurseA, `select close_open_piece($1, 'gone off 198')`, [
+      list[0]?.id,
+    ])
+    const left = await open198(t198.syrup)
+    const r = {
+      c1,
+      c2,
+      c3,
+      list1: list1.map((p) => [p.leftText, p.batchNo, p.store != null, p.openedBy]),
+      rxOpen: Math.round(Number(rx.open?.[t198.syrup]) * 1000) / 1000,
+      list: list.map((p) => p.leftText),
+      noWhy: noWhy.split('|')[0],
+      thrown: [thrown.leftText, thrown.closedReason],
+      after: s0 - after,
+      again,
+      left: left.length,
+    }
+    if (
+      json198(r.c1) !==
+        json198({
+          o: [0.05, '5 ml', '250 mg'],
+          price: [[50, true]],
+          open: [0.95],
+          stock: 1,
+          status: 'done',
+        }) ||
+      json198(r.c2) !==
+        json198({
+          o: [0.025, '2.5 ml', '125 mg'],
+          price: [[25, true]],
+          open: [0.925],
+          stock: 1,
+          status: 'done',
+        }) ||
+      json198(r.c3) !==
+        json198({
+          o: [0.95, '95 ml', '4750 mg'],
+          price: [[950, true]],
+          open: [0.975],
+          stock: 2,
+          status: 'done',
+        }) ||
+      json198(r.list1) !== json198([['92.5 ml', 'SY-198', true, 'Nurse A 127']]) ||
+      r.rxOpen !== 0.975 ||
+      json198(r.list) !== json198(['97.5 ml']) ||
+      r.noWhy !== '22023' ||
+      json198(r.thrown) !== json198(['97.5 ml', 'thrown away: gone off 198']) ||
+      r.after !== 2 ||
+      r.again !== 'P0002/piece_gone' ||
+      r.left !== 0
+    )
+      throw new Error(json198(r))
+    return '5 ml: a bottle opened, 95 ml left, 50 RWF (1,000 × 5/100); 2.5 ml: from the same bottle, 92.5 ml left, 25; 95 ml: the 92.5 ml left and a second bottle opened (97.5 ml left), 950; the open pieces list and rx_stock say 97.5 ml; thrown away with a reason (no reason: refused), no stock movement, a second time P0002/piece_gone'
+  },
+)
+await step(
+  '0198 D: part prices — share, whole, set (cash); an insured bill uses the insurer’s piece price × ½; a change on the order without charge.manual is refused; with it, the line is typed with who and why',
+  async () => {
+    const half = (enc, extra = {}) =>
+      drug198(enc, t198.para, { p_quantity: 0, p_part_amount: 0.5, p_part_unit: 'piece', ...extra })
+    const priceOf = async (enc, extra = {}) => {
+      const o = await plan198(t127.doc, half(enc, extra))
+      await as193(t127.nurseA, giveSql198, [o.id])
+      return { o, l: (await live198(o.id))[0] }
+    }
+    const setRule = (rule, halfPrice = null) =>
+      as193(
+        staff.manager,
+        doseSql198,
+        doseArgs198({
+          item: t198.para,
+          amount: 500,
+          unit: 'mg',
+          mode: 'half',
+          rule,
+          half: halfPrice,
+        }),
+      )
+    const share = (await priceOf(t198.v)).l
+    await setRule('whole')
+    const whole = (await priceOf(t198.v)).l
+    await setRule('set', 30)
+    const set = (await priceOf(t198.v)).l
+    // the insurer has its own price for a tablet (40): its piece price shared, 85 % covered
+    const ins = (await priceOf(t198.vIns)).l
+    // the price of the part changed on the order: the right to type a price on the bill
+    await asAdmin()
+    await db.query(
+      `delete from role_permissions where role = 'doctor' and permission = 'charge.manual'`,
+    )
+    const noRight = await planHint198(
+      t127.doc,
+      half(t198.v, { p_part_price: 10, p_part_price_reason: 'poor patient 198' }),
+    )
+    await asAdmin()
+    await db.query(
+      `insert into role_permissions (role, permission) values ('doctor', 'charge.manual') on conflict do nothing`,
+    )
+    const noWhy = await planHint198(t127.doc, half(t198.v, { p_part_price: 10 }))
+    const noPart = await planHint198(
+      t127.doc,
+      drug198(t198.v, t198.para, {
+        p_quantity: 1,
+        p_part_price: 10,
+        p_part_price_reason: 'poor patient 198',
+      }),
+    )
+    const typed = await priceOf(t198.v, {
+      p_part_price: 10,
+      p_part_price_reason: 'poor patient 198',
+    })
+    await setRule('share')
+    const r = {
+      share: [share.p, share.part, share.origin],
+      whole: [whole.p, whole.part],
+      set: [set.p, set.part],
+      ins: [ins.p, ins.pat, ins.ins, ins.part],
+      noRight,
+      noWhy,
+      noPart,
+      order: [Number(typed.o.partPrice), typed.o.partPriceBy, typed.o.partPriceReason],
+      typed: [
+        typed.l.p,
+        typed.l.origin,
+        typed.l.manual_reason,
+        typed.l.performed_by === t127.nurseA,
+      ],
+    }
+    if (
+      json198(r.share) !== json198([25, 0.5, 'pharmacy']) ||
+      json198(r.whole) !== json198([50, 0.5]) ||
+      json198(r.set) !== json198([30, 0.5]) ||
+      json198(r.ins) !== json198([20, 3, 17, 0.5]) ||
+      r.noRight !== '42501/part_price_right' ||
+      r.noWhy !== '22023/part_price_reason' ||
+      r.noPart !== '22023/bad_part' ||
+      json198(r.order) !== json198([10, 'Dr. Steps 127', 'poor patient 198']) ||
+      json198(r.typed) !==
+        json198([
+          10,
+          'manual',
+          'price of the part set on the order by Dr. Steps 127: poor patient 198',
+          true,
+        ])
+    )
+      throw new Error(json198(r))
+    return '½ tablet: share 25; same as a whole piece 50; a price set 30 (cash); insured: ½ of the insurer’s 40 = 20 (patient 3, insurer 17); a typed price without the right to type one 42501/part_price_right, without a reason part_price_reason, without a part bad_part; 10 with the reason: on the order (who, why) and the line typed 10 “price of the part set on the order by Dr. Steps 127: poor patient 198”, given by the nurse'
+  },
+)
+await step(
+  '0198 E: Undo of a part — alone: the tablet goes back to the stock; shared with a later time: the half goes back to the open piece, the tablet stays out and follows the later time',
+  async () => {
+    const half = () =>
+      plan198(
+        t127.doc,
+        drug198(t198.v, t198.metro, { p_quantity: 0, p_part_amount: 0.5, p_part_unit: 'piece' }),
+      )
+    const s0 = await stock198(t198.metro)
+    // alone
+    const x = await half()
+    const gx = await as193(t127.nurseA, giveSql198, [x.id])
+    const sx = await stock198(t198.metro)
+    const px = (await open198(t198.metro)).map((p) => [p.left, p.opened_dose_id === gx.doseId])
+    const ux = await as193(t127.nurseA, undoSql193, [x.id, 'wrong patient 198'])
+    const sxu = await stock198(t198.metro)
+    const pxu = await one(
+      `select left_part::float8 as left, closed_reason from open_piece where opened_dose_id = $1`,
+      [gx.doseId],
+    )
+    const lx = await live198(x.id)
+    // shared: Y opens a tablet, Z takes the other half
+    const y = await half()
+    const gy = await as193(t127.nurseA, giveSql198, [y.id])
+    const z = await half()
+    const gz = await as193(t127.nurseA, giveSql198, [z.id])
+    const syz = await stock198(t198.metro)
+    const q = await one(`select id, movement_id from open_piece where opened_dose_id = $1`, [
+      gy.doseId,
+    ])
+    const uy = await as193(t127.nurseA, undoSql193, [y.id, 'wrong patient 198'])
+    const sy = await stock198(t198.metro)
+    const qy = await one(
+      `select p.left_part::float8 as left, p.closed_at is null as open, p.opened_dose_id = $2 as follows,
+              m.nurse_order_dose_id = $2 as move_follows, m.nurse_order_id = $3 as move_order
+         from open_piece p join stock_movement m on m.id = p.movement_id where p.id = $1`,
+      [q.id, gz.doseId, z.id],
+    )
+    const ly = await live198(y.id)
+    const lz = await live198(z.id)
+    const uz = await as193(t127.nurseA, undoSql193, [z.id, 'wrong patient 198'])
+    const sz = await stock198(t198.metro)
+    const qz = await one(
+      `select left_part::float8 as left, closed_reason from open_piece where id = $1`,
+      [q.id],
+    )
+    const r = {
+      x: [s0 - sx, px, ux.units, ux.status, sxu - s0, pxu, lx.length],
+      yz: [s0 - syz, uy.units, sy - s0, qy, ly.length, lz.length],
+      z: [uz.units, sz - s0, qz, (await open198(t198.metro)).length],
+    }
+    if (
+      json198(r.x) !==
+        json198([
+          1,
+          [[0.5, true]],
+          1,
+          'open',
+          0,
+          { left: 1, closed_reason: 'back in the stock' },
+          0,
+        ]) ||
+      json198(r.yz) !==
+        json198([
+          1,
+          0,
+          -1,
+          { left: 0.5, open: true, follows: true, move_follows: true, move_order: true },
+          0,
+          1,
+        ]) ||
+      json198(r.z) !== json198([1, 0, { left: 1, closed_reason: 'back in the stock' }, 0])
+    )
+      throw new Error(json198(r))
+    return 'alone: ½ given (1 tablet out, ½ open), the nurse’s Undo → 1 back, the piece “back in the stock”, the line off, the order to do again; shared: Y opened a tablet, Z took the other half; Undo Y → nothing back, ½ open again, the tablet and its stock movement now follow Z, Y’s line off and Z’s kept; Undo Z → the tablet back, nothing open'
+  },
+)
+await step(
+  '0198 F: give at 14:00 — giving 3 hours early is refused, 1 hour early is allowed; the time is kept on the time given',
+  async () => {
+    const f1 = await plan198(
+      t127.doc,
+      drug198(t198.v, t198.para, { p_quantity: 1 }),
+      `p_first_at => now() + interval '3 hours'`,
+    )
+    const early = await hintAs(t127.nurseA, `select give_nurse_order($1)`, [f1.id])
+    const f2 = await plan198(
+      t127.doc,
+      drug198(t198.v, t198.para, { p_quantity: 1 }),
+      `p_first_at => now() + interval '1 hour'`,
+    )
+    const g2 = await as193(t127.nurseA, giveSql198, [f2.id])
+    const ms = (x) => new Date(x).getTime()
+    const now = ms((await one(`select now() as t`)).t)
+    const t = g2.doses?.[0] ?? {}
+    const r = {
+      f1: [f1.timed, Math.round((ms(f1.firstAt) - now) / 60000)],
+      early,
+      g2: [g2.status, ms(t.dueAt) === ms(f2.firstAt), Math.round((ms(f2.firstAt) - now) / 60000)],
+      f1Next: ms(f1.nextDueAt) === ms(f1.firstAt),
+    }
+    if (
+      r.f1[0] !== true ||
+      Math.abs(r.f1[1] - 180) > 2 ||
+      r.early !== '22023/too_early' ||
+      r.g2[0] !== 'done' ||
+      r.g2[1] !== true ||
+      Math.abs(r.g2[2] - 60) > 2 ||
+      r.f1Next !== true
+    )
+      throw new Error(json198(r))
+    return 'for in 3 hours: Given → 22023/too_early; for in 1 hour: given, the time keeps its planned time (dueAt = firstAt); nextDueAt = firstAt while not given'
+  },
+)
+await step(
+  '0198 G: every 8 hours × 3 — times due at first, +8 h, +16 h; Given / Not given per time; each Given leaves the stock and is billed; the order is done after the third',
+  async () => {
+    const g = await plan198(
+      t127.doc,
+      drug198(t198.v, t198.para, {
+        p_quantity: 1,
+        p_dose: '500 mg',
+        p_every_minutes: 480,
+        p_times: 3,
+      }),
+    )
+    t198.g = g.id
+    const fresh = (g.times ?? []).map((t) => t.state)
+    await shift198(g.id, '16 hours')
+    const times = (
+      await db.query(
+        `select n, extract(epoch from due_at - (select first_at from nurse_order where id = $1))::int / 3600 as h
+           from order_times($1) order by n`,
+        [g.id],
+      )
+    ).rows.map((t) => [t.n, t.h])
+    const s0 = await stock198(t198.para)
+    const t1 = await as193(t127.nurseA, timeSql198, [g.id, 1])
+    const t2 = await as193(t127.nurseA, skipSql198, [g.id, 2, 'asleep 198'])
+    const told = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'nurse_order_done' and recipient_user = $1
+           and params->>'orderId' = $2 and params->>'what' = 'not_given'`,
+        [t127.doc, g.id],
+      )
+    ).n
+    const t3 = await as193(t127.nurseA, timeSql198, [g.id, 3])
+    t198.g3 = t3.doseId
+    const s3 = await stock198(t198.para)
+    const ls = await live198(g.id)
+    const r = {
+      g: [g.everyMinutes, g.dosesPlanned, g.untilStopped, g.status],
+      fresh,
+      times,
+      t1: [t1.status, t1.charged, Number(t1.billed)],
+      t2: [t2.status, t2.doseId != null],
+      told,
+      t3: [
+        t3.status,
+        (t3.times ?? []).map((t) => [t.n, t.state, t.billed == null ? null : Number(t.billed)]),
+      ],
+      took: s0 - s3,
+      lines: ls.map((l) => [l.q, l.p]),
+      linked: ls.every((l) => [t1.doseId, t3.doseId].includes(l.nurse_order_dose_id)),
+    }
+    if (
+      json198(r.g) !== json198([480, 3, false, 'open']) ||
+      json198(r.fresh) !== json198(['due', 'later', 'later']) ||
+      json198(r.times) !==
+        json198([
+          [1, 0],
+          [2, 8],
+          [3, 16],
+        ]) ||
+      json198(r.t1) !== json198(['open', true, 50]) ||
+      json198(r.t2) !== json198(['open', true]) ||
+      r.told !== 1 ||
+      json198(r.t3) !==
+        json198([
+          'done',
+          [
+            [1, 'given', 50],
+            [2, 'not_given', 0],
+            [3, 'given', 50],
+          ],
+        ]) ||
+      r.took !== 2 ||
+      json198(r.lines) !==
+        json198([
+          [1, 50],
+          [1, 50],
+        ]) ||
+      r.linked !== true
+    )
+      throw new Error(json198(r))
+    return 'every 8 h × 3: written “due, later, later”; times at +0, +8, +16 h; time 1 given (1 tablet, 50), time 2 not given (the doctor told), time 3 given → done; 2 tablets out, 2 lines of 50, each linked to its time'
+  },
+)
+await step(
+  '0198 H: Undo of one time — only that time leaves the bill and returns to the stock; the order stays open; the time can be given again',
+  async () => {
+    const h = await plan198(
+      t127.doc,
+      drug198(t198.v, t198.para, { p_quantity: 1, p_every_minutes: 480, p_times: 3 }),
+    )
+    await shift198(h.id, '8 hours')
+    const h1 = await as193(t127.nurseA, timeSql198, [h.id, 1])
+    const h2 = await as193(t127.nurseA, timeSql198, [h.id, 2])
+    const s0 = await stock198(t198.para)
+    const other = await hintAs(t127.nurseB, undoTimeSql198, [h2.doseId, 'not mine 198'])
+    const u1 = await as193(t127.nurseA, undoTimeSql198, [h1.doseId, 'wrong time 198'])
+    const s1 = await stock198(t198.para)
+    const ls = await live198(h.id)
+    const told = (
+      await one(
+        `select count(*)::int as n from notification where kind = 'nurse_order_done' and recipient_user = $1
+           and params->>'orderId' = $2 and params->>'what' = 'undone'`,
+        [t127.doc, h.id],
+      )
+    ).n
+    const again = await as193(t127.nurseA, timeSql198, [h.id, 1])
+    const s2 = await stock198(t198.para)
+    // a repeated order over because every time was recorded: open again after a time's Undo
+    const ug = await as193(t127.nurseA, undoTimeSql198, [t198.g3, 'wrong time 198'])
+    const gAgain = await as193(t127.nurseA, timeSql198, [t198.g, 3])
+    const r = {
+      other,
+      u1: [u1.status, u1.units, u1.mode, u1.removed],
+      back: s1 - s0,
+      lines: ls.map((l) => l.nurse_order_dose_id === h2.doseId),
+      told,
+      again: [again.status, (again.times ?? []).map((t) => t.state), s1 - s2],
+      undone: (u1.undone ?? []).map((d) => [d.n, d.given, d.reason]),
+      g: [ug.status, ug.endedAt, (ug.times ?? [])[2]?.state, gAgain.status],
+    }
+    if (
+      r.other !== '42501/' ||
+      json198(r.u1) !== json198(['open', 1, 'bill', 1]) ||
+      r.back !== 1 ||
+      json198(r.lines) !== json198([true]) ||
+      r.told !== 1 ||
+      json198(r.again) !== json198(['open', ['given', 'given', 'later'], 1]) ||
+      json198(r.undone) !== json198([[1, true, 'wrong time 198']]) ||
+      json198(r.g) !== json198(['open', null, 'due', 'done'])
+    )
+      throw new Error(json198(r))
+    return 'times 1 and 2 given; Nurse B may not undo Nurse A’s time (42501); Nurse A undoes time 1 → 1 tablet back, its line off (time 2’s kept), the order open, the doctor told, kept as undone with the reason; time 1 given again; the 8-hourly order of G (done) is open again after time 3’s Undo and done again when it is given'
+  },
+)
+await step(
+  '0198 I: until stopped — never closes by itself; the doctor stops the rest (done, with the reason); the nurse cannot stop it',
+  async () => {
+    const i1 = await plan198(
+      t127.doc,
+      drug198(t198.v, t198.para, { p_quantity: 1, p_every_minutes: 360, p_until_stopped: true }),
+    )
+    await shift198(i1.id, '12 hours')
+    const before = await order198(i1.id)
+    await as193(t127.nurseA, timeSql198, [i1.id, 1])
+    const t2 = await as193(t127.nurseA, timeSql198, [i1.id, 2])
+    const nurseStop = await hintAs(t127.nurseA, `select stop_nurse_order($1, 'enough 198')`, [
+      i1.id,
+    ])
+    const stop = await as193(t127.doc, `select stop_nurse_order($1, 'patient better 198') as j`, [
+      i1.id,
+    ])
+    const told = await one(
+      `select params from notification where kind = 'nurse_order_done' and recipient_user = $1
+         and params->>'orderId' = $2 and params->>'what' = 'cancelled'`,
+      [t127.nurseA, i1.id],
+    )
+    const after = await hintAs(t127.nurseA, `select give_order_time($1, 3)`, [i1.id])
+    // nothing given yet: the doctor's stop cancels it
+    const i2 = await plan198(
+      t127.doc,
+      drug198(t198.v, t198.para, { p_quantity: 1, p_every_minutes: 720, p_until_stopped: true }),
+    )
+    const stop2 = await as193(t127.doc, `select stop_nurse_order($1, 'not needed 198') as j`, [
+      i2.id,
+    ])
+    const r = {
+      i1: [i1.untilStopped, i1.dosesPlanned, i1.everyMinutes],
+      times: (before.times ?? []).length,
+      t2: t2.status,
+      nurseStop,
+      stop: [stop.status, stop.endReason, (stop.times ?? []).map((t) => t.state)],
+      told: told?.params?.rest,
+      after,
+      stop2: [stop2.status, stop2.endReason],
+    }
+    if (
+      json198(r.i1) !== json198([true, null, 360]) ||
+      r.times !== 7 ||
+      r.t2 !== 'open' ||
+      r.nurseStop !== '42501/doctor_stops' ||
+      json198(r.stop) !==
+        json198(['done', 'stopped: patient better 198', ['given', 'given', 'stopped']]) ||
+      r.told !== true ||
+      r.after !== '22023/order_over' ||
+      json198(r.stop2) !== json198(['cancelled', 'stopped: not needed 198'])
+    )
+      throw new Error(json198(r))
+    return 'every 6 h until stopped, first 12 h ago: 7 times planned up to a day ahead; 2 given, still open; the nurse’s Stop 42501/doctor_stops; the doctor stops the rest → done “stopped: patient better 198”, the times after it “stopped”, Nurse A told (the rest); a time after it 22023/order_over; one with nothing given → cancelled'
+  },
+)
+await step(
+  '0198 J: repeat + take home writes two orders; the take-home one is handed over once',
+  async () => {
+    await asAdmin()
+    const n0 = (await one(`select count(*)::int as n from notification`)).n
+    const j = await plan198(
+      t127.doc,
+      drug198(t198.v, t198.para, {
+        p_quantity: 1,
+        p_every_minutes: 720,
+        p_times: 2,
+        p_home_quantity: 10,
+        p_home_dose: '1 tablet',
+        p_home_frequency: 'TDS',
+        p_home_days: 3,
+        p_notes: 'after food 198',
+      }),
+    )
+    const o = j.order ?? {}
+    const h = j.homeOrder ?? {}
+    const notices = (
+      await db.query(
+        `select params->>'orderId' as id, params->'here' as here, params->'home' as home, params->'every' as every
+           from notification where kind = 'nurse_order' and recipient_user = $1 and params->>'orderId' = any($2::text[])`,
+        [t127.nurseA, [o.id, h.id]],
+      )
+    ).rows
+    const s0 = await stock198(t198.para)
+    const g = await as193(t127.nurseA, giveSql198, [h.id])
+    const s1 = await stock198(t198.para)
+    const still = await order198(o.id)
+    const r = {
+      o: [o.everyMinutes, o.dosesPlanned, o.homeQuantity, Number(o.quantity), o.notes],
+      h: [
+        Number(h.homeQuantity),
+        h.homeDose,
+        h.homeFrequency,
+        h.homeDays,
+        h.dosesPlanned,
+        h.everyMinutes,
+        Number(h.quantity),
+        h.timed,
+        h.notes,
+        h.assignedTo === t127.nurseA,
+      ],
+      notices: notices
+        .map((x) => [x.id === o.id ? 'order' : 'home', x.here, x.home, x.every])
+        .sort((a, b) => a[0].localeCompare(b[0])),
+      g: [g.status, Number(g.billed), s0 - s1],
+      still: still.status,
+    }
+    if (
+      json198(r.o) !== json198([720, 2, null, 1, 'after food 198']) ||
+      json198(r.h) !==
+        json198([10, '1 tablet', 'TDS', 3, 1, null, 0, false, 'after food 198', true]) ||
+      json198(r.notices) !==
+        json198([
+          ['home', false, true, null],
+          ['order', true, false, 720],
+        ]) ||
+      json198(r.g) !== json198(['done', 500, 10]) ||
+      r.still !== 'open'
+    )
+      throw new Error(json198(r))
+    return 'every 12 h × 2 with 10 to take home → two orders: the repeated one (no take-home part) and one to hand over (10, “1 tablet”, TDS, 3 days, same nurse and notes); Nurse A told once for each; the take-home one handed over once: 10 out, 500 on the bill, done; the repeated one still open'
+  },
+)
+await step(
+  '0198 K: the nurse\u2019s list and nav_counts — due now and late counted, later times not; order_times_catch_up sends one late notice per time, never twice, none for old orders',
+  async () => {
+    t198.nurseC = await newStaff('d198.nc', 'Nurse C 198', 'nurse')
+    t198.vK = await t127.ov(t127.doc)
+    const nav = async () => {
+      const n = await as193(t198.nurseC, `select nav_counts() as j`)
+      return [
+        (n.nurseOrders ?? 0) + (n.nurseOrdersEarlier ?? 0),
+        n.nurseOrdersLate ?? 0,
+        'nurseOrdersLate' in n,
+      ]
+    }
+    const before = await nav()
+    const mine = (extra = {}) =>
+      drug198(t198.vK, t198.para, { p_quantity: 1, p_assigned_to: t198.nurseC, ...extra })
+    const a = await plan198(t127.doc, mine())
+    const b = await plan198(t127.doc, mine(), `p_first_at => now() + interval '3 hours'`)
+    const c = await plan198(t127.doc, mine({ p_every_minutes: 60, p_times: 4 }))
+    await shift198(c.id, '130 minutes')
+    // an order written before 0198 (no time to give), 3 hours ago
+    const d = await order193(t127.doc, {
+      p_encounter_id: t198.vK,
+      p_kind: 'drug',
+      p_item_id: t198.para,
+      p_quantity: 1,
+      p_assigned_to: t198.nurseC,
+    })
+    await db.query(`update nurse_order set created_at = now() - interval '3 hours' where id = $1`, [
+      d.id,
+    ])
+    const after = await nav()
+    const list = (await as193(t198.nurseC, `select nurse_orders_for_me() as j`)).filter(
+      (o) => o.encounterId === t198.vK,
+    )
+    const name = (id) => ({ [a.id]: 'a', [b.id]: 'b', [c.id]: 'c', [d.id]: 'd' })[id]
+    const sent1 = await as193(t198.nurseC, `select order_times_catch_up() as j`)
+    const sent2 = await as193(t198.nurseC, `select order_times_catch_up() as j`)
+    const late = (
+      await db.query(
+        `select params->>'orderId' as id, (params->>'n')::int as n, params->>'time' as time
+           from notification where kind = 'nurse_order_late' and recipient_user = $1
+            and params->>'orderId' = any($2::text[]) order by 2`,
+        [t198.nurseC, [a.id, b.id, c.id, d.id]],
+      )
+    ).rows
+    const r = {
+      counted: after[0] - before[0],
+      late: after[1] - before[1],
+      key: after[2],
+      list: list.map((o) => [name(o.id), o.late, o.timed]),
+      bedKey: list.every((o) => 'bed' in o && 'nextDueAt' in o),
+      sent: [sent1 >= 2, sent2],
+      notices: late.map((x) => [name(x.id), x.n, /^\d\d:\d\d$/.test(x.time)]),
+    }
+    if (
+      r.counted !== 3 ||
+      r.late !== 2 ||
+      r.key !== true ||
+      json198(r.list) !==
+        json198([
+          ['d', false, false],
+          ['c', true, true],
+          ['a', false, true],
+          ['b', false, true],
+        ]) ||
+      r.bedKey !== true ||
+      json198(r.sent) !== json198([true, 0]) ||
+      json198(r.notices) !==
+        json198([
+          ['c', 1, true],
+          ['c', 2, true],
+        ])
+    )
+      throw new Error(json198(r))
+    return 'Nurse C: an order due now, one in 3 hours, one every hour × 4 from 2 h 10 ago (2 times late), one written before 0198 3 hours ago → the menu counts 3 (not the one for later), 2 late; her list by time: the old one, the late one, now, later; the catch-up: one notice per late time (times 1 and 2, “HH:MM”), run again: none; none for the old order'
+  },
+)
+await step(
+  '0198 L: the visit ends — open repeated orders end; old multi-time orders and one-time orders as before',
+  async () => {
+    const v = await t127.ov(t127.doc)
+    const r1 = await plan198(
+      t127.doc,
+      drug198(v, t198.para, { p_quantity: 1, p_every_minutes: 480, p_times: 3 }),
+    )
+    await as193(t127.nurseA, timeSql198, [r1.id, 1])
+    const r2 = await plan198(
+      t127.doc,
+      drug198(v, t198.para, { p_quantity: 1, p_every_minutes: 480, p_until_stopped: true }),
+    )
+    const o1 = await plan198(t127.doc, drug198(v, t198.para, { p_quantity: 1 }))
+    const o2 = await plan198(t127.doc, drug198(v, t198.para, { p_quantity: 1 }))
+    await asAdmin()
+    // an order of several times written before 0193
+    await db.query(`update nurse_order set doses_planned = 3, first_at = null where id = $1`, [
+      o2.id,
+    ])
+    await db.query(`update encounter set status = 'closed', closed_at = now() where id = $1`, [v])
+    const st = async (id) => {
+      const x = await one(`select status, end_reason from nurse_order where id = $1`, [id])
+      return [x.status, x.end_reason]
+    }
+    t198.vL = v
+    const r = {
+      r1: await st(r1.id),
+      r2: await st(r2.id),
+      o1: await st(o1.id),
+      o2: await st(o2.id),
+    }
+    if (
+      json198(r) !==
+      json198({
+        r1: ['done', 'visit over'],
+        r2: ['not_done', 'visit over'],
+        o1: ['open', null],
+        o2: ['open', null],
+      })
+    )
+      throw new Error(json198(r))
+    return 'the visit finished: the repeated order with a time given → done “visit over”, the one until stopped with none → not done “visit over”; a one-time order and an older order of several times stay as they were'
+  },
+)
+await step(
+  '0198 M: stock_sales counts ½ as 0.5 piece; reports of 0193 unchanged (given here, not written off)',
+  async () => {
+    const o = await plan198(
+      t127.doc,
+      drug198(t198.v, t198.zinc, { p_quantity: 1, p_part_amount: 0.5, p_part_unit: 'piece' }),
+    )
+    await as193(t127.nurseA, giveSql198, [o.id])
+    await as(staff.manager)
+    const sales = (await one(`select stock_sales($1::date, $1::date) as j`, [t198.today])).j
+    const sold = (await one(`select report_stock_sold($1::date, $1::date) as j`, [t198.today])).j
+    const moves = (
+      await one(`select report_stock_movements($1::date, $1::date) as j`, [t198.today])
+    ).j
+    const offs = (
+      await one(`select report_stock_write_offs($1::date, $1::date) as j`, [t198.today])
+    ).j
+    await asAdmin()
+    const it = (sales?.items ?? []).find((x) => String(x.item).startsWith('Zinc 198')) ?? {}
+    const ls = (sales?.lines ?? []).filter((x) => String(x.item).startsWith('Zinc 198'))
+    const row = (sold ?? []).find((x) => x.itemId === t198.zinc) ?? {}
+    const mine = (moves ?? []).filter((m) => m.itemId === t198.zinc)
+    const r = {
+      sales: [Number(it.units), Number(it.revenue)],
+      lines: ls.map((l) => Number(l.units)).sort(),
+      sold: [Number(row.here), Number(row.revenue)],
+      kinds: [...new Set(mine.filter((m) => m.type === 'consumption').map((m) => m.kind))],
+      writtenOff: (offs ?? []).filter((x) => x.itemId === t198.zinc).length,
+    }
+    if (
+      json198(r.sales) !== json198([1.5, 45]) ||
+      json198(r.lines) !== json198([0.5, 1]) ||
+      json198(r.sold) !== json198([2, 45]) ||
+      json198(r.kinds) !== json198(['given_here']) ||
+      r.writtenOff !== 0
+    )
+      throw new Error(json198(r))
+    return 'Zinc 198 1½ given: the sales report 1.5 pieces for 45 (lines 1 and 0.5); Sold & given: 2 given here (the whole one and the opened one) for 45; Movements: given here; Write-offs: none'
+  },
+)
+await step(
+  '0198 N: refusals — whole only, bad part, bad every, bad times, bad first time, time not planned, time done, a repeated order given with the old button',
+  async () => {
+    const h = (extra, raw = '') => planHint198(t127.doc, { ...extra }, raw)
+    const para = (extra = {}) => drug198(t198.v, t198.para, extra)
+    const syrup = (extra = {}) => drug198(t198.v, t198.syrup, extra)
+    const half = { p_part_amount: 0.5, p_part_unit: 'piece' }
+    const dose = (a) => hintAs(staff.manager, doseSql198, doseArgs198(a))
+    const r = {
+      boxOnly: await h(drug198(t198.v, t198.box, half)),
+      capsule: await h(drug198(t198.v, t198.caps, half)),
+      quarter: await h(para({ p_part_amount: 0.25, p_part_unit: 'piece' })),
+      oneAndHalf: await h(para({ p_quantity: 1.5 })),
+      syrupOdd: await h(syrup({ p_part_amount: 0.3, p_part_unit: 'ml' })),
+      syrupAll: await h(syrup({ p_part_amount: 100, p_part_unit: 'ml' })),
+      syrupHalf: await h(syrup(half)),
+      paraMl: await h(para({ p_part_amount: 5, p_part_unit: 'ml' })),
+      every30: await h(para({ p_quantity: 1, p_every_minutes: 30, p_times: 3 })),
+      timesNoEvery: await h(para({ p_quantity: 1, p_times: 3 })),
+      times1: await h(para({ p_quantity: 1, p_every_minutes: 480, p_times: 1 })),
+      times201: await h(para({ p_quantity: 1, p_every_minutes: 480, p_times: 201 })),
+      timesNone: await h(para({ p_quantity: 1, p_every_minutes: 480 })),
+      in8days: await h(para({ p_quantity: 1 }), `p_first_at => now() + interval '8 days'`),
+      hourAgo: await h(para({ p_quantity: 1 }), `p_first_at => now() - interval '1 hour'`),
+      homeOnly: await h(para({ p_home_quantity: 10, p_every_minutes: 480, p_times: 2 })),
+      doseNoUnit: await h(para({ p_quantity: 1, p_dose_amount: 2 })),
+      unknownTime: await hintAs(t127.nurseA, `select undo_order_time($1, 'wrong 198')`, [
+        t198.para,
+      ]),
+      strength: await dose({ item: t198.zinc, amount: 20, unit: 'kg' }),
+      measureNoContent: await dose({ item: t198.zinc, mode: 'measure' }),
+      setNoPrice: await dose({ item: t198.zinc, amount: 20, unit: 'mg', rule: 'set' }),
+    }
+    // the old buttons on a repeated order
+    const rep = await plan198(t127.doc, para({ p_quantity: 1, p_every_minutes: 480, p_times: 2 }))
+    r.notPlanned = await hintAs(t127.nurseA, `select give_order_time($1, 3)`, [rep.id])
+    r.zero = await hintAs(t127.nurseA, `select skip_order_time($1, 0, 'asleep 198')`, [rep.id])
+    await as193(t127.nurseA, timeSql198, [rep.id, 1])
+    r.done = await hintAs(t127.doc, `select give_order_time($1, 1)`, [rep.id])
+    r.oldGive = await hintAs(t127.nurseA, `select give_nurse_order($1)`, [rep.id])
+    r.oldSkip = await hintAs(t127.nurseA, `select skip_nurse_dose($1, 'asleep 198')`, [rep.id])
+    const want = {
+      boxOnly: '22023/whole_only',
+      capsule: '22023/whole_only',
+      quarter: '22023/bad_part',
+      oneAndHalf: '22023/bad_part',
+      syrupOdd: '22023/bad_part',
+      syrupAll: '22023/bad_part',
+      syrupHalf: '22023/bad_part',
+      paraMl: '22023/bad_part',
+      every30: '22023/bad_every',
+      timesNoEvery: '22023/bad_every',
+      times1: '22023/bad_times',
+      times201: '22023/bad_times',
+      timesNone: '22023/bad_times',
+      in8days: '22023/bad_first_at',
+      hourAgo: '22023/bad_first_at',
+      homeOnly: '22023/repeat_here',
+      doseNoUnit: '22023/bad_dose',
+      notPlanned: '22023/no_such_time',
+      zero: '22023/no_such_time',
+      done: '22023/time_done',
+      unknownTime: 'P0002/no_such_time',
+      strength: '22023/bad_strength',
+      measureNoContent: '22023/measure_needs_content',
+      setNoPrice: '22023/set_price_needed',
+      oldGive: '22023/use_time',
+      oldSkip: '22023/use_time',
+    }
+    const wrong = Object.keys(want).filter((k) => r[k] !== want[k])
+    if (wrong.length) throw new Error(json198(Object.fromEntries(wrong.map((k) => [k, r[k]]))))
+    return `${Object.keys(want).length} refusals, each with its hint: whole only (a box-only medicine, a gastro-resistant capsule), the part (¼ of a halves tablet, 1.5 here, 0.3 ml, a whole bottle in ml, ½ of a bottle by measure, ml of a tablet), every 30 min, times without every, 1 or 201 times or none, 8 days ahead or an hour ago, a repeat only to take home, a dose without its unit, time 3 of 2, time 0, a time already recorded, an unknown time, a strength in kg, by measure without content, a price set without its price, the old Given / Not given on a repeated order`
+  },
+)
+await step(
+  '0198 O: one-time orders keep 0193 with the 0198 functions — an act done once and billed at the nurse’s desk; the doctor’s Undo cancels his order; a part undone on a closed bill gives a credit note',
+  async () => {
+    const v = await t127.ov(t127.doc)
+    t198.vO = v
+    const act = await plan198(t127.doc, {
+      p_encounter_id: v,
+      p_kind: 'act',
+      p_service_id: t193.inj,
+      p_assigned_to: t127.nurseA,
+    })
+    const done = await as193(t127.nurseA, giveSql198, [act.id])
+    const again = await hintAs(t127.nurseA, `select give_nurse_order($1)`, [act.id])
+    const actLines = await live198(act.id)
+    // the doctor's own medicine (1½), undone by him the same day: cancelled, back in the stock
+    const me = await plan198(
+      t127.doc,
+      drug198(v, t198.para, {
+        p_quantity: 1,
+        p_part_amount: 0.5,
+        p_part_unit: 'piece',
+        p_assigned_to: t127.doc,
+      }),
+    )
+    const gm = await as193(t127.doc, giveSql198, [me.id])
+    const s0 = await stock198(t198.para)
+    const u = await as193(t127.doc, undoSql193, [me.id, 'wrong patient 198'])
+    const s1 = await stock198(t198.para)
+    const meLines = await live198(me.id)
+    const uses = await one(
+      `select count(*) filter (where undone_at is null)::int as live, count(*)::int as n
+           from open_piece_use where dose_id = $1`,
+      [gm.doseId],
+    )
+    // ½ given by the nurse, the bill closed, the manager's Undo: a credit note of the part's line
+    const o = await plan198(
+      t127.doc,
+      drug198(v, t198.para, { p_quantity: 0, p_part_amount: 0.5, p_part_unit: 'piece' }),
+    )
+    await as193(t127.nurseA, giveSql198, [o.id])
+    const invId = (await one(`select id from invoice where encounter_id = $1`, [v])).id
+    await db.query(`select post_invoice_now($1)`, [invId])
+    const m = await as193(staff.manager, undoSql193, [o.id, 'wrong medicine 198'])
+    const cn = await one(`select total::int as total from credit_note where id = $1`, [
+      m.creditNoteId,
+    ])
+    const r = {
+      act: [
+        done.status,
+        done.charged,
+        Number(done.billed),
+        done.doses?.[0]?.office,
+        again,
+        actLines.map((l) => [l.q, l.p]),
+      ],
+      me: [u.status, u.units >= 1, s1 - s0 === u.units, meLines.length, uses.live, uses.n],
+      credit: [m.mode, m.status, cn?.total],
+    }
+    if (
+      json198(r.act) !==
+        json198(['done', true, 1000, 'nursing', '22023/order_over', [[1, 1000]]]) ||
+      json198(r.me) !== json198(['cancelled', true, true, 0, 0, 1]) ||
+      json198(r.credit) !== json198(['credit', 'cancelled', 25])
+    )
+      throw new Error(json198(r))
+    return `Injection 193 written with create_order_planned: one Done → done, 1,000 at Nursing, a second Done order_over; the doctor’s 1½ for himself undone by him → cancelled, ${u.units} piece(s) back in the stock, the lines off, the half handed back; ½ on a bill then closed, the manager’s Undo → a credit note of 25, the order cancelled`
+  },
+)
+await step(
+  '0198 review R1: the same time undone twice at once — the second finds it undone; its pieces go back to the stock once',
+  async () => {
+    const s0 = await stock198(t198.para)
+    const o = await plan198(t127.doc, drug198(t198.v, t198.para, { p_quantity: 2 }))
+    const g = await as193(t127.nurseA, giveSql198, [o.id])
+    const s1 = await stock198(t198.para)
+    await as193(staff.manager, undoTimeSql198, [g.doseId, 'written twice'])
+    const s2 = await stock198(t198.para)
+    // a second Undo that read the time before the first one ended (the stale read of
+    // undo_order_time): straight into the shared work, as its owner, the time already undone
+    await asAdmin()
+    await db.exec(`select set_config('request.jwt.claim.sub', '${staff.manager}', false)`)
+    let second = 'ok'
+    try {
+      await db.query(
+        `select undo_order_doses(o, array[$2]::uuid[], 'twice at once', true) from nurse_order o where o.id = $1`,
+        [o.id, g.doseId],
+      )
+    } catch (e) {
+      second = `${e.code}/${e.hint ?? ''}`
+    }
+    await asAdmin()
+    const s3 = await stock198(t198.para)
+    const back = (
+      await one(
+        `select coalesce(sum(quantity), 0)::int as n from stock_movement where nurse_order_dose_id = $1 and type = 'return'`,
+        [g.doseId],
+      )
+    ).n
+    const r = { took: s0 - s1, back1: s2 - s1, second, s3: s3 - s2, back }
+    if (
+      r.took !== 2 ||
+      r.back1 !== 2 ||
+      r.second !== 'P0002/no_such_time' ||
+      r.s3 !== 0 ||
+      r.back !== 2
+    )
+      throw new Error(json198(r))
+    return '2 tablets given, undone by the manager → 2 back; a second Undo of the same time → P0002/no_such_time, nothing more back (2 returned in all)'
+  },
+)
+await step(
+  '0198 review R2: an opened piece of an expired batch is never used (a new piece is opened from a good batch); Sold & given counts the money of a part taken from a piece already open',
+  async () => {
+    await as(staff.manager)
+    t198.folic = (
+      await one(`select upsert_item(null, 'Folic acid 198', 20, '5 mg', 'tablet', 'tablet') as id`)
+    ).id
+    await asAdmin()
+    await db.query(`select receive_batch($1, $2, 5, 10, 'FO-198-A', $3::date)`, [
+      t198.folic,
+      t198.main,
+      t97.day.soon,
+    ])
+    await db.query(`select receive_batch($1, $2, 5, 10, 'FO-198-B', $3::date)`, [
+      t198.folic,
+      t198.main,
+      t97.day.d,
+    ])
+    const half = () =>
+      plan198(
+        t127.doc,
+        drug198(t198.v, t198.folic, { p_quantity: 0, p_part_amount: 0.5, p_part_unit: 'piece' }),
+      )
+    const batchOf = async (doseId) =>
+      (
+        await db.query(
+          `select b.batch_no from stock_movement m join batch b on b.id = m.batch_id
+            where m.nurse_order_dose_id = $1 and m.type = 'consumption'`,
+          [doseId],
+        )
+      ).rows.map((x) => x.batch_no)
+    // ½: one tablet of the batch that expires first is opened
+    const g1 = await as193(t127.nurseA, giveSql198, [(await half()).id])
+    const b1 = await batchOf(g1.doseId)
+    // that batch has expired since: its open half is not used
+    await db.query(`update batch set expiry = current_date - 1 where batch_no = 'FO-198-A'`)
+    await as(t127.doc)
+    const rxOpen = (await one(`select rx_stock() as j`)).j.open?.[t198.folic] ?? 0
+    await asAdmin()
+    const g2 = await as193(t127.nurseA, giveSql198, [(await half()).id])
+    const b2 = await batchOf(g2.doseId)
+    // the next ½ comes from the good piece already open: no stock movement
+    const g3 = await as193(t127.nurseA, giveSql198, [(await half()).id])
+    const b3 = await batchOf(g3.doseId)
+    const open = (
+      await db.query(
+        `select b.batch_no, p.left_part::float8 as left from open_piece p join batch b on b.id = p.batch_id
+          where p.item_id = $1 and p.closed_at is null order by p.opened_at`,
+        [t198.folic],
+      )
+    ).rows.map((x) => [x.batch_no, x.left])
+    await as(staff.manager)
+    const sold = (await one(`select report_stock_sold($1::date, $1::date) as j`, [t198.today])).j
+    await asAdmin()
+    const row = (sold ?? []).find((x) => x.itemId === t198.folic) ?? {}
+    const r = {
+      b1,
+      rxOpen: Number(rxOpen),
+      b2,
+      b3,
+      open,
+      billed: [g1.billed, g2.billed, g3.billed].map(Number),
+      sold: [Number(row.here), Number(row.revenue), Number(row.times)],
+    }
+    if (
+      json198(r.b1) !== json198(['FO-198-A']) ||
+      r.rxOpen !== 0 ||
+      json198(r.b2) !== json198(['FO-198-B']) ||
+      json198(r.b3) !== json198([]) ||
+      json198(r.open) !== json198([['FO-198-A', 0.5]]) ||
+      json198(r.billed) !== json198([10, 10, 10]) ||
+      json198(r.sold) !== json198([2, 30, 3])
+    )
+      throw new Error(json198(r))
+    return '½ opens a tablet of FO-198-A (expires first); FO-198-A expired: the order form sees no open half, the next ½ opens a tablet of FO-198-B, the one after uses its other half (no movement); the expired half stays listed to be thrown away; Sold & given: 2 tablets given here, 30 (3 × 10, the third ½ included), 3 times'
+  },
+)
+await step('0198: tidy — the visits of these checks leave no trace for the others', async () => {
+  await asAdmin()
+  for (const v of [t198.v, t198.vIns, t198.vK, t198.vL, t198.vO]) {
+    await db.query(`update queue_entry set deleted_at = now() where encounter_id = $1`, [v])
+    await db.query(`update encounter set deleted_at = now() where id = $1`, [v])
+  }
+  return 'done'
+})
+// @@t198-end
 finish()
 
 function finish() {

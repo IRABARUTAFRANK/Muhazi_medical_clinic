@@ -38,6 +38,15 @@ export interface OrderSummaryInput {
   servicePrice: number | null
   /** An act: how many on the bill. */
   actCount: number
+  /**
+   * 0198: the part of a piece given here (0.5; 0.05 = 5 ml of a 100 ml bottle), its price (null:
+   * no price), and whether it opens one more piece (the opened ones hold less than the part).
+   */
+  part?: number
+  partPrice?: number | null
+  partOpens?: boolean
+  /** 0198: a repeated order: how many times (null: until stopped); undefined: once. */
+  times?: number | null
 }
 
 export interface OrderSummary {
@@ -53,44 +62,95 @@ export interface OrderSummary {
   /** A box-only medicine: the next whole number of boxes, in pieces. */
   nextWhole: number | null
   tone: SummaryTone
+  /** 0198: the part (0 when none) and its price; whether it opens one more piece. */
+  part: number
+  partAmount: number | null
+  partOpens: boolean
+  /**
+   * A repeated order: what one time puts on the bill (whole pieces here + the part), the times
+   * (null: until stopped) and all of them if all are given. Null: once.
+   */
+  repeat: { each: number | null; times: number | null; all: number | null } | null
+  /** A repeated order with some to take home: that part is its own order, priced apart. */
+  homeAmount: number | null
 }
 
 export function summarizeOrder(i: OrderSummaryInput): OrderSummary {
+  const repeated = i.times !== undefined
+  const many = (each: number | null) =>
+    repeated
+      ? {
+          each,
+          times: i.times ?? null,
+          all: each != null && i.times != null ? each * i.times : null,
+        }
+      : null
   if (i.kind === 'act') {
-    const base = { pieces: 0, left: null, packs: 0, packSize: null, nextWhole: null }
-    if (!i.service) return { ...base, amount: null, tone: 'typed' }
-    if (i.servicePrice == null) return { ...base, amount: null, tone: 'noPrice' }
-    return { ...base, amount: Math.round(i.servicePrice * i.actCount), tone: 'ok' }
+    const base = {
+      pieces: 0,
+      left: null,
+      packs: 0,
+      packSize: null,
+      nextWhole: null,
+      part: 0,
+      partAmount: null,
+      partOpens: false,
+      homeAmount: null,
+    }
+    if (!i.service) return { ...base, amount: null, tone: 'typed', repeat: many(null) }
+    if (i.servicePrice == null)
+      return { ...base, amount: null, tone: 'noPrice', repeat: many(null) }
+    const amount = Math.round(i.servicePrice * i.actCount)
+    return { ...base, amount, tone: 'ok', repeat: many(amount) }
   }
-  const pieces = Math.max(0, i.here) + Math.max(0, i.home)
+  const here = Math.max(0, i.here)
+  const home = Math.max(0, i.home)
+  // a repeated order: the pieces of one time; what goes home is its own order (priced apart)
+  const pieces = repeated ? here : here + home
+  const part = Math.max(0, i.part ?? 0)
+  const partOpens = part > 0 && !!i.partOpens
   const size = i.pack && i.pack.size >= 2 ? i.pack.size : null
-  const q = priceQuantity(
-    {
-      packSize: size,
-      saleMode: i.pack?.mode ?? 'piece',
-      packPrice: i.pack?.packPrice ?? null,
-      sellingPrice: i.cashPrice,
-    },
-    pieces,
-    { cash: true },
-  )
+  const price = (n: number) =>
+    priceQuantity(
+      {
+        packSize: size,
+        saleMode: i.pack?.mode ?? 'piece',
+        packPrice: i.pack?.packPrice ?? null,
+        sellingPrice: i.cashPrice,
+      },
+      n,
+      { cash: true },
+    )
+  const q = price(pieces)
+  const qHome = repeated && home > 0 ? price(home) : null
   const priced = i.cashPrice != null || (q.mode === 'pack' && q.packPrice != null)
+  const partAmount = part > 0 ? (i.partPrice ?? null) : null
+  // the stock: the whole pieces (here and home), and one more piece opened for the part
+  const need = here + home + (partOpens ? 1 : 0)
   const tone: SummaryTone =
-    i.stockUnits != null && pieces > i.stockUnits
+    i.stockUnits != null && need > i.stockUnits
       ? 'short'
-      : !q.ok
+      : !q.ok || (qHome && !qHome.ok)
         ? 'wholePacks'
-        : priced
+        : priced || partAmount != null
           ? 'ok'
           : 'noPrice'
+  const wholeAmount = priced ? q.total : null
+  const amount =
+    wholeAmount == null && partAmount == null ? null : (wholeAmount ?? 0) + (partAmount ?? 0)
   return {
     pieces,
     left: i.stockUnits,
-    amount: priced ? q.total : null,
+    amount,
     packs: q.packs,
     packSize: size,
     nextWhole: size ? Math.max(1, Math.ceil(pieces / size)) * size : null,
     tone,
+    part,
+    partAmount,
+    partOpens,
+    repeat: many(amount),
+    homeAmount: qHome && priced ? qHome.total : null,
   }
 }
 
@@ -105,16 +165,31 @@ export const restOfBox = (here: number, size: number | null | undefined): number
 export function summaryWords(
   t: TFunction,
   s: OrderSummary,
-  c: { kind: 'act' | 'drug'; unit: string; act: string; actCount: number; packUnit: string | null },
+  c: {
+    kind: 'act' | 'drug'
+    unit: string
+    act: string
+    actCount: number
+    packUnit: string | null
+    /** 0198: the part in words ("½ tab", "5 ml"). */
+    partText?: string | null
+    /** 0198: the pieces to take home of a repeated order (its own order). */
+    home?: number
+  },
 ): string {
   const amount = s.amount != null ? formatRwf(s.amount) : ''
   const left = s.left ?? '—'
   if (c.kind === 'act')
-    return s.tone === 'typed'
-      ? t('nurseOrders.summaryTyped')
-      : s.tone === 'noPrice'
-        ? t('nurseOrders.summaryNoPrice')
-        : t('nurseOrders.summaryAct', { act: c.act, count: c.actCount, amount })
+    return [
+      s.tone === 'typed'
+        ? t('nurseOrders.summaryTyped')
+        : s.tone === 'noPrice'
+          ? t('nurseOrders.summaryNoPrice')
+          : t('nurseOrders.summaryAct', { act: c.act, count: c.actCount, amount }),
+      repeatWords(t, s),
+    ]
+      .filter(Boolean)
+      .join(' ')
   if (s.tone === 'short')
     return t('nurseOrders.notEnough', { count: s.left ?? 0, unit: c.unit, asked: s.pieces })
   if (s.tone === 'wholePacks')
@@ -123,17 +198,57 @@ export function summaryWords(
       size: s.packSize ?? 0,
       next: s.nextWhole ?? 0,
     })
+  // 0198: a part of a piece ("2 tab + ½ tab"), said with how the stock gives it
+  const withPart = s.part > 0 && !!c.partText
+  const what = withPart
+    ? [s.pieces > 0 ? `${s.pieces} ${c.unit}` : null, c.partText].filter(Boolean).join(' + ')
+    : null
+  const partWords = withPart
+    ? t(s.partOpens ? 'nurseOrders.summaryPartOpens' : 'nurseOrders.summaryPartFromOpen', {
+        unit: c.unit,
+      })
+    : null
+  const homeOrder =
+    s.repeat && c.home
+      ? t('nurseOrders.summaryHomeOrder', {
+          count: c.home,
+          unit: c.unit,
+          amount: s.homeAmount != null ? formatRwf(s.homeAmount) : '—',
+        })
+      : null
   if (s.tone === 'noPrice')
-    return t('nurseOrders.summaryDrugNoPrice', { total: s.pieces, unit: c.unit, left })
+    return [
+      what
+        ? t('nurseOrders.summaryDrugWhatNoPrice', { what, unit: c.unit, left })
+        : t('nurseOrders.summaryDrugNoPrice', { total: s.pieces, unit: c.unit, left }),
+      partWords,
+      homeOrder,
+    ]
+      .filter(Boolean)
+      .join(' ')
   return [
-    t('nurseOrders.summaryDrug', { total: s.pieces, unit: c.unit, left, amount }),
+    what
+      ? t('nurseOrders.summaryDrugWhat', { what, unit: c.unit, left, amount })
+      : t('nurseOrders.summaryDrug', { total: s.pieces, unit: c.unit, left, amount }),
+    partWords,
     s.packs > 0 && s.packSize
       ? t('nurseOrders.summaryAsPacks', {
           packs: packsText(t, s.pieces, s.packSize, c.packUnit) ?? '',
         })
       : null,
+    repeatWords(t, s),
+    homeOrder,
     t('nurseOrders.summaryInsurer'),
   ]
     .filter(Boolean)
     .join(' ')
+}
+
+/** 0198: a repeated order: "The same each time: 9 times = 675 RWF if all are given." */
+function repeatWords(t: TFunction, s: OrderSummary): string | null {
+  if (!s.repeat) return null
+  if (s.repeat.times == null) return t('nurseOrders.summaryRepeatUntil')
+  return s.repeat.all != null
+    ? t('nurseOrders.summaryRepeat', { count: s.repeat.times, total: formatRwf(s.repeat.all) })
+    : t('nurseOrders.summaryRepeatNoPrice', { count: s.repeat.times })
 }
