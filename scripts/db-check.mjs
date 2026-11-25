@@ -4584,7 +4584,7 @@ const servicesOf80 = async (id) =>
     await one(
       `select coalesce(array_agg(s order by s), '{}') as s
        from unnest(array['consultation', 'dental', 'laboratory', 'ultrasound', 'nursing', 'surgery',
-                         'circ', 'fp', 'hiv', 'pharmacy', 'triage']) s
+                         'circ', 'fp', 'physio', 'pharmacy', 'triage']) s
        where staff_serves($1, s)`,
       [id],
     )
@@ -4731,7 +4731,7 @@ await step(
       await one(
         `select coalesce(array_agg(s order by s), '{}') as s
          from unnest(array['consultation', 'dental', 'laboratory', 'ultrasound', 'nursing', 'surgery',
-                           'circ', 'fp', 'hiv', 'pharmacy', 'triage']) s
+                           'circ', 'fp', 'physio', 'pharmacy', 'triage']) s
          where not service_has_staff(s)`,
       )
     ).s
@@ -31602,6 +31602,125 @@ await step(
   },
 )
 // @@t202-end
+// @@t205-begin
+// ---------------------------------------------------------------- 0205 Physiotherapy, a section like Dental; HIV testing a service
+const t205 = {}
+await step(
+  '0205: the migrations run (twice); physio is a desk and a section like dental, hiv is neither; the roles that may use Dental may use it; a Physiotherapy department exists',
+  async () => {
+    await asAdmin()
+    for (const f of [
+      '20270222090000_physio_station.sql',
+      '20270222091000_physiotherapy_desk.sql',
+    ]) {
+      const sql = await readFile(path.join(migrationsDir, f), 'utf8')
+      await db.exec(sql)
+      await db.exec(sql)
+    }
+    const r = await one(`select
+        'physio' = any (all_desks()) as all_p, 'hiv' = any (all_desks()) as all_h,
+        'physio' = any (treating_desks()) as treat_p, 'hiv' = any (treating_desks()) as treat_h,
+        station_desks('physio')::text as sd_p, station_desks('nursing')::text as sd_n,
+        service_station('physio')::text as ss_p, service_station('hiv')::text as ss_h,
+        desk_key('hiv') as key_h, station_role('physio')::text as role_p,
+        station_named('Physiotherapy room')::text as named, station_named('Kinésithérapie')::text as named_fr,
+        (select count(*)::int from role_desk where desk = 'hiv') as hiv_rows,
+        (select coalesce(array_agg(role::text order by role::text), '{}') from role_desk where desk = 'physio') as physio_roles,
+        (select coalesce(array_agg(role::text order by role::text), '{}') from role_desk where desk = 'dental') as dental_roles,
+        (select count(*)::int from department where deleted_at is null and 'physio' = any (services)) as depts,
+        (select count(*)::int from department where 'hiv' = any (services)) as hiv_depts`)
+    // the public booking category: hiv refused by the check, physio accepted (as the database itself)
+    const tryCat = async (cat, code) => {
+      try {
+        await db.query(`update service set booking_category = $1 where code = $2`, [cat, code])
+        return 'ok'
+      } catch (e) {
+        return `${e.code}`
+      }
+    }
+    const hivCat = await tryCat('hiv', 'CONS-GEN')
+    const physioCat = await tryCat('physio', 'PHY-SESS')
+    if (
+      !r.all_p ||
+      r.all_h ||
+      !r.treat_p ||
+      r.treat_h ||
+      r.sd_p !== '{physio}' ||
+      r.sd_n !== '{nursing,fp}' ||
+      r.ss_p !== 'physio' ||
+      r.ss_h !== null ||
+      r.key_h ||
+      r.role_p !== 'doctor' ||
+      r.named !== 'physio' ||
+      r.named_fr !== 'physio' ||
+      r.hiv_rows !== 0 ||
+      json198(r.physio_roles) !== json198(r.dental_roles) ||
+      r.physio_roles.length === 0 ||
+      r.depts !== 1 ||
+      r.hiv_depts !== 0 ||
+      !hivCat.startsWith('23514') ||
+      physioCat !== 'ok'
+    )
+      throw new Error(json198({ ...r, hivCat, physioCat }))
+    return `all and treating desks with physio, not hiv; station physio → desk physio; Nursing gives nursing and fp; hiv is no desk key; physio's role is doctor; "Physiotherapy room" and "Kinésithérapie" name the physio station; physio allowed to ${r.physio_roles.join(', ')} (as Dental); one Physiotherapy department; the public category hiv refused (${hivCat}), physio accepted`
+  },
+)
+await step(
+  '0205 A: a doctor placed in the Physiotherapy department serves it; reception sends a patient to Physiotherapy: ticket F-…, waiting at the physio desk, for that department',
+  async () => {
+    await asAdmin()
+    t205.dept = (
+      await one(
+        `select id from department where deleted_at is null and 'physio' = any (services) limit 1`,
+      )
+    ).id
+    t205.doc = await newStaff('physio.205', 'Physio 205', 'doctor', 'Physiotherapy')
+    await db.query(`insert into staff_department (profile_id, department_id) values ($1, $2)`, [
+      t205.doc,
+      t205.dept,
+    ])
+    const serves = await one(
+      `select staff_serves($1, 'physio') as physio, staff_serves($1, 'dental') as dental`,
+      [t205.doc],
+    )
+    await as(staff.receptionist)
+    const p = (
+      await one(
+        `select register_patient_file('Kamanzi', 'Physio 205', 'female', null, 40, null) as r`,
+      )
+    ).r
+    const v = (
+      await one(`select begin_visit($1, 'physio', $2, 'back pain', false, false) as v`, [
+        p.patient_id,
+        t205.dept,
+      ])
+    ).v
+    await asAdmin()
+    t205.enc = v.encounter_id
+    const q = await one(
+      `select station::text as station, ticket_no, department_id, referral_note from queue_entry where encounter_id = $1`,
+      [v.encounter_id],
+    )
+    const r = { serves, q }
+    if (
+      !serves.physio ||
+      serves.dental ||
+      q.station !== 'physio' ||
+      !/^F-\d{3}$/.test(q.ticket_no) ||
+      q.department_id !== t205.dept ||
+      q.referral_note !== 'back pain'
+    )
+      throw new Error(json198(r))
+    return `the doctor of the Physiotherapy department serves physio, not dental; the patient waits at physio with ticket ${q.ticket_no}, for the Physiotherapy department, “back pain”`
+  },
+)
+await step('0205: tidy — the visit of these checks leaves no trace for the others', async () => {
+  await asAdmin()
+  await db.query(`update queue_entry set deleted_at = now() where encounter_id = $1`, [t205.enc])
+  await db.query(`update encounter set deleted_at = now() where id = $1`, [t205.enc])
+  return 'done'
+})
+// @@t205-end
 finish()
 
 function finish() {

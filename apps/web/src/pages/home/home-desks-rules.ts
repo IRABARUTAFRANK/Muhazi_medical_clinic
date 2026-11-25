@@ -39,7 +39,7 @@ const KIND_MAIN: Record<HomeKind, readonly DeskId[]> = {
 export const KIND_NATIVE: Record<HomeKind, readonly DeskId[]> = {
   reception: ['reception', 'triage'],
   nurse: ['reception', 'triage', ...TREATING_DESKS],
-  doctor: ['reception', ...DOCTOR_DESKS, 'fp', 'hiv'],
+  doctor: ['reception', ...DOCTOR_DESKS, 'fp'],
   lab: ['laboratory', 'ultrasound'],
   pharmacy: ['pharmacy'],
   cashier: DESKS,

@@ -10,6 +10,7 @@ import {
   FlaskConical,
   HeartHandshake,
   HeartPulse,
+  PersonStanding,
   Pill,
   Ribbon,
   Scan,
@@ -236,6 +237,7 @@ const STATION_ICONS: Record<string, LucideIcon> = {
   triage: Activity,
   consultation: Stethoscope,
   dental: Smile,
+  physio: PersonStanding,
   laboratory: FlaskConical,
   lab: FlaskConical,
   ultrasound: Scan,
@@ -257,8 +259,9 @@ const STATION_ICONS: Record<string, LucideIcon> = {
 export const stationIconFor = (station: string): LucideIcon => {
   const s = station.toLowerCase()
   if (STATION_ICONS[s]) return STATION_ICONS[s]
-  // Named service groups ("HIV testing & vaccination", "Family planning", …)
+  // Named service groups ("HIV testing & vaccination", "Family planning", "Kinésithérapie", …)
   if (s.includes('hiv')) return Ribbon
+  if (/(physio|kin[ée]si|fiziyo|fizyo|gororangingo)/.test(s)) return PersonStanding
   if (s.includes('vaccin') || s.includes('inject')) return Syringe
   if (s.includes('family')) return HeartHandshake
   if (s.includes('surg') || s.includes('circum')) return Scissors

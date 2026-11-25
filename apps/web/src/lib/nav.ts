@@ -417,7 +417,13 @@ function withSwitches(user: StaffUser, items: NavItem[]): NavItem[] {
 /* ---------------------------------------------------------------- desks (migration 0085) */
 
 /** The desks where a doctor sees patients (the doctor's queue, tests ordered, prescriptions). */
-export const DOCTOR_DESKS: readonly DeskId[] = ['consultation', 'dental', 'surgery', 'circ']
+export const DOCTOR_DESKS: readonly DeskId[] = [
+  'consultation',
+  'dental',
+  'physio',
+  'surgery',
+  'circ',
+]
 
 /** The lab worklist (the laboratory or ultrasound desk of someone whose role menu lacks it). */
 const LAB_WORKLIST: NavItem = {

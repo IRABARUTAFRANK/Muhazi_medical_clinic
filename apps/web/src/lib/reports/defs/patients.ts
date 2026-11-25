@@ -87,6 +87,7 @@ const F = {
       'triage',
       'consultation',
       'dental',
+      'physio',
       'laboratory',
       'ultrasound',
       'theatre',

@@ -20,6 +20,7 @@ const INSERTED_WORDS: Record<string, string> = {
   Consultation: 'register.stations.consultation',
   Doctor: 'register.stations.consultation',
   Dental: 'register.stations.dental',
+  Physio: 'register.stations.physio',
   Laboratory: 'register.stations.laboratory',
   Lab: 'register.stations.laboratory',
   Ultrasound: 'register.stations.ultrasound',

@@ -77,7 +77,7 @@ export const CATEGORY_FILTERS: readonly CategoryFilter[] = [
   'nursing',
   'surgery',
   'fp',
-  'hiv',
+  'physio',
   'circ',
 ]
 export const CATEGORY_IDS: readonly CategoryId[] = CATEGORY_FILTERS.filter(
@@ -105,7 +105,7 @@ export const SERVICE_ICONS: Record<CategoryId, string> = {
   surgery: 'scissors',
   circ: 'shield-plus',
   fp: 'heart-handshake',
-  hiv: 'shield-check',
+  physio: 'person-standing',
 }
 
 /** Sample service lines (same values as the seed's cash price list). */
@@ -118,5 +118,5 @@ export const SERVICES: readonly ServiceLine[] = [
   { id: 'surgery', priceFrom: 25000, hasFree: false, icon: SERVICE_ICONS.surgery },
   { id: 'circ', priceFrom: 30000, hasFree: false, icon: SERVICE_ICONS.circ },
   { id: 'fp', priceFrom: null, hasFree: true, icon: SERVICE_ICONS.fp },
-  { id: 'hiv', priceFrom: null, hasFree: true, icon: SERVICE_ICONS.hiv },
+  { id: 'physio', priceFrom: 10000, hasFree: false, icon: SERVICE_ICONS.physio },
 ]

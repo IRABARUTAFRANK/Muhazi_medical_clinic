@@ -23,6 +23,7 @@ export const SPECIALTIES: Readonly<Partial<Record<string, readonly string[]>>> =
   doctor: [
     'General practitioner',
     'Dentist',
+    'Physiotherapist',
     'Surgeon',
     'Gynaecologist / obstetrician',
     'Paediatrician',
@@ -36,6 +37,7 @@ export const SPECIALTIES: Readonly<Partial<Record<string, readonly string[]>>> =
 const SPECIALTY_KEY: Readonly<Record<string, string>> = {
   'general practitioner': 'generalPractitioner',
   dentist: 'dentist',
+  physiotherapist: 'physiotherapist',
   surgeon: 'surgeon',
   'gynaecologist / obstetrician': 'gynaecologist',
   paediatrician: 'paediatrician',

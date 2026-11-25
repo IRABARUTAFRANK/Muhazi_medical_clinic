@@ -101,7 +101,7 @@ const errorBox =
 /** The usual desks of each role (to find where this person meets the patient), kept while the
  *  person still has that desk; a department adds its own desks (below). */
 const DESKS_OF: Record<string, Station[]> = {
-  doctor: ['consultation', 'dental', 'theatre'],
+  doctor: ['consultation', 'dental', 'physio', 'theatre'],
   nurse: ['triage', 'nursing', 'beds'],
   lab_tech: ['laboratory'],
   sonographer: ['ultrasound'],

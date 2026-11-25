@@ -31,7 +31,7 @@ export interface PatientSeenRow {
   clinicianId: string
   clinician: string
   clinicianRole: string | null
-  /** consultation, dental, theatre, nursing, beds, ultrasound (null: wrote a diagnosis only). */
+  /** consultation, dental, physio, theatre, nursing, beds, ultrasound (null: wrote a diagnosis only). */
   desk: string | null
   department: string | null
   /** "B54 Malaria; J06.9 …" (clinical): the definitive diagnoses (0127). */

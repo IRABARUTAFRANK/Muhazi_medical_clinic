@@ -148,6 +148,7 @@
     "all": "All services",
     "consultation": "Consultation",
     "dental": "Dental",
+    "physio": "Physiotherapy",
     "laboratory": "Laboratory",
     "ultrasound": "Ultrasound",
     "nursing": "Nursing care",
@@ -169,6 +170,10 @@
       "name": "Dental",
       "desc": "Check-ups, fillings, extractions and cleaning by our dental officer."
     },
+    "physio": {
+      "name": "Physiotherapy",
+      "desc": "Assessment, exercises and rehabilitation after injury, surgery or stroke, by our physiotherapist."
+    },
     "ultrasound": {
       "name": "Ultrasound",
       "desc": "Obstetric and abdominal scans, with a printed report for your doctor."
@@ -188,10 +193,6 @@
     "fp": {
       "name": "Family planning",
       "desc": "Confidential counselling and the full range of modern methods."
-    },
-    "hiv": {
-      "name": "HIV testing & vaccination",
-      "desc": "Rapid HIV testing with counselling, and routine child and adult vaccines."
     }
   },
   "price": {
@@ -204,7 +205,7 @@
     "openNow": "Open now · closes {{closes}} · current wait about {{wait}} min",
     "heroTitle1": "Quality care,",
     "heroTitle2": "healthy life.",
-    "heroLead": "A private polyclinic in Kiramuruzi, Gatsibo District, open 24 hours a day, seven days a week: consultation, laboratory, dental, ultrasound, nursing and family-planning services.",
+    "heroLead": "A private polyclinic in Kiramuruzi, Gatsibo District, open 24 hours a day, seven days a week: consultation, laboratory, dental, physiotherapy, ultrasound, nursing and family-planning services.",
     "ctaBook": "Find a doctor & book a time",
     "ctaCall": "Call {{phone}}",
     "stats": {
@@ -323,7 +324,7 @@
       "rights": "© 2026 Muhazi Medical Clinic · Kiramuruzi, Gatsibo, Rwanda",
       "version": "Clinic System v1.0 · Kinyarwanda · English · Français",
       "short": "© 2026 Muhazi Medical Clinic · Gatsibo, Rwanda",
-      "about": "A private polyclinic in Kiramuruzi, Gatsibo District, open 24 hours a day, seven days a week: consultation, laboratory, dental, ultrasound, nursing, minor surgery, family planning, HIV testing and vaccination.",
+      "about": "A private polyclinic in Kiramuruzi, Gatsibo District, open 24 hours a day, seven days a week: consultation, laboratory, dental, physiotherapy, ultrasound, nursing, minor surgery and family planning.",
       "services": "Services",
       "patients": "For patients",
       "clinic": "Clinic",
@@ -1118,6 +1119,7 @@
       "triage": "Triage",
       "consultation": "Consultation",
       "dental": "Dental",
+      "physio": "Physiotherapy",
       "laboratory": "Laboratory",
       "ultrasound": "Ultrasound",
       "nursing": "Nursing",
@@ -5832,13 +5834,13 @@
     "svc": {
       "consultation": "illness, check-up: a doctor",
       "dental": "teeth and mouth",
+      "physio": "muscles, joints, rehabilitation",
       "laboratory": "tests (walk-in)",
       "ultrasound": "a scan",
       "nursing": "injection, dressing, care",
       "surgery": "small operation, procedure",
       "circ": "boys and men",
       "fp": "family planning methods",
-      "hiv": "HIV test, vaccines",
       "pharmacy": "buy medicines"
     },
     "whoTitle": "Who in {{service}}?",
@@ -7392,11 +7394,11 @@
       "triage": "Triage (vital signs)",
       "consultation": "Consultation",
       "dental": "Dental",
+      "physio": "Physiotherapy",
       "surgery": "Minor surgery",
       "circ": "Circumcision",
       "nursing": "Nursing care",
       "fp": "Family planning",
-      "hiv": "HIV testing & vaccination",
       "laboratory": "Laboratory worklist",
       "ultrasound": "Ultrasound worklist",
       "pharmacy": "Pharmacy desk"
@@ -7406,11 +7408,11 @@
       "triage": "Vital signs at triage and sending patients on",
       "consultation": "Clinical record, prescriptions and tests",
       "dental": "Dental care: record, prescriptions and tests",
+      "physio": "Physiotherapy: record, prescriptions and tests",
       "surgery": "Minor surgery: record, prescriptions and tests",
       "circ": "Circumcision: record, prescriptions and tests",
       "nursing": "Nurse tasks, beds and nursing care",
       "fp": "Family planning: record, prescriptions and tests",
-      "hiv": "HIV testing and vaccination: record and tests",
       "laboratory": "Lab tests: samples, results, verify",
       "ultrasound": "Imaging: reports and results",
       "pharmacy": "Hand over medicines, counter sales, pharmacy stock"
@@ -10070,6 +10072,7 @@
       "desk": {
         "consultation": "Consultation",
         "dental": "Dental",
+        "physio": "Physiotherapy",
         "theatre": "Theatre",
         "nursing": "Nursing",
         "beds": "Beds",
@@ -11501,6 +11504,7 @@
   "specialties": {
     "generalPractitioner": "General practitioner",
     "dentist": "Dentist",
+    "physiotherapist": "Physiotherapist",
     "surgeon": "Surgeon",
     "gynaecologist": "Gynaecologist / obstetrician",
     "paediatrician": "Paediatrician",
@@ -11526,7 +11530,7 @@
   },
   "seo": {
     "landingTitle": "Muhazi Medical Clinic — private polyclinic in Kiramuruzi, Gatsibo",
-    "landingDescription": "Open 24 hours a day: consultation, laboratory, dental, ultrasound, nursing and family planning in Kiramuruzi, Gatsibo District. Find a doctor and book a time.",
+    "landingDescription": "Open 24 hours a day: consultation, laboratory, dental, physiotherapy, ultrasound, nursing and family planning in Kiramuruzi, Gatsibo District. Find a doctor and book a time.",
     "bookTitle": "Book a visit — Muhazi Medical Clinic",
     "bookDescription": "Choose a service and a doctor at Muhazi Medical Clinic, Kiramuruzi, and ask for a time; the clinic confirms by phone or SMS.",
     "loginTitle": "Staff sign in — Muhazi Medical Clinic",

@@ -43,6 +43,7 @@ insert into service (code, name_en, name_kin, name_fr, service_group, allow_manu
   ('DEN-FILL',  'Dental filling', null, 'Plombage', 'dental', false, 40),
   ('DEN-EXT',   'Tooth extraction', 'Gukura iryinyo', 'Extraction dentaire', 'dental', false, 30),
   ('DEN-SCAL',  'Scaling and cleaning', null, 'Détartrage', 'dental', false, 30),
+  ('PHY-SESS',  'Physiotherapy session', 'Ubugororangingo', 'Séance de kinésithérapie', 'other', false, 45),
   ('US-OB',     'Obstetric ultrasound', 'Guca mu cyuma', 'Échographie obstétricale', 'imaging', false, 30),
   ('US-ABD',    'Abdominal ultrasound', null, 'Échographie abdominale', 'imaging', false, 30),
   ('NUR-VIT',   'Vital signs', 'Ibipimo', 'Constantes', 'nursing', false, null),
@@ -60,8 +61,9 @@ update service set booking_category = v.cat
 from (values
   ('CONS-GEN', 'consultation'), ('CONS-FU', 'consultation'), ('CONS-FP', 'fp'),
   ('LAB-MRDT', 'laboratory'), ('LAB-FBC', 'laboratory'), ('LAB-GLU', 'laboratory'), ('LAB-URIN', 'laboratory'),
-  ('LAB-HIV', 'hiv'), ('VAC-DOSE', 'hiv'),
+  ('LAB-HIV', 'laboratory'), ('VAC-DOSE', 'nursing'),
   ('DEN-EXAM', 'dental'), ('DEN-FILL', 'dental'), ('DEN-EXT', 'dental'), ('DEN-SCAL', 'dental'),
+  ('PHY-SESS', 'physio'),
   ('US-OB', 'ultrasound'), ('US-ABD', 'ultrasound'),
   ('NUR-VIT', 'nursing'), ('NUR-INJ', 'nursing'), ('NUR-DRESS', 'nursing'), ('BED-HOUR', 'nursing'), ('BED-DAY', 'nursing'),
   ('SUR-SUT', 'surgery'), ('SUR-ABSC', 'surgery'), ('SUR-CIRC', 'circ')
@@ -89,6 +91,7 @@ from (values
   ('REG-CARD', 500), ('CONS-GEN', 8000), ('CONS-FU', 5000), ('CONS-FP', 0),
   ('LAB-MRDT', 2500), ('LAB-FBC', 5000), ('LAB-GLU', 2500), ('LAB-URIN', 2500), ('LAB-HIV', 0),
   ('DEN-EXAM', 5000), ('DEN-FILL', 15000), ('DEN-EXT', 15000), ('DEN-SCAL', 20000),
+  ('PHY-SESS', 10000),
   ('US-OB', 20000), ('US-ABD', 20000),
   ('NUR-VIT', 0), ('NUR-INJ', 1000), ('NUR-DRESS', 2000),
   ('SUR-SUT', 25000), ('SUR-ABSC', 25000), ('SUR-CIRC', 30000), ('VAC-DOSE', 0),
@@ -105,6 +108,7 @@ from (values
   ('REG-CARD', 500), ('CONS-GEN', 5000), ('CONS-FU', 3000), ('CONS-FP', 0),
   ('LAB-MRDT', 2000), ('LAB-FBC', 4000), ('LAB-GLU', 2000), ('LAB-URIN', 2000), ('LAB-HIV', 0),
   ('DEN-EXAM', 4000), ('DEN-FILL', 12000), ('DEN-EXT', 12000), ('DEN-SCAL', 15000),
+  ('PHY-SESS', 8000),
   ('US-OB', 15000), ('US-ABD', 15000),
   ('NUR-VIT', 0), ('NUR-INJ', 1000), ('NUR-DRESS', 1500),
   ('SUR-SUT', 20000), ('SUR-ABSC', 20000), ('SUR-CIRC', 25000), ('VAC-DOSE', 0),
@@ -142,7 +146,7 @@ insert into practitioner (code, names, title, specialty, slot_minutes, working_h
     '{fp,ultrasound}', 'KIN · FR'),
   ('nc', 'Nyirahabimana Chantal', 'Nurse · vaccination & HIV testing', 'nursing', 60,
     '{"0":[["07:00","19:00"]],"1":[["07:00","19:00"]],"2":[["07:00","19:00"]],"3":[["07:00","19:00"]],"4":[["07:00","19:00"]],"5":[["07:00","19:00"]],"6":[["07:00","19:00"]]}',
-    '{nursing,hiv}', 'KIN · EN');
+    '{nursing}', 'KIN · EN');
 
 -- ---------------------------------------------------------------- stock, beds, supplier
 insert into stock_location (name, type) values

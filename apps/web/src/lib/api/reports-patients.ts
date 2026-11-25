@@ -568,7 +568,7 @@ const SAMPLE_FIELDS: PatientFieldDef[] = [
 const SAMPLE_OPTIONS: PatientReportOptions = {
   departments: SAMPLE_DEPTS,
   doctors: SAMPLE_DOCTORS,
-  services: ['consultation', 'dental', 'laboratory', 'ultrasound'],
+  services: ['consultation', 'dental', 'physio', 'laboratory', 'ultrasound'],
   insurers: [
     { id: 'ins-cbhi', name: 'RSSB (CBHI)' },
     { id: 'ins-rama', name: 'RAMA' },

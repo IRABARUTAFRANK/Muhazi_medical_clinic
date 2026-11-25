@@ -15,12 +15,14 @@ import { apiError, isMissingFunction } from './errors'
  * and the `queue_board` view. Sample: in-memory stand-ins so the screens work without a backend.
  */
 
-/** `station` enum of the database. */
+/** `station` enum of the database, in the order the screens list them (0205: 'physio' was added
+ *  last to the enum; it is listed beside Dental). */
 export const STATIONS = [
   'reception',
   'triage',
   'consultation',
   'dental',
+  'physio',
   'laboratory',
   'ultrasound',
   'theatre',
@@ -34,6 +36,7 @@ export type Station = (typeof STATIONS)[number]
 export const TREATING_STATIONS: readonly Station[] = [
   'consultation',
   'dental',
+  'physio',
   'laboratory',
   'ultrasound',
   'nursing',
@@ -49,6 +52,10 @@ export const SEND_FROM_TRIAGE: readonly Station[] = ['reception', ...TREATING_ST
 
 export type Sex = 'female' | 'male' | 'other' | 'unknown'
 
+/** A desk or station name that says Physiotherapy (Kinésithérapie, Fiziyoterapi…), as the
+ *  database's station_named and role_serves (0205). */
+export const PHYSIO_NAME = /(physio|kin[ée]si|fiziyo|fizyo)/i
+
 /** Where this staff member works, for the emergency path and for "my queue". */
 export function stationFor(user: StaffUser): Station {
   // the desk roles work at their own desk, whatever the station text says
@@ -60,6 +67,7 @@ export function stationFor(user: StaffUser): Station {
   if (user.role === 'lab_tech') return 'laboratory'
   const s = (user.station ?? '').toLowerCase()
   if (s.includes('dent')) return 'dental'
+  if (PHYSIO_NAME.test(s)) return 'physio'
   if (s.includes('lab')) return 'laboratory'
   if (s.includes('ultra') || s.includes('echo')) return 'ultrasound'
   if (s.includes('pharm') || s.includes('farum')) return 'pharmacy'
@@ -218,6 +226,7 @@ export const DESK_ROLE: Record<Station, string> = {
   beds: 'nurse',
   consultation: 'doctor',
   dental: 'doctor',
+  physio: 'doctor',
   theatre: 'doctor',
   laboratory: 'lab_tech',
   ultrasound: 'sonographer',

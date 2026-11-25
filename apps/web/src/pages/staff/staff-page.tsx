@@ -88,6 +88,7 @@ import {
   type DeskId,
 } from '@/lib/api/desks'
 import { SECTIONS, sectionName, type SectionId } from '@/lib/api/services'
+import { PHYSIO_NAME } from '@/lib/api/visits'
 import { useConfirm } from '@/lib/confirm'
 import { navForUser } from '@/lib/nav'
 import { matches } from '@/lib/paging'
@@ -121,6 +122,7 @@ const END = '(?![\\p{L}\\p{N}])'
 /** The section a specialty names, in the order the database reads it (0080). */
 const SPECIALTY_SECTIONS: readonly [RegExp, SectionId][] = [
   [new RegExp(`(${WORD}dent|amenyo|orthodon|stomato)`, 'u'), 'dental'],
+  [PHYSIO_NAME, 'physio'],
   [new RegExp(`(ultra|${WORD}[ée]cho|sonog|radiol|imaging|imagerie|mucyuma)`, 'u'), 'ultrasound'],
   [
     new RegExp(
@@ -147,7 +149,7 @@ const SPECIALTY_SECTIONS: readonly [RegExp, SectionId][] = [
  */
 function usualSections(role: DbRole, station: string, specialty: string): SectionId[] {
   if (role === 'sonographer') return ['ultrasound']
-  if (role === 'nurse' || role === 'midwife') return ['triage', 'nursing', 'fp', 'hiv']
+  if (role === 'nurse' || role === 'midwife') return ['triage', 'nursing', 'fp']
   if (role === 'lab_tech') return ['laboratory']
   if (role === 'pharmacist') return ['pharmacy']
   if (role !== 'doctor') return []
@@ -156,9 +158,11 @@ function usualSections(role: DbRole, station: string, specialty: string): Sectio
   const named = s ? SPECIALTY_SECTIONS.find(([re]) => re.test(s))?.[1] : undefined
   const mine = new Set<SectionId>()
   if (/dent/.test(desk)) mine.add('dental')
+  if (PHYSIO_NAME.test(desk)) mine.add('physio')
   if (/(theat|surg|circ)/.test(desk)) mine.add('surgery').add('circ')
   if (/(ultra|echo)/.test(desk)) mine.add('ultrasound')
-  if (!/(dent|theat|surg|ultra|echo)/.test(desk)) mine.add('consultation')
+  if (!/(dent|theat|surg|ultra|echo)/.test(desk) && !PHYSIO_NAME.test(desk))
+    mine.add('consultation')
   if (named) mine.add(named)
   if (named === 'surgery') mine.add('circ')
   return SECTIONS.filter((x) => mine.has(x))

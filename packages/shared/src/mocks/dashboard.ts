@@ -70,13 +70,13 @@ export const VISITS_BY_SERVICE: readonly BarDatum[] = [
   { label: 'Laboratory', value: 286 },
   { label: 'Nursing', value: 168 },
   { label: 'Dental', value: 74 },
-  { label: 'HIV testing & vaccination', value: 63 },
   { label: 'Ultrasound', value: 58 },
   { label: 'Family planning', value: 41 },
+  { label: 'Physiotherapy', value: 22 },
   { label: 'Minor surgery', value: 19 },
   { label: 'Circumcision', value: 12 },
 ]
-export const VISITS_TOTAL = 1133
+export const VISITS_TOTAL = 1092
 export const WAIT_BY_STATION: readonly BarDatum[] = [
   { label: 'Reception', value: 6 },
   { label: 'Triage', value: 9 },

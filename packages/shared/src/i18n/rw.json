@@ -157,6 +157,7 @@
     "all": "Serivisi zose",
     "consultation": "Gusuzuma",
     "dental": "Kuvura amenyo",
+    "physio": "Ubugororangingo",
     "laboratory": "Laboratwari",
     "ultrasound": "Ekografi",
     "nursing": "Kwita ku barwayi",
@@ -178,6 +179,10 @@
       "name": "Kuvura amenyo",
       "desc": "Gusuzuma amenyo, kuyaziba, kuyakuramo no kuyasukura bikorwa n’umuganga w’amenyo."
     },
+    "physio": {
+      "name": "Ubugororangingo",
+      "desc": "Gusuzuma, imyitozo no kongera gukoresha ingingo nyuma y’imvune, kubagwa cyangwa kugagara igice cy’umubiri, bikorwa n’umuganga w’ubugororangingo."
+    },
     "ultrasound": {
       "name": "Ekografi",
       "desc": "Ekografi y’abatwite n’iy’inda, hamwe na raporo yacapwe uzaha muganga wawe."
@@ -197,10 +202,6 @@
     "fp": {
       "name": "Kuboneza urubyaro",
       "desc": "Inama mu ibanga n’uburyo bwose bugezweho bwo kuboneza urubyaro."
-    },
-    "hiv": {
-      "name": "Gupima virusi itera SIDA n’inkingo",
-      "desc": "Gupima virusi itera SIDA vuba hamwe n’inama, n’inkingo zisanzwe z’abana n’iz’abakuru."
     }
   },
   "price": {
@@ -323,7 +324,7 @@
       "rights": "© 2026 Muhazi Medical Clinic · Kiramuruzi, Gatsibo, u Rwanda",
       "version": "Sisitemu y’ivuriro v1.0 · Ikinyarwanda · English · Français",
       "short": "© 2026 Muhazi Medical Clinic · Gatsibo, u Rwanda",
-      "about": "Ivuriro ryigenga riri i Kiramuruzi, mu Karere ka Gatsibo, rifungura amasaha 24 ku munsi, iminsi irindwi mu cyumweru: gusuzumwa na muganga, laboratwari, amenyo, ekografi, kwita ku barwayi, kubaga byoroheje, kuboneza urubyaro, gupima virusi itera SIDA n’inkingo.",
+      "about": "Ivuriro ryigenga riri i Kiramuruzi, mu Karere ka Gatsibo, rifungura amasaha 24 ku munsi, iminsi irindwi mu cyumweru: gusuzumwa na muganga, laboratwari, amenyo, ubugororangingo, ekografi, kwita ku barwayi, kubaga byoroheje no kuboneza urubyaro.",
       "emergency": "Ibyihutirwa? Hamagara 912 (SAMU) cyangwa uze ku ivuriro ako kanya.",
       "privacy": "Ibanga no kurinda amakuru",
       "law": "Amakuru y’abarwayi arinzwe n’Itegeko n° 058/2021 rirengera amakuru bwite n’ibanga.",
@@ -343,7 +344,7 @@
       "insurance": "RSSB RAMA, Mituweli n’ubwishingizi bwigenga"
     },
     "openNow": "Turafunguye ubu · dufunga {{closes}} · utegereza nk’iminota {{wait}}",
-    "heroLead": "Ivuriro ryigenga riri i Kiramuruzi, mu Karere ka Gatsibo, rifungura amasaha 24 ku munsi, iminsi irindwi mu cyumweru: gusuzumwa na muganga, laboratwari, amenyo, ekografi, kwita ku barwayi no kuboneza urubyaro.",
+    "heroLead": "Ivuriro ryigenga riri i Kiramuruzi, mu Karere ka Gatsibo, rifungura amasaha 24 ku munsi, iminsi irindwi mu cyumweru: gusuzumwa na muganga, laboratwari, amenyo, ubugororangingo, ekografi, kwita ku barwayi no kuboneza urubyaro.",
     "stats": {
       "serviceLines": "serivisi",
       "hours": "dufungura buri munsi, ku manywa na nijoro",
@@ -1113,6 +1114,7 @@
       "triage": "Ibipimo by’ibanze",
       "consultation": "Gusuzuma",
       "dental": "Kuvura amenyo",
+      "physio": "Ubugororangingo",
       "laboratory": "Laboratwari",
       "ultrasound": "Ekografi",
       "nursing": "Kwita ku barwayi",
@@ -5841,13 +5843,13 @@
     "svc": {
       "consultation": "uburwayi, kwisuzumisha: muganga",
       "dental": "amenyo n’akanwa",
+      "physio": "imikaya, ingingo, imyitozo",
       "laboratory": "ibizamini (atabanje kwa muganga)",
       "ultrasound": "ekografi",
       "nursing": "urushinge, gupfuka igisebe, kwitabwaho",
       "surgery": "kubagwa gato, igikorwa",
       "circ": "abahungu n’abagabo",
       "fp": "uburyo bwo kuboneza urubyaro",
-      "hiv": "gupima SIDA, inkingo",
       "pharmacy": "kugura imiti"
     },
     "whoTitle": "Nde muri {{service}}?",
@@ -7401,11 +7403,11 @@
       "triage": "Ibipimo by’ibanze",
       "consultation": "Gusuzuma",
       "dental": "Kuvura amenyo",
+      "physio": "Ubugororangingo",
       "surgery": "Kubaga byoroheje",
       "circ": "Gusiramura",
       "nursing": "Kwita ku barwayi",
       "fp": "Kuboneza urubyaro",
-      "hiv": "Gupima SIDA n’inkingo",
       "laboratory": "Ibizamini bya laboratwari",
       "ultrasound": "Isuzuma rya ekografi",
       "pharmacy": "Farumasi"
@@ -7415,11 +7417,11 @@
       "triage": "Ibipimo by’ibanze no kohereza abarwayi",
       "consultation": "Dosiye y’ubuvuzi, imiti n’ibizamini",
       "dental": "Kuvura amenyo: dosiye, imiti n’ibizamini",
+      "physio": "Ubugororangingo: dosiye, imiti n’ibizamini",
       "surgery": "Kubaga byoroheje: dosiye, imiti n’ibizamini",
       "circ": "Gusiramura: dosiye, imiti n’ibizamini",
       "nursing": "Ibikorwa by’abaforomo, ibitanda no kwita ku barwayi",
       "fp": "Kuboneza urubyaro: dosiye, imiti n’ibizamini",
-      "hiv": "Gupima SIDA n’inkingo: dosiye n’ibizamini",
       "laboratory": "Ibizamini bya laboratwari: ibyitegererezo, ibisubizo, kwemeza",
       "ultrasound": "Ekografi: raporo n’ibisubizo",
       "pharmacy": "Gutanga imiti, igurisha ryo ku irembo, ububiko bwa farumasi"
@@ -10079,6 +10081,7 @@
       "desk": {
         "consultation": "Gusuzumwa na muganga",
         "dental": "Amenyo",
+        "physio": "Ubugororangingo",
         "theatre": "Aho babagira",
         "nursing": "Ubuforomo",
         "beds": "Ibitanda",
@@ -11510,6 +11513,7 @@
   "specialties": {
     "generalPractitioner": "Muganga rusange",
     "dentist": "Muganga w’amenyo",
+    "physiotherapist": "Umuganga w’ubugororangingo",
     "surgeon": "Muganga ubaga",
     "gynaecologist": "Muganga w’abagore n’ababyeyi",
     "paediatrician": "Muganga w’abana",
@@ -11535,7 +11539,7 @@
   },
   "seo": {
     "landingTitle": "Muhazi Medical Clinic — ivuriro ryigenga i Kiramuruzi, Gatsibo",
-    "landingDescription": "Rifungura amasaha 24: kwa muganga, laboratwari, amenyo, echographie, ubuforomo no kuboneza urubyaro i Kiramuruzi, akarere ka Gatsibo. Shaka muganga ufate igihe.",
+    "landingDescription": "Rifungura amasaha 24: kwa muganga, laboratwari, amenyo, ubugororangingo, echographie, ubuforomo no kuboneza urubyaro i Kiramuruzi, akarere ka Gatsibo. Shaka muganga ufate igihe.",
     "bookTitle": "Fata igihe cyo kwivuza — Muhazi Medical Clinic",
     "bookDescription": "Hitamo serivisi na muganga kuri Muhazi Medical Clinic, Kiramuruzi, usabe igihe; ivuriro rirabyemeza kuri telefoni cyangwa SMS.",
     "loginTitle": "Kwinjira kw’abakozi — Muhazi Medical Clinic",

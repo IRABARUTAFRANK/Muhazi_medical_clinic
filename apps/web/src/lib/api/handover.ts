@@ -29,7 +29,7 @@ export interface Handover {
   status: HandoverStatus
   encounterId: string
   queueId: string
-  /** Where the patient is: consultation, dental, theatre, nursing, beds. */
+  /** Where the patient is: consultation, dental, physio, theatre, nursing, beds. */
   station: Station
   service: string | null
   patientId: string
@@ -140,7 +140,7 @@ export function sampleMayHandOver(user: { role: string; station?: string } | nul
   return (
     !!user &&
     (user.role === 'doctor' || user.role === 'nurse') &&
-    /^(consultation|dental|theatre|surgery|circ|nursing|beds|family|fp|hiv)/i.test(
+    /^(consultation|dental|physio|kin[ée]si|theatre|surgery|circ|nursing|beds|family|fp)/i.test(
       user.station ?? '',
     )
   )

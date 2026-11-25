@@ -241,10 +241,11 @@ export const SAMPLE_DEPARTMENTS: (AnalyticsDepartment & { share: number })[] = [
   {
     id: 'dep-opd',
     name: 'Outpatient (OPD)',
-    desks: ['triage', 'consultation', 'nursing', 'fp', 'hiv'],
+    desks: ['triage', 'consultation', 'nursing', 'fp'],
     share: 0.88,
   },
   { id: 'dep-dental', name: 'Dental', desks: ['dental'], share: 0.1 },
+  { id: 'dep-physio', name: 'Physiotherapy', desks: ['physio'], share: 0.03 },
   {
     id: 'dep-lab',
     name: 'Laboratory and imaging',
@@ -259,8 +260,8 @@ const DESK_STATION: Record<string, string> = {
   consultation: 'consultation',
   nursing: 'nursing',
   fp: 'nursing',
-  hiv: 'nursing',
   dental: 'dental',
+  physio: 'physio',
   surgery: 'theatre',
   circ: 'theatre',
   laboratory: 'laboratory',
@@ -578,7 +579,7 @@ const CATEGORIES = [
     name: 'Consultation',
     kin: 'Kwisuzumisha',
     fr: 'Consultation',
-    share: 0.3,
+    share: 0.285,
     price: 7800,
     dept: 'dep-opd',
   },
@@ -611,6 +612,16 @@ const CATEGORIES = [
     share: 0.08,
     price: 12500,
     dept: 'dep-dental',
+  },
+  {
+    id: 'cat-phy',
+    group: 'other',
+    name: 'Physiotherapy',
+    kin: 'Ubugororangingo',
+    fr: 'Kinésithérapie',
+    share: 0.015,
+    price: 10000,
+    dept: 'dep-physio',
   },
   {
     id: 'cat-nur',
@@ -1321,6 +1332,7 @@ const SERVICES = [
   { d: 'Tooth extraction', cat: 'cat-den', price: 15000, rate: 0.03 },
   { d: 'Scaling and polishing', cat: 'cat-den', price: 25000, rate: 0.01 },
   { d: 'Composite filling', cat: 'cat-den', price: 30000, rate: 0.01 },
+  { d: 'Physiotherapy session', cat: 'cat-phy', price: 10000, rate: 0.015 },
   { d: 'Suturing', cat: 'cat-proc', price: 10000, rate: 0.02 },
   { d: 'Incision and drainage', cat: 'cat-proc', price: 15000, rate: 0.01 },
   { d: 'Circumcision', cat: 'cat-proc', price: 35000, rate: 0.008 },
@@ -1485,6 +1497,7 @@ const DESK_WAITS = [
   { station: 'triage', rate: 0.92, median: 7, sigma: 0.55 },
   { station: 'consultation', rate: 0.8, median: 22, sigma: 0.6 },
   { station: 'dental', rate: 0.1, median: 16, sigma: 0.55 },
+  { station: 'physio', rate: 0.03, median: 12, sigma: 0.5 },
   { station: 'theatre', rate: 0.04, median: 30, sigma: 0.5 },
   { station: 'nursing', rate: 0.18, median: 11, sigma: 0.6 },
   { station: 'laboratory', rate: 0.45, median: 14, sigma: 0.6 },
@@ -1492,6 +1505,11 @@ const DESK_WAITS = [
   { station: 'pharmacy', rate: 0.72, median: 8, sigma: 0.6 },
   { station: 'cashier', rate: 0.95, median: 5, sigma: 0.55 },
 ] as const
+
+/** The desks where a patient is first seen (arrival to there is measured). */
+const FIRST_SEEN: readonly string[] = ['triage', 'consultation', 'dental', 'physio']
+/** The arrivals of a department of its own desk (Dental, Physiotherapy); the others: all. */
+const ARRIVAL_SHARE: Record<string, number> = { 'dep-dental': 0.1, 'dep-physio': 0.03 }
 
 /** The percentile of sorted values, interpolated (as percentile_cont). */
 function percentile(sorted: number[], q: number): number | null {
@@ -1564,14 +1582,10 @@ export async function sampleWaitTimeStats(
   // arrival to the first desk where the patient is seen
   const arrival: number[] = []
   let arrivalExcluded = 0
-  if (
-    desks.some(
-      (d) => d.station === 'triage' || d.station === 'consultation' || d.station === 'dental',
-    )
-  ) {
+  if (desks.some((d) => FIRST_SEEN.includes(d.station))) {
     for (const day of days) {
       const r = rng(`a${day}`)
-      const n = Math.round(sampleDay(day).visits * 0.95 * (dept?.id === 'dep-dental' ? 0.1 : 1))
+      const n = Math.round(sampleDay(day).visits * 0.95 * (ARRIVAL_SHARE[dept?.id ?? ''] ?? 1))
       for (let i = 0; i < n; i++) {
         if (r() < 0.01) arrivalExcluded++
         else arrival.push(Math.max(1, 34 * Math.exp(0.5 * normal(r))))

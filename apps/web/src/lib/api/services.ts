@@ -6,8 +6,9 @@ import { apiError } from './errors'
 
 /**
  * The clinic's services, as on the website: medical consultation, dental services, laboratory
- * services, nursing care, minor surgery, ultrasound, circumcision, family planning, HIV testing &
- * vaccination; plus the pharmacy (to buy medicines). Choosing one chooses its section (desk).
+ * services, nursing care, minor surgery, ultrasound, circumcision, family planning, physiotherapy
+ * (0205; HIV testing and vaccination are services of Nursing and the laboratory, not a section);
+ * plus the pharmacy (to buy medicines). Choosing one chooses its section (desk).
  */
 export type ServiceId = CategoryId | 'pharmacy'
 export const SERVICES: readonly ServiceId[] = [...CATEGORY_IDS, 'pharmacy']
@@ -16,13 +17,13 @@ export const SERVICES: readonly ServiceId[] = [...CATEGORY_IDS, 'pharmacy']
 export const SERVICE_DESK: Record<ServiceId, Station> = {
   consultation: 'consultation',
   dental: 'dental',
+  physio: 'physio',
   laboratory: 'laboratory',
   ultrasound: 'ultrasound',
   nursing: 'nursing',
   surgery: 'theatre',
   circ: 'theatre',
   fp: 'nursing',
-  hiv: 'nursing',
   pharmacy: 'pharmacy',
 }
 
@@ -149,6 +150,7 @@ export function useServiceStaff(service: ServiceId | 'triage' | null) {
 const DESK_SERVICE: Partial<Record<Station, ServiceId>> = {
   consultation: 'consultation',
   dental: 'dental',
+  physio: 'physio',
   laboratory: 'laboratory',
   ultrasound: 'ultrasound',
   nursing: 'nursing',
@@ -159,7 +161,7 @@ const DESK_SERVICE: Partial<Record<Station, ServiceId>> = {
 /**
  * Who works at this desk now (0119): the vitals form's "Anyone at Consultation / Dr …" once
  * the nurse has chosen where the patient goes. The same shape as a service's staff; a desk
- * with several services (Nursing: nursing, family planning, HIV) lists all of them.
+ * with several services (Nursing: nursing, family planning) lists all of them.
  */
 export function useStationStaff(station: Station | null) {
   return useQuery({

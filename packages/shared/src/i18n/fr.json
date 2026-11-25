@@ -148,6 +148,7 @@
     "all": "Tous les services",
     "consultation": "Consultation",
     "dental": "Soins dentaires",
+    "physio": "Kinésithérapie",
     "laboratory": "Laboratoire",
     "ultrasound": "Échographie",
     "nursing": "Soins infirmiers",
@@ -169,6 +170,10 @@
       "name": "Soins dentaires",
       "desc": "Contrôles, plombages, extractions et détartrage par notre dentiste."
     },
+    "physio": {
+      "name": "Kinésithérapie",
+      "desc": "Bilan, exercices et rééducation après une blessure, une opération ou un AVC, par notre kinésithérapeute."
+    },
     "ultrasound": {
       "name": "Échographie",
       "desc": "Échographies obstétricales et abdominales, avec un rapport imprimé pour votre médecin."
@@ -188,10 +193,6 @@
     "fp": {
       "name": "Planification familiale",
       "desc": "Conseil confidentiel et toute la gamme des méthodes modernes."
-    },
-    "hiv": {
-      "name": "Dépistage VIH et vaccination",
-      "desc": "Test VIH rapide avec conseil, et vaccins de routine pour enfants et adultes."
     }
   },
   "price": {
@@ -204,7 +205,7 @@
     "openNow": "Ouvert · ferme à {{closes}} · attente actuelle environ {{wait}} min",
     "heroTitle1": "Des soins de qualité,",
     "heroTitle2": "une vie en santé.",
-    "heroLead": "Une polyclinique privée à Kiramuruzi, district de Gatsibo, ouverte 24 heures sur 24, sept jours sur sept : consultation, laboratoire, soins dentaires, échographie, soins infirmiers et planification familiale.",
+    "heroLead": "Une polyclinique privée à Kiramuruzi, district de Gatsibo, ouverte 24 heures sur 24, sept jours sur sept : consultation, laboratoire, soins dentaires, kinésithérapie, échographie, soins infirmiers et planification familiale.",
     "ctaBook": "Trouver un médecin et choisir une heure",
     "ctaCall": "Appeler le {{phone}}",
     "stats": {
@@ -323,7 +324,7 @@
       "rights": "© 2026 Muhazi Medical Clinic · Kiramuruzi, Gatsibo, Rwanda",
       "version": "Système de la clinique v1.0 · Kinyarwanda · English · Français",
       "short": "© 2026 Muhazi Medical Clinic · Gatsibo, Rwanda",
-      "about": "Une polyclinique privée à Kiramuruzi, district de Gatsibo, ouverte 24 heures sur 24, sept jours sur sept : consultation, laboratoire, soins dentaires, échographie, soins infirmiers, petite chirurgie, planification familiale, dépistage VIH et vaccination.",
+      "about": "Une polyclinique privée à Kiramuruzi, district de Gatsibo, ouverte 24 heures sur 24, sept jours sur sept : consultation, laboratoire, soins dentaires, kinésithérapie, échographie, soins infirmiers, petite chirurgie et planification familiale.",
       "services": "Services",
       "patients": "Pour les patients",
       "clinic": "Clinique",
@@ -1118,6 +1119,7 @@
       "triage": "Triage",
       "consultation": "Consultation",
       "dental": "Dentaire",
+      "physio": "Kinésithérapie",
       "laboratory": "Laboratoire",
       "ultrasound": "Échographie",
       "nursing": "Soins infirmiers",
@@ -5832,13 +5834,13 @@
     "svc": {
       "consultation": "maladie, contrôle : un médecin",
       "dental": "dents et bouche",
+      "physio": "muscles, articulations, rééducation",
       "laboratory": "examens (sans rendez-vous)",
       "ultrasound": "une échographie",
       "nursing": "injection, pansement, soins",
       "surgery": "petite opération, acte",
       "circ": "garçons et hommes",
       "fp": "méthodes de planification familiale",
-      "hiv": "test VIH, vaccins",
       "pharmacy": "acheter des médicaments"
     },
     "whoTitle": "Qui en {{service}} ?",
@@ -7392,11 +7394,11 @@
       "triage": "Triage (constantes)",
       "consultation": "Consultation",
       "dental": "Soins dentaires",
+      "physio": "Kinésithérapie",
       "surgery": "Petite chirurgie",
       "circ": "Circoncision",
       "nursing": "Soins infirmiers",
       "fp": "Planification familiale",
-      "hiv": "Dépistage VIH et vaccination",
       "laboratory": "Liste du laboratoire",
       "ultrasound": "Liste d'échographie",
       "pharmacy": "Poste de pharmacie"
@@ -7406,11 +7408,11 @@
       "triage": "Constantes au triage et orientation des patients",
       "consultation": "Dossier clinique, ordonnances et examens",
       "dental": "Soins dentaires : dossier, ordonnances et examens",
+      "physio": "Kinésithérapie : dossier, ordonnances et examens",
       "surgery": "Petite chirurgie : dossier, ordonnances et examens",
       "circ": "Circoncision : dossier, ordonnances et examens",
       "nursing": "Tâches infirmières, lits et soins",
       "fp": "Planification familiale : dossier, ordonnances et examens",
-      "hiv": "Dépistage VIH et vaccination : dossier et examens",
       "laboratory": "Analyses : prélèvements, résultats, validation",
       "ultrasound": "Imagerie : comptes rendus et résultats",
       "pharmacy": "Remise des médicaments, ventes au comptoir, stock de la pharmacie"
@@ -10070,6 +10072,7 @@
       "desk": {
         "consultation": "Consultation",
         "dental": "Dentaire",
+        "physio": "Kinésithérapie",
         "theatre": "Bloc",
         "nursing": "Soins infirmiers",
         "beds": "Lits",
@@ -11501,6 +11504,7 @@
   "specialties": {
     "generalPractitioner": "Médecin généraliste",
     "dentist": "Dentiste",
+    "physiotherapist": "Kinésithérapeute",
     "surgeon": "Chirurgien·ne",
     "gynaecologist": "Gynécologue-obstétricien·ne",
     "paediatrician": "Pédiatre",
@@ -11526,7 +11530,7 @@
   },
   "seo": {
     "landingTitle": "Muhazi Medical Clinic — polyclinique privée à Kiramuruzi, Gatsibo",
-    "landingDescription": "Ouverte 24 h/24 : consultation, laboratoire, dentaire, échographie, soins infirmiers et planning familial à Kiramuruzi, district de Gatsibo. Trouvez un médecin et réservez.",
+    "landingDescription": "Ouverte 24 h/24 : consultation, laboratoire, dentaire, kinésithérapie, échographie, soins infirmiers et planning familial à Kiramuruzi, district de Gatsibo. Trouvez un médecin et réservez.",
     "bookTitle": "Prendre rendez-vous — Muhazi Medical Clinic",
     "bookDescription": "Choisissez un service et un médecin à Muhazi Medical Clinic, Kiramuruzi, et demandez un horaire ; la clinique confirme par téléphone ou SMS.",
     "loginTitle": "Connexion du personnel — Muhazi Medical Clinic",

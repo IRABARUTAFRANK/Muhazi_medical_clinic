@@ -56,6 +56,7 @@ export const ORDER_DESKS = [
   'ultrasound',
   'nursing',
   'dental',
+  'physio',
   'theatre',
   'consultation',
 ] as const

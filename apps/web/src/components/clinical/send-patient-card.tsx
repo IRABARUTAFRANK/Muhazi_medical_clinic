@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils'
 
 /** The desks a person may start a visit with "I see this patient myself" (the database agrees). */
 const MY_DESKS: Record<string, Station[]> = {
-  doctor: ['consultation', 'dental', 'theatre', 'ultrasound'],
+  doctor: ['consultation', 'dental', 'physio', 'theatre', 'ultrasound'],
   nurse: ['triage', 'nursing', 'beds'],
   lab_tech: ['laboratory'],
   sonographer: ['ultrasound'],

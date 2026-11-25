@@ -93,7 +93,7 @@ export function CallsPanel({ user }: { user: StaffUser }) {
           // a desk working on orders (lab, ultrasound, pharmacy…) receives only its own patients
           (q.station === c.station ||
             (!ORDER_DESKS.includes(c.station ?? '') &&
-              ['triage', 'reception', 'consultation', 'dental'].includes(q.station))),
+              ['triage', 'reception', 'consultation', 'dental', 'physio'].includes(q.station))),
       )
       .sort(
         (a, b) =>

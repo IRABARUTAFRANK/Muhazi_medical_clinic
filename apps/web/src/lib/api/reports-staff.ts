@@ -183,7 +183,7 @@ const SAMPLE_EMPLOYEES: SampleEmployee[] = [
     fullName: 'Nyirahabimana Chantal',
     role: 'nurse',
     departments: [dep('dep-opd', 'assistant')],
-    desks: ['triage', 'nursing', 'fp', 'hiv'],
+    desks: ['triage', 'nursing', 'fp'],
     since: '2026-01-05',
     reg: ['A0457', 'NCNM'],
   },

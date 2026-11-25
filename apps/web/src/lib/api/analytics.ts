@@ -197,6 +197,7 @@ export const WAIT_STATIONS = [
   'triage',
   'consultation',
   'dental',
+  'physio',
   'theatre',
   'nursing',
   'laboratory',
@@ -623,7 +624,7 @@ export interface WaitTimeStats extends Versioned {
   desks: WaitDesk[]
   /** All waits pooled. */
   overall: WaitStat & { excluded: number }
-  /** Arrival to the first desk where the patient is seen (triage, consultation, dental). */
+  /** Arrival to the first desk where the patient is seen (triage, consultation, dental, physio). */
   arrival: WaitStat & { excluded: number }
   days: { day: string; n: number; median: number | null }[]
   /** Order to verified result (not waiting). */

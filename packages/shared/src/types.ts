@@ -36,7 +36,7 @@ export type CategoryId =
   | 'nursing'
   | 'surgery'
   | 'fp'
-  | 'hiv'
+  | 'physio'
   | 'circ'
 export type CategoryFilter = CategoryId | 'all'
 

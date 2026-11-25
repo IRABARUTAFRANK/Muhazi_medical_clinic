@@ -29,11 +29,11 @@ export const DESKS = [
   'triage',
   'consultation',
   'dental',
+  'physio',
   'surgery',
   'circ',
   'nursing',
   'fp',
-  'hiv',
   'laboratory',
   'ultrasound',
   'pharmacy',
@@ -44,11 +44,11 @@ export type DeskId = (typeof DESKS)[number]
 export const TREATING_DESKS: readonly DeskId[] = [
   'consultation',
   'dental',
+  'physio',
   'surgery',
   'circ',
   'nursing',
   'fp',
-  'hiv',
 ]
 
 /** Why the person has a desk: manager, a department of theirs, kept on day one by the rule of
@@ -113,11 +113,11 @@ export const DESK_PERMISSION: Partial<Record<DeskId, Feature>> = {
   ultrasound: 'orders.write',
   consultation: 'clinical.write',
   dental: 'clinical.write',
+  physio: 'clinical.write',
   surgery: 'clinical.write',
   circ: 'clinical.write',
   nursing: 'clinical.write',
   fp: 'clinical.write',
-  hiv: 'clinical.write',
 }
 /** Does the person have the switch this desk needs? */
 const switchAllows = (desk: DeskId, perms: ReadonlySet<string>): boolean => {
@@ -166,8 +166,9 @@ export const STATION_DESKS: Record<string, DeskId[]> = {
   triage: ['triage'],
   consultation: ['consultation'],
   dental: ['dental'],
+  physio: ['physio'],
   theatre: ['surgery', 'circ'],
-  nursing: ['nursing', 'fp', 'hiv'],
+  nursing: ['nursing', 'fp'],
   beds: ['nursing'],
   laboratory: ['laboratory'],
   ultrasound: ['ultrasound'],
