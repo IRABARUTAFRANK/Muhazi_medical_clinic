@@ -1569,6 +1569,9 @@
       "credited": "Hari amafaranga yo gusubiza"
     },
     "payer": {
+      "memberSaved": "Byabitswe: nimero y’umunyamuryango {{number}} muri {{payer}}. Izakoreshwa no mu gihe kizaza umurwayi agarutse.",
+      "memberUnsaved": "Ntibirabikwa: kanda Bika kugira ngo iyi nimero y’umunyamuryango ibikwe.",
+      "memberNone": "Nta nimero y’umunyamuryango irabikwa.",
       "title": "Uwishyura",
       "label": "Uwishyura",
       "cash": "Amafaranga / mobile money (nta kigo cy’ubwishingizi)",
@@ -2570,6 +2573,33 @@
       "fileChange": "Si yo? Kanda hano uhitemo indi, cyangwa uyikureho. Nta kibikwa mbere ya Genzura urutonde na Koresha uru rutonde."
     },
     "tariff": {
+      "editRow": "Hindura uyu murongo",
+      "line": {
+        "title": "Hindura “{{item}}”",
+        "cash": "Igiciro cy’amafaranga",
+        "cashPh": "igiciro cy’urutonde",
+        "cashHint": "Igiciro cy’ivuriro, ku murwayi wese wishyura amafaranga. Ubusa: igiciro cy’urutonde rwemewe, iyo rugifite.",
+        "ownHint": "Ubusa: urutonde rwemewe, cyangwa igiciro cy’amafaranga.",
+        "cover": "Ubwishingizi",
+        "coverHint": "Icyo {{name}} ikora kuri uyu murongo kuri fagitire.",
+        "covers": {
+          "covered": "Birishingirwa ({{pct}} %)",
+          "not_covered": "Ntibirishingirwa: umurwayi yishyura byose",
+          "preauth": "Gusa {{name}} ibyemeye"
+        },
+        "note": "Icyitonderwa",
+        "notePh": "urugero: ibaruwa yo ku wa 12/11, byemejwe kuri telefoni",
+        "preview": "Kuri fagitire: {{price}} · byishingirwa {{pct}} % · umurwayi yishyura {{patient}} · {{name}} yishyura {{insurer}}",
+        "previewLater": "Icyo umurwayi na {{name}} bishyura kibarwa iyo bibitswe.",
+        "badPrice": "Igiciro ni umubare w’amafaranga, zeru cyangwa irenga.",
+        "noCode": "Uyu murongo nta kode ufite ku ntonde z’ibiciro: ubwishingizi bwawo ntibushobora gushyirwaho hano. Banza uwuhe kode mu Bikorwa by’ubuvuzi cyangwa mu Miti.",
+        "cashChange": "Igiciro cy’amafaranga: {{from}} → {{to}} (ku murwayi wese wishyura amafaranga)",
+        "ownChange": "Igiciro cya {{name}}: {{from}} → {{to}}",
+        "backToList": "urutonde rwemewe cyangwa igiciro cy’amafaranga",
+        "coverChange": "Ubwishingizi: {{to}}",
+        "confirmTitle": "Kubika impinduka za “{{item}}”?",
+        "saved": "“{{item}}” byabitswe."
+      },
       "lead": "Buri kigo cy’ubwishingizi cyishyura gishingiye ku rutonde rw’ibiciro rwacyo iyo rufite (rushyirwamo hano, nk’urutonde rw’imiti rwemewe), ku rutonde rw’imiti rwemewe iyo kirukurikiza, cyangwa ku giciro cy’amafaranga cy’ivuriro. Umugabane w’ubwishingizi ubarwa kuri icyo giciro.",
       "activeHint": "Ikigo cy’ubwishingizi gikora ni cyo cyonyine gishobora guhitwamo ku kwivuza kandi kigaragara ku rubuga.",
       "followsList": "Gikurikiza urutonde rw’imiti rwemewe (RHIA)",
@@ -2599,7 +2629,7 @@
         "item": "Imiti n’ibikoresho"
       },
       "ownOnly": "Imirongo ifite igiciro cy’ikigo cy’ubwishingizi gusa ({{count}})",
-      "tableHint": "Igiciro {{name}} yishyuraho, aho kivuye, umugabane w’ubwishingizi ku murongo n’icyo umurwayi na {{name}} bishyura. Hindura igiciro aho kiri; gisibe kugira ngo usubire ku rutonde rwemewe cyangwa ku giciro cy’amafaranga.",
+      "tableHint": "Igiciro {{name}} yishyuraho, aho kivuye, umugabane w’ubwishingizi ku murongo n’icyo umurwayi na {{name}} bishyura. Ikaramu ifungura umurongo: igiciro cy’amafaranga, igiciro cya {{name}} n’ubwishingizi bwawo (birishingirwa, ntibirishingirwa, gusa ibyemeye) bihindurirwa hamwe.",
       "noRows": "Nta murongo uhuye.",
       "col": {
         "line": "Serivisi cyangwa umuti",

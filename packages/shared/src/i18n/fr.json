@@ -1630,6 +1630,33 @@
       "fileChange": "Mauvais fichier ? Cliquez ici pour en choisir un autre, ou Retirez-le. Rien n’est enregistré avant Vérifier la liste et Utiliser cette liste."
     },
     "tariff": {
+      "editRow": "Modifier cette ligne",
+      "line": {
+        "title": "Modifier « {{item}} »",
+        "cash": "Prix comptant",
+        "cashPh": "le prix de la liste",
+        "cashHint": "Le prix de la clinique, pour tout patient qui paie comptant. Vide : le prix de la liste officielle, quand elle en a un.",
+        "ownHint": "Vide : la liste officielle, ou le prix comptant.",
+        "cover": "Prise en charge",
+        "coverHint": "Ce que {{name}} fait de cette ligne sur la facture.",
+        "covers": {
+          "covered": "Pris en charge ({{pct}} %)",
+          "not_covered": "Non pris en charge : le patient paie tout",
+          "preauth": "Seulement avec l’accord de {{name}}"
+        },
+        "note": "Note",
+        "notePh": "p. ex. lettre du 12/11, accord par téléphone",
+        "preview": "Sur la facture : {{price}} · pris en charge {{pct}} % · le patient paie {{patient}} · {{name}} paie {{insurer}}",
+        "previewLater": "Ce que paient le patient et {{name}} est calculé à l’enregistrement.",
+        "badPrice": "Un prix est un nombre de francs, zéro ou plus.",
+        "noCode": "Cette ligne n’a pas de code sur les listes de prix : sa prise en charge ne peut pas être fixée ici. Donnez-lui d’abord un code dans Traitements ou Médicaments.",
+        "cashChange": "Prix comptant : {{from}} → {{to}} (pour tout patient qui paie comptant)",
+        "ownChange": "Prix {{name}} : {{from}} → {{to}}",
+        "backToList": "la liste officielle ou le prix comptant",
+        "coverChange": "Prise en charge : {{to}}",
+        "confirmTitle": "Enregistrer les changements de « {{item}} » ?",
+        "saved": "« {{item}} » enregistré."
+      },
       "lead": "Chaque assureur paie sur sa propre liste de prix lorsqu’il en publie une (téléversée ici, comme la liste officielle des médicaments), sur la liste officielle des médicaments lorsqu’il la suit, ou sur le prix comptant de la clinique. Sa couverture s’applique à ce prix.",
       "activeHint": "Seul un assureur actif peut être choisi sur une visite et figure sur le site public.",
       "followsList": "Suit la liste officielle des médicaments (RHIA)",
@@ -1659,7 +1686,7 @@
         "item": "Médicaments et fournitures"
       },
       "ownOnly": "Seulement les lignes avec un prix de l’assureur ({{count}})",
-      "tableHint": "Le prix sur lequel {{name}} paie, d’où il vient, la couverture de la ligne et ce que paient le patient et {{name}}. Modifiez un prix sur place ; videz-le pour revenir à la liste officielle ou au prix comptant.",
+      "tableHint": "Le prix sur lequel {{name}} paie, d’où il vient, la couverture de la ligne et ce que paient le patient et {{name}}. Le crayon ouvre une ligne : son prix comptant, le prix de {{name}} et sa prise en charge (pris en charge, non pris en charge, seulement avec son accord) se modifient ensemble.",
       "noRows": "Aucune ligne ne correspond.",
       "col": {
         "line": "Soin ou médicament",
@@ -2327,6 +2354,9 @@
       "credited": "Facture créditée"
     },
     "payer": {
+      "memberSaved": "Enregistré : numéro d’adhérent {{number}} chez {{payer}}. Il est gardé pour les prochaines visites du patient.",
+      "memberUnsaved": "Pas encore enregistré : appuyez sur Enregistrer pour garder ce numéro d’adhérent.",
+      "memberNone": "Aucun numéro d’adhérent enregistré pour l’instant.",
       "title": "Qui paie",
       "label": "Payeur",
       "cash": "Comptant / mobile money (sans assureur)",

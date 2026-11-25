@@ -29,6 +29,9 @@ export type PriceSource = 'tariff' | 'reference' | 'cash' | 'none' | 'excluded' 
 export const NOT_LISTED_RULES = ['cash_covered', 'not_covered', 'ask'] as const
 export type NotListedRule = (typeof NOT_LISTED_RULES)[number]
 
+/** An insurer's cover of one line: covered at its coverage, not covered, or with its approval. */
+export type TariffCover = 'covered' | 'not_covered' | 'preauth'
+
 export interface TariffRow {
   kind: 'service' | 'item'
   id: string
@@ -52,10 +55,12 @@ export interface TariffRow {
   preauth?: boolean
   /** 0134: the line's code on the published lists, the list that prices it, the insurer's exception. */
   listCode?: string | null
+  /** The list (book) that prices the line: where the insurer's exception is kept (0202). */
+  listId?: string | null
   list?: string | null
   lineNote?: string | null
   exception?: {
-    cover: 'covered' | 'not_covered' | 'preauth'
+    cover: TariffCover
     price: number | null
     note: string | null
   } | null
@@ -178,6 +183,9 @@ const sampleLists = new Map<string, TariffList[]>([
   ],
 ])
 const today = () => new Date().toISOString().slice(0, 10)
+/** Sample mode (0202): cash prices and the insurers' covers changed in the tariff window. */
+const sampleCash = new Map<string, number>()
+const sampleCovers = new Map<string, { cover: TariffCover; note: string | null }>()
 const sampleKey = (p: { serviceId?: string | null; itemId?: string | null }) =>
   p.serviceId ? `service:${p.serviceId}` : `item:${p.itemId ?? ''}`
 
@@ -198,14 +206,29 @@ function sampleTariff(payerId: string): InsurerTariff {
     cashPrice: number | null,
   ): TariffRow => {
     const own = prices.get(`${kind}:${id}`)
+    const cash = sampleCash.get(`${kind}:${id}`) ?? cashPrice
+    const ex = sampleCovers.get(`${payerId}|${kind}:${id}`) ?? null
     const ref =
       own == null && kind === 'item' && ins.followsReferenceList
         ? (sampleReference.find((r) => r.code === code)?.price ?? null)
         : null
-    const price = own ?? ref ?? cashPrice
+    const price = own ?? ref ?? cash
     const source: PriceSource =
-      own != null ? 'tariff' : ref != null ? 'reference' : price != null ? 'cash' : 'none'
-    const covered = source === 'cash' && ins.notListedRule === 'not_covered' ? 0 : pct(group)
+      ex?.cover === 'not_covered' && price != null
+        ? 'excluded'
+        : ex?.cover === 'preauth' && price != null
+          ? 'preauth'
+          : own != null
+            ? 'tariff'
+            : ref != null
+              ? 'reference'
+              : price != null
+                ? 'cash'
+                : 'none'
+    const covered =
+      source === 'excluded' || (source === 'cash' && ins.notListedRule === 'not_covered')
+        ? 0
+        : pct(group)
     const insurer = price == null ? null : Math.round((price * covered) / 100)
     return {
       kind,
@@ -216,13 +239,16 @@ function sampleTariff(payerId: string): InsurerTariff {
       nameKin,
       group,
       categoryId,
-      cashPrice,
+      cashPrice: cash,
       price,
       source,
       coveragePct: covered,
       insurerShare: insurer,
       patientShare: price == null || insurer == null ? null : price - insurer,
       ask: source === 'cash' && ins.notListedRule === 'ask',
+      preauth: source === 'preauth',
+      listCode: code,
+      exception: ex ? { cover: ex.cover, price: null, note: ex.note } : null,
     }
   }
   return {
@@ -441,6 +467,7 @@ function toTariffRow(r: Record<string, unknown>): TariffRow {
     ask: !!r.ask,
     preauth: !!r.preauth,
     listCode: str(r.listCode),
+    listId: str(r.listId),
     list: str(r.list),
     lineNote: str(r.lineNote),
     exception:
@@ -691,6 +718,60 @@ export function useInsurerTariffActions() {
     onSuccess: refresh,
   })
 
+  /** 0202: the clinic's cash price of one treatment or medicine (empty: the official list's). */
+  const setCash = useMutation({
+    mutationFn: async (i: {
+      serviceId?: string | null
+      itemId?: string | null
+      price: number | null
+    }): Promise<void> => {
+      if (!supabase) {
+        if (i.price == null) sampleCash.delete(sampleKey(i))
+        else sampleCash.set(sampleKey(i), Math.round(i.price))
+        return
+      }
+      const { error } = await supabase.rpc('set_cash_price', {
+        p_service_id: i.serviceId ?? null,
+        p_item_id: i.itemId ?? null,
+        p_price: i.price,
+      })
+      if (error && isMissingFunction(error)) throw new Error(i18n.t('analytics.needsUpdate'))
+      if (error) throw apiError(error)
+    },
+    onSuccess: refresh,
+  })
+
+  /** 0202: the insurer's cover of one line (covered / not covered / with its approval) and a note. */
+  const setCover = useMutation({
+    mutationFn: async (i: {
+      payerId: string
+      kind: 'service' | 'item'
+      id: string
+      code: string
+      bookId: string | null
+      cover: TariffCover
+      price: number | null
+      note: string | null
+    }): Promise<void> => {
+      if (!supabase) {
+        const k = `${i.payerId}|${i.kind}:${i.id}`
+        if (i.cover === 'covered' && !i.note) sampleCovers.delete(k)
+        else sampleCovers.set(k, { cover: i.cover, note: i.note })
+        return
+      }
+      const { error } = await supabase.rpc('save_tariff_exception', {
+        p_payer: i.payerId,
+        p_code: i.code,
+        p_cover: i.cover,
+        p_price: i.price,
+        p_note: i.note,
+        p_book: i.bookId,
+      })
+      if (error) throw apiError(error)
+    },
+    onSuccess: refresh,
+  })
+
   const check = useMutation({ mutationFn: (i: TariffImportInput) => runImport(i, true) })
   const apply = useMutation({
     mutationFn: (i: TariffImportInput) => runImport(i, false),
@@ -742,5 +823,5 @@ export function useInsurerTariffActions() {
     onSuccess: refresh,
   })
 
-  return { setPrice, check, apply, startList }
+  return { setPrice, setCash, setCover, check, apply, startList }
 }

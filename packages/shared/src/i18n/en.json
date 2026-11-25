@@ -1630,6 +1630,33 @@
       "fileChange": "Wrong file? Click here to choose another one, or Remove it. Nothing is saved before Check the list and Use this list."
     },
     "tariff": {
+      "editRow": "Change this line",
+      "line": {
+        "title": "Change “{{item}}”",
+        "cash": "Cash price",
+        "cashPh": "the list’s price",
+        "cashHint": "The clinic’s price, for every patient who pays cash. Empty: the official list’s price, when it has one.",
+        "ownHint": "Empty: the official list, or the cash price.",
+        "cover": "Cover",
+        "coverHint": "What {{name}} does with this line on the bill.",
+        "covers": {
+          "covered": "Covered ({{pct}} %)",
+          "not_covered": "Not covered: the patient pays it all",
+          "preauth": "Only with {{name}}’s approval"
+        },
+        "note": "Note",
+        "notePh": "e.g. letter of 12/11, agreed by phone",
+        "preview": "On the bill: {{price}} · covered {{pct}} % · patient pays {{patient}} · {{name}} pays {{insurer}}",
+        "previewLater": "What the patient and {{name}} pay is worked out when it is saved.",
+        "badPrice": "A price is a number of francs, zero or more.",
+        "noCode": "This line has no code on the price lists: its cover cannot be set here. Give it a code in Treatments or Medicines first.",
+        "cashChange": "Cash price: {{from}} → {{to}} (for every patient who pays cash)",
+        "ownChange": "{{name}} price: {{from}} → {{to}}",
+        "backToList": "the official list or the cash price",
+        "coverChange": "Cover: {{to}}",
+        "confirmTitle": "Save the changes to “{{item}}”?",
+        "saved": "“{{item}}” saved."
+      },
       "lead": "Each insurer pays on its own price list when it publishes one (uploaded here, like the official medicine list), on the official medicine list when it follows it, or on the clinic’s cash price. Its coverage applies to that price.",
       "activeHint": "Only an active insurer can be chosen on a visit and is named on the public site.",
       "followsList": "Follows the official medicine list (RHIA)",
@@ -1659,7 +1686,7 @@
         "item": "Medicines and supplies"
       },
       "ownOnly": "Only lines with an insurer price ({{count}})",
-      "tableHint": "The price {{name}} pays on, where it comes from, the coverage of the line and what the patient and {{name}} pay. Edit a price in place; empty it to go back to the official list or the cash price.",
+      "tableHint": "The price {{name}} pays on, where it comes from, the coverage of the line and what the patient and {{name}} pay. The pencil opens a line: its cash price, the price of {{name}} and its cover (covered, not covered, only with its approval) are changed together.",
       "noRows": "No line matches.",
       "col": {
         "line": "Treatment or medicine",
@@ -2327,6 +2354,9 @@
       "credited": "Bill credited"
     },
     "payer": {
+      "memberSaved": "Saved: member number {{number}} with {{payer}}. It is kept for the patient’s next visits.",
+      "memberUnsaved": "Not saved yet: press Save to keep this member number.",
+      "memberNone": "No member number saved yet.",
       "title": "Who pays",
       "label": "Payer",
       "cash": "Cash / mobile money (no insurer)",

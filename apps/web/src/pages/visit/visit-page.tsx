@@ -218,7 +218,12 @@ export function VisitPage({
   // insurance on (Settings → Insurance): the Who pays card and the insurer's prices (0115)
   const insurance = useInsuranceEnabled()
   const actions = useBillingActions(encounterId)
-  const [member, setMember] = useState('')
+  // the member number: what is saved with the patient's cover (the bill reads it), until someone
+  // types another one — then that, until it is saved
+  const [memberDraft, setMemberDraft] = useState<string | null>(null)
+  const savedMember = bill?.memberNo ?? ''
+  const member = memberDraft ?? savedMember
+  const memberUnsaved = memberDraft != null && memberDraft.trim() !== savedMember
   const [actionError, setActionError] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
   /** The line being charged otherwise for this patient (0139). */
@@ -328,6 +333,8 @@ export function VisitPage({
         payerName: ins?.name,
         coveragePct: ins?.coveragePct,
       })
+      // saved: the field shows what the bill now holds
+      setMemberDraft(null)
     } catch (e) {
       setActionError(describe(e))
     }
@@ -821,7 +828,7 @@ export function VisitPage({
                           <Field
                             label={t('visit.payer.member')}
                             value={member}
-                            onChange={(e) => setMember(e.target.value)}
+                            onChange={(e) => setMemberDraft(e.target.value)}
                             placeholder={t('visit.payer.memberPh')}
                             disabled={!bill?.payerId}
                           />
@@ -834,6 +841,29 @@ export function VisitPage({
                             {t('visit.payer.saveMember')}
                           </Button>
                         </div>
+                        {/* what is saved, said plainly: the number kept with the patient's cover */}
+                        {bill?.payerId && (
+                          <p
+                            role="status"
+                            className={cn(
+                              'm-0 rounded-md border px-3 py-2 text-[13px] font-medium',
+                              memberUnsaved
+                                ? 'border-amber/30 bg-amber-bg text-amber'
+                                : savedMember
+                                  ? 'border-green/30 bg-green-bg text-green'
+                                  : 'border-border bg-hover text-ink-2',
+                            )}
+                          >
+                            {memberUnsaved
+                              ? t('visit.payer.memberUnsaved')
+                              : savedMember
+                                ? t('visit.payer.memberSaved', {
+                                    number: savedMember,
+                                    payer: bill.payerName ?? '',
+                                  })
+                                : t('visit.payer.memberNone')}
+                          </p>
+                        )}
                         <p className="text-ink-3 m-0 text-xs">
                           {insurers.length === 0
                             ? t('visit.payer.noInsurers')

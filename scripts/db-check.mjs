@@ -31540,6 +31540,68 @@ await step(
   },
 )
 // @@t201-end
+// @@t202-begin
+// ---------------------------------------------------------------- 0202 the clinic's cash price set in place
+await step(
+  '0202: set_cash_price — the manager sets a medicine’s and a treatment’s cash price alone; the bill’s price search and the insurer’s table follow; a nurse is refused; empty with no list price is refused',
+  async () => {
+    await asAdmin()
+    const sql = await readFile(
+      path.join(migrationsDir, '20270221090000_cash_price_in_place.sql'),
+      'utf8',
+    )
+    await db.exec(sql)
+    await db.exec(sql)
+    const fx = (who) =>
+      `has_function_privilege('${who}', 'set_cash_price(uuid, uuid, numeric)', 'execute')`
+    const grants = await one(`select ${fx('authenticated')} as auth, ${fx('anon')} as anon`)
+    const setSql = `select set_cash_price($1, $2, $3) as j`
+    const item = await as193(staff.manager, setSql, [null, t198.para, 60])
+    const svc = await as193(staff.manager, setSql, [t193.inj, null, 1200])
+    const nurse = await hintAs(t127.nurseA, setSql, [null, t198.para, 70])
+    const empty = await hintAs(staff.manager, setSql, [t193.inj, null, null])
+    const both = await hintAs(staff.manager, setSql, [t193.inj, t198.para, 10])
+    const cash = async (s, i) =>
+      Number((await one(`select price from price_source_for($1, $2, null)`, [s, i])).price)
+    await as(staff.manager)
+    const lines = (
+      await one(`select payer_lines($1, $2::uuid[], $3::uuid[]) as j`, [
+        t198.ins,
+        [t193.inj],
+        [t198.para],
+      ])
+    ).j
+    await asAdmin()
+    const cashOf = (id) => Number(lines.find((x) => x.id === id)?.cashPrice)
+    const r = {
+      grants: [grants.auth, grants.anon],
+      answers: [item.price, item.follows, svc.price],
+      search: [await cash(null, t198.para), await cash(t193.inj, null)],
+      table: [cashOf(t198.para), cashOf(t193.inj)],
+      nurse,
+      empty,
+      both,
+    }
+    // back as they were, for anything after
+    await as193(staff.manager, setSql, [null, t198.para, 50])
+    await as193(staff.manager, setSql, [t193.inj, null, 1000])
+    r.back = [await cash(null, t198.para), await cash(t193.inj, null)]
+    if (
+      !r.grants[0] ||
+      r.grants[1] ||
+      json198(r.answers) !== json198([60, false, 1200]) ||
+      json198(r.search) !== json198([60, 1200]) ||
+      json198(r.table) !== json198([60, 1200]) ||
+      r.nurse !== '42501/' ||
+      r.empty !== '22023/' ||
+      r.both !== '22023/' ||
+      json198(r.back) !== json198([50, 1000])
+    )
+      throw new Error(json198(r))
+    return 'for a signed-in person (not anon); Paracetamol 198 cash 60 and Injection 193 cash 1,200: the bill’s price search and the insurer’s table show them; a nurse 42501; empty with no list price, or both a treatment and a medicine, 22023; set back to 50 and 1,000'
+  },
+)
+// @@t202-end
 finish()
 
 function finish() {

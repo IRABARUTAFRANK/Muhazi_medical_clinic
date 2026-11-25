@@ -305,7 +305,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^a reason is required for a discount$/, 'dbErrors.e4a08c28', 0], // add_charge_internal
   [/^cash, MTN MoMo or Airtel Money only$/, 'dbErrors.b5dc6a37', 0], // refund_payment
   [/^choose the insurer whose list it is$/, 'dbErrors.1d8baa49', 0], // import_tariff
-  [/^give a service or an item, not both$/, 'dbErrors.9bbb9d28', 0], // add_charge_internal, link_tariff_line, set_insurer_price
+  [/^give a service or an item, not both$/, 'dbErrors.9bbb9d28', 0], // add_charge_internal, link_tariff_line, set_cash_price, …
   [/^say the date the salary counts from$/, 'dbErrors.bc5d0425', 0], // set_salary
   [/^that person does not work at triage$/, 'dbErrors.262c8d2f', 0], // begin_visit
   [/^the quantity must be more than zero$/, 'dbErrors.c4581db5', 0], // sell_medicine

@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { Fragment, useRef, useState, type FormEvent } from 'react'
 import {
   BookCheck,
   Check,
@@ -46,7 +46,9 @@ import {
   NOT_LISTED_RULES,
   useInsurerTariff,
   useInsurerTariffActions,
+  type InsurerTariff,
   type NotListedRule,
+  type TariffCover,
   type TariffList,
   type TariffPreview,
   type TariffRow,
@@ -476,7 +478,7 @@ function TariffWindow({ insurer, onClose }: { insurer: Insurer; onClose: () => v
         </p>
       )}
       {isLoading && <p className="text-ink-3 m-0 px-4 py-3">{t('prices.lists.loading')}</p>}
-      {tariff && tab === 'prices' && <TariffTable insurer={insurer} rows={tariff.rows} run={run} />}
+      {tariff && tab === 'prices' && <TariffTable insurer={insurer} tariff={tariff} run={run} />}
       {tariff && tab === 'upload' && <ImportPanel insurer={insurer} lists={lists} run={run} />}
       {tariff &&
         tab === 'history' &&
@@ -503,21 +505,20 @@ const SOURCE_TONE: Record<TariffRow['source'], 'green' | 'blue' | 'yellow' | 'gr
 
 function TariffTable({
   insurer,
-  rows,
+  tariff,
   run,
 }: {
   insurer: Insurer
-  rows: TariffRow[]
+  tariff: InsurerTariff
   run: (fn: () => Promise<unknown>, done: string) => Promise<void>
 }) {
   const { t, i18n } = useTranslation()
-  const actions = useInsurerTariffActions()
-  const confirm = useConfirm()
+  const rows = tariff.rows
   const [query, setQuery] = useState('')
   const [kind, setKind] = useState<'all' | 'service' | 'item'>('all')
   const [ownOnly, setOwnOnly] = useState(false)
+  // 0202: one line opened for changes at a time — its cash price, the insurer's price, its cover
   const [editing, setEditing] = useState<string | null>(null)
-  const [draft, setDraft] = useState('')
   const name = (r: TariffRow) =>
     (i18n.language === 'fr' ? r.nameFr : i18n.language === 'rw' ? r.nameKin : null) || r.name
   const q = query.trim().toLowerCase()
@@ -529,44 +530,6 @@ function TariffTable({
   )
   const own = rows.filter((r) => r.source === 'tariff').length
   const key = (r: TariffRow) => `${r.kind}:${r.id}`
-
-  const start = (r: TariffRow) => {
-    setEditing(key(r))
-    setDraft(r.source === 'tariff' && r.price != null ? String(r.price) : '')
-  }
-  const save = async (r: TariffRow) => {
-    const v = draft.trim()
-    const n = v === '' ? null : Number(v.replace(/[\s,]/g, ''))
-    if (n != null && (!Number.isFinite(n) || n < 0)) return
-    if (
-      !(await confirm({
-        title:
-          n == null
-            ? t('confirm.prices.priceRemoveTitle', { item: name(r), name: insurer.name })
-            : t('confirm.prices.priceTitle', {
-                item: name(r),
-                name: insurer.name,
-                price: formatRwf(n),
-              }),
-        body: t('confirm.prices.priceBody'),
-        confirmLabel: t('confirm.prices.saveYes'),
-      }))
-    )
-      return
-    await run(
-      () =>
-        actions.setPrice.mutateAsync({
-          payerId: insurer.id,
-          serviceId: r.kind === 'service' ? r.id : null,
-          itemId: r.kind === 'item' ? r.id : null,
-          price: n,
-        }),
-      n == null
-        ? t('prices.tariff.priceRemoved', { item: name(r), name: insurer.name })
-        : t('prices.tariff.priceSaved', { item: name(r), name: insurer.name, price: formatRwf(n) }),
-    )
-    setEditing(null)
-  }
 
   return (
     <div className="border-border flex flex-col gap-3 border-t px-4 py-3">
@@ -607,7 +570,7 @@ function TariffTable({
       ) : (
         <ShownList items={shown} step={25} footerClassName="pt-1">
           {(page) => (
-            <div className="border-border max-h-[calc(100vh-250px)] min-h-[240px] overflow-auto overscroll-contain rounded-md border">
+            <div className="border-border @container max-h-[calc(100vh-250px)] min-h-[240px] overflow-auto overscroll-contain rounded-md border">
               <table className="w-full border-collapse">
                 <thead className="bg-surface sticky top-0 z-1">
                   <tr>
@@ -634,61 +597,23 @@ function TariffTable({
                   {page.map((r) => {
                     const isEditing = editing === key(r)
                     return (
-                      <tr key={key(r)} className={tableRow}>
-                        <td className={cn(tableCell, 'min-w-[11rem]')}>
-                          <span className="block font-medium">{name(r)}</span>
-                          <span className="text-ink-3 text-[12px]">
-                            {r.code} · {t(`prices.tariff.kinds.${r.kind}`)}
-                            {r.kind === 'service' ? ` · ${t(`prices.groups.${r.group}`)}` : ''}
-                          </span>
-                        </td>
-                        <td className={cn(tableCell, 'text-right whitespace-nowrap tabular-nums')}>
-                          {price(r.cashPrice)}
-                        </td>
-                        <td className={cn(tableCell, 'text-right whitespace-nowrap tabular-nums')}>
-                          {isEditing ? (
-                            <form
-                              className="flex items-center justify-end gap-1"
-                              onSubmit={(e) => {
-                                e.preventDefault()
-                                void save(r)
-                              }}
-                            >
-                              <Field
-                                label={
-                                  <span className="sr-only">
-                                    {t('prices.tariff.col.insurer', { name: insurer.name })}
-                                  </span>
-                                }
-                                inputMode="numeric"
-                                autoFocus
-                                value={draft}
-                                onChange={(e) => setDraft(e.target.value.replace(/[^\d]/g, ''))}
-                                placeholder={t('prices.tariff.noOwnPrice')}
-                                wrapperClassName="w-28"
-                              />
-                              <Button
-                                type="submit"
-                                size="sm"
-                                variant="primary"
-                                disabled={actions.setPrice.isPending}
-                                title={t('prices.form.save')}
-                                aria-label={t('prices.form.save')}
-                              >
-                                <Check size={14} aria-hidden="true" />
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setEditing(null)}
-                                title={t('staff.form.cancel')}
-                                aria-label={t('staff.form.cancel')}
-                              >
-                                <X size={14} aria-hidden="true" />
-                              </Button>
-                            </form>
-                          ) : (
+                      <Fragment key={key(r)}>
+                        <tr className={cn(tableRow, isEditing && 'bg-primary-tint/40')}>
+                          <td className={cn(tableCell, 'min-w-[11rem]')}>
+                            <span className="block font-medium">{name(r)}</span>
+                            <span className="text-ink-3 text-[12px]">
+                              {r.code} · {t(`prices.tariff.kinds.${r.kind}`)}
+                              {r.kind === 'service' ? ` · ${t(`prices.groups.${r.group}`)}` : ''}
+                            </span>
+                          </td>
+                          <td
+                            className={cn(tableCell, 'text-right whitespace-nowrap tabular-nums')}
+                          >
+                            {price(r.cashPrice)}
+                          </td>
+                          <td
+                            className={cn(tableCell, 'text-right whitespace-nowrap tabular-nums')}
+                          >
                             <span className="inline-flex flex-col items-end gap-0.5">
                               <span
                                 className={cn(
@@ -702,41 +627,63 @@ function TariffTable({
                                 {t(`prices.tariff.sources.${r.source}`)}
                               </Badge>
                             </span>
-                          )}
-                        </td>
-                        <td className={cn(tableCell, 'text-right whitespace-nowrap tabular-nums')}>
-                          {r.price == null ? '—' : `${r.coveragePct}%`}
-                          {r.ask && (
-                            <span className="text-red block text-[12px]">
-                              {t('prices.tariff.askMark')}
-                            </span>
-                          )}
-                        </td>
-                        <td
-                          className={cn(
-                            tableCell,
-                            'text-right font-semibold whitespace-nowrap tabular-nums',
-                          )}
-                        >
-                          {price(r.patientShare)}
-                        </td>
-                        <td className={cn(tableCell, 'text-right whitespace-nowrap tabular-nums')}>
-                          {price(r.insurerShare)}
-                        </td>
-                        <td className={cn(tableCell, 'text-right')}>
-                          {!isEditing && (
-                            <Button
-                              size="sm"
-                              variant="tint-grey"
-                              onClick={() => start(r)}
-                              title={t('prices.tariff.editPrice')}
-                              aria-label={t('prices.tariff.editPrice')}
-                            >
-                              <Pencil size={14} aria-hidden="true" />
-                            </Button>
-                          )}
-                        </td>
-                      </tr>
+                          </td>
+                          <td
+                            className={cn(tableCell, 'text-right whitespace-nowrap tabular-nums')}
+                          >
+                            {r.price == null ? '—' : `${r.coveragePct}%`}
+                            {r.ask && (
+                              <span className="text-red block text-[12px]">
+                                {t('prices.tariff.askMark')}
+                              </span>
+                            )}
+                          </td>
+                          <td
+                            className={cn(
+                              tableCell,
+                              'text-right font-semibold whitespace-nowrap tabular-nums',
+                            )}
+                          >
+                            {price(r.patientShare)}
+                          </td>
+                          <td
+                            className={cn(tableCell, 'text-right whitespace-nowrap tabular-nums')}
+                          >
+                            {price(r.insurerShare)}
+                          </td>
+                          <td className={cn(tableCell, 'text-right')}>
+                            {!isEditing && (
+                              <Button
+                                size="sm"
+                                variant="tint-grey"
+                                onClick={() => setEditing(key(r))}
+                                title={t('prices.tariff.editRow')}
+                                aria-label={t('prices.tariff.editRow')}
+                              >
+                                <Pencil size={14} aria-hidden="true" />
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                        {isEditing && (
+                          <tr className="border-grid border-b">
+                            <td colSpan={7} className="bg-primary-tint/20 px-3 py-3">
+                              {/* the width of the table's visible part, pinned to its left edge: on a
+                                phone the wide table scrolls sideways, the editor stays in view */}
+                              <div className="sticky left-3 w-[calc(100cqw-1.5rem)] max-w-full min-w-0">
+                                <TariffLineEditor
+                                  insurer={insurer}
+                                  tariff={tariff}
+                                  row={r}
+                                  label={name(r)}
+                                  run={run}
+                                  onClose={() => setEditing(null)}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
                     )
                   })}
                 </tbody>
@@ -746,6 +693,214 @@ function TariffTable({
         </ShownList>
       )}
     </div>
+  )
+}
+
+/* ---------------------------------------------------------------- one line changed (0202) */
+
+/** "12 500" / "12,500" → 12500; empty → null; anything else → NaN. */
+const amountOf = (v: string) => (v.trim() === '' ? null : Number(v.replace(/[\s,]/g, '')))
+
+/**
+ * 0202 · Every field of one line of the insurer's tariff, changed together: the clinic's cash price
+ * (for every patient who pays cash), the insurer's own price, its cover (covered at its coverage,
+ * not covered, only with its approval) and a note. What the patient and the insurer pay follows
+ * from them, shown as it will be on the bill. Saved one after the other, only what changed.
+ */
+function TariffLineEditor({
+  insurer,
+  tariff,
+  row: r,
+  label,
+  run,
+  onClose,
+}: {
+  insurer: Insurer
+  tariff: InsurerTariff
+  row: TariffRow
+  label: string
+  run: (fn: () => Promise<unknown>, done: string) => Promise<void>
+  onClose: () => void
+}) {
+  const { t } = useTranslation()
+  const actions = useInsurerTariffActions()
+  const confirm = useConfirm()
+  const ownPrice = r.source === 'tariff' ? r.price : null
+  const coverNow: TariffCover = r.exception?.cover ?? 'covered'
+  const noteNow = r.exception?.note ?? ''
+  const [cash, setCash] = useState(r.cashPrice != null ? String(r.cashPrice) : '')
+  const [own, setOwn] = useState(ownPrice != null ? String(ownPrice) : '')
+  const [cover, setCover] = useState<TariffCover>(coverNow)
+  const [note, setNote] = useState(noteNow)
+  const [error, setError] = useState<string | null>(null)
+  const busy = actions.setCash.isPending || actions.setPrice.isPending || actions.setCover.isPending
+
+  const cashN = amountOf(cash)
+  const ownN = amountOf(own)
+  const bad = (n: number | null) => n != null && (!Number.isFinite(n) || n < 0)
+  const cashChanged = cashN !== (r.cashPrice ?? null)
+  const ownChanged = ownN !== ownPrice
+  const coverChanged = cover !== coverNow || note.trim() !== noteNow
+  const planPct = tariff.pctByGroup[r.group] ?? tariff.coveragePct
+
+  // what the bill will do with it: the insurer's own price, else the list's (unchanged), else the
+  // clinic's cash price; its coverage, none when not covered (or not listed and not covered)
+  const preview = (() => {
+    if (bad(cashN) || bad(ownN)) return null
+    let base: number | null
+    let fromCash = false
+    if (ownN != null) base = ownN
+    else if (r.source === 'tariff')
+      return null // the list or the cash price: worked out on saving
+    else if (r.source === 'reference' || (r.price != null && r.price !== r.cashPrice))
+      base = r.price
+    else {
+      base = cashN ?? r.cashPrice
+      fromCash = true
+    }
+    if (base == null) return null
+    const pct =
+      cover === 'not_covered' || (fromCash && tariff.notListedRule === 'not_covered') ? 0 : planPct
+    const insurerPays = Math.round((base * pct) / 100)
+    return { base, pct, insurerPays, patient: base - insurerPays }
+  })()
+
+  const save = async (e: FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    if (bad(cashN) || bad(ownN)) return setError(t('prices.tariff.line.badPrice'))
+    if (!cashChanged && !ownChanged && !coverChanged) return onClose()
+    if (coverChanged && !r.listCode) return setError(t('prices.tariff.line.noCode'))
+    const changes = [
+      cashChanged
+        ? t('prices.tariff.line.cashChange', { from: price(r.cashPrice), to: price(cashN) })
+        : null,
+      ownChanged
+        ? t('prices.tariff.line.ownChange', {
+            name: insurer.name,
+            from: price(ownPrice),
+            to: ownN == null ? t('prices.tariff.line.backToList') : price(ownN),
+          })
+        : null,
+      coverChanged
+        ? t('prices.tariff.line.coverChange', {
+            to: t(`prices.tariff.line.covers.${cover}`, { pct: planPct, name: insurer.name }),
+          })
+        : null,
+    ].filter((x): x is string => !!x)
+    if (
+      !(await confirm({
+        title: t('prices.tariff.line.confirmTitle', { item: label }),
+        body: changes.join('\n'),
+        confirmLabel: t('confirm.prices.saveYes'),
+      }))
+    )
+      return
+    const ids = {
+      serviceId: r.kind === 'service' ? r.id : null,
+      itemId: r.kind === 'item' ? r.id : null,
+    }
+    await run(
+      async () => {
+        if (cashChanged) await actions.setCash.mutateAsync({ ...ids, price: cashN })
+        if (ownChanged)
+          await actions.setPrice.mutateAsync({ payerId: insurer.id, ...ids, price: ownN })
+        if (coverChanged)
+          await actions.setCover.mutateAsync({
+            payerId: insurer.id,
+            kind: r.kind,
+            id: r.id,
+            code: r.listCode!,
+            bookId: r.listId ?? null,
+            cover,
+            price: r.exception?.price ?? null,
+            note: note.trim() || null,
+          })
+      },
+      t('prices.tariff.line.saved', { item: label }),
+    )
+    onClose()
+  }
+
+  return (
+    <form onSubmit={(e) => void save(e)} className="flex min-w-0 flex-col gap-3">
+      <span className="text-ink text-[14px] font-semibold">
+        {t('prices.tariff.line.title', { item: label })}
+      </span>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,13rem),1fr))] gap-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <Field
+            label={t('prices.tariff.line.cash')}
+            inputMode="numeric"
+            autoFocus
+            value={cash}
+            onChange={(e) => setCash(e.target.value.replace(/[^\d\s,]/g, ''))}
+            placeholder={t('prices.tariff.line.cashPh')}
+          />
+          <span className="text-ink-3 text-xs">{t('prices.tariff.line.cashHint')}</span>
+        </div>
+        <div className="flex min-w-0 flex-col gap-1">
+          <Field
+            label={t('prices.tariff.col.insurer', { name: insurer.name })}
+            inputMode="numeric"
+            value={own}
+            onChange={(e) => setOwn(e.target.value.replace(/[^\d\s,]/g, ''))}
+            placeholder={t('prices.tariff.noOwnPrice')}
+          />
+          <span className="text-ink-3 text-xs">
+            {t('prices.tariff.line.ownHint', { name: insurer.name })}
+          </span>
+        </div>
+        <div className="flex min-w-0 flex-col gap-1">
+          <Select
+            label={t('prices.tariff.line.cover')}
+            value={cover}
+            onChange={(e) => setCover(e.target.value as TariffCover)}
+          >
+            {(['covered', 'not_covered', 'preauth'] as const).map((c) => (
+              <option key={c} value={c}>
+                {t(`prices.tariff.line.covers.${c}`, { pct: planPct, name: insurer.name })}
+              </option>
+            ))}
+          </Select>
+          <span className="text-ink-3 text-xs">
+            {t('prices.tariff.line.coverHint', { name: insurer.name })}
+          </span>
+        </div>
+        <Field
+          label={t('prices.tariff.line.note')}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder={t('prices.tariff.line.notePh')}
+        />
+      </div>
+      <p className="border-border bg-card text-ink-2 m-0 rounded-md border px-3 py-2 text-[13px]">
+        {preview
+          ? t('prices.tariff.line.preview', {
+              price: price(preview.base),
+              pct: preview.pct,
+              patient: price(preview.patient),
+              name: insurer.name,
+              insurer: price(preview.insurerPays),
+            })
+          : t('prices.tariff.line.previewLater', { name: insurer.name })}
+      </p>
+      {error && (
+        <p role="alert" className={errorBox}>
+          {error}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" size="sm" variant="primary" loading={busy}>
+          <Check size={14} aria-hidden="true" />
+          {t('prices.form.save')}
+        </Button>
+        <Button type="button" size="sm" variant="tint-grey" onClick={onClose}>
+          <X size={14} aria-hidden="true" />
+          {t('staff.form.cancel')}
+        </Button>
+      </div>
+    </form>
   )
 }
 
