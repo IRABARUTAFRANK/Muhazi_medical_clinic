@@ -80,3 +80,42 @@ describe('step 3 of the medical report: what the doctor decided (0192)', () => {
     ])
   })
 })
+
+describe('step 6 of the medical report: who asked for each order (0204)', () => {
+  type Order = NonNullable<SixStepsSource['nurseOrders']>[number]
+  const order = (o: Partial<Order>): Order => ({
+    text: 'Aciclovir 200 mg',
+    kind: 'drug',
+    dose: null,
+    route: null,
+    frequency: null,
+    dosesPlanned: 1,
+    given: 1,
+    notGiven: 0,
+    status: 'done',
+    quantity: 2,
+    unit: 'tablet',
+    by: 'Dr. A',
+    byId: 'doc',
+    assignedTo: null,
+    assignedName: null,
+    doses: [{ given: true, by: 'Nurse B', byId: 'nurse', at: '2026-11-25T08:25:00Z' }],
+    ...o,
+  })
+  const orderedBy = (o: Partial<Order>) =>
+    sixStepsOfVisit({ diagnoses: [], nurseOrders: [order(o)] }, t).nurseOrders?.[0]?.ordered
+  it('for the nurses, for one nurse, done in person, recorded by a nurse for a task', () => {
+    expect(orderedBy({})).toBe('nurseOrders.reportForAll')
+    expect(orderedBy({ assignedTo: 'nurse', assignedName: 'Nurse B' })).toBe(
+      'nurseOrders.reportForOne',
+    )
+    // kept for himself, or given by the one who wrote it: not an order to the nurses
+    expect(orderedBy({ assignedTo: 'doc' })).toBe('nurseOrders.reportSelf')
+    expect(
+      orderedBy({ doses: [{ given: true, by: 'Dr. A', byId: 'doc', at: '2026-11-25T08:25:00Z' }] }),
+    ).toBe('nurseOrders.reportSelf')
+    expect(orderedBy({ taskId: 'task', taskTitle: 'Give it now', by: 'Nurse B' })).toBe(
+      'nurseOrders.reportRecorded',
+    )
+  })
+})

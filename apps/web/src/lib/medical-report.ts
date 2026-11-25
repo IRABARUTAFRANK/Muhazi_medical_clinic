@@ -144,7 +144,7 @@ export interface ReportVisit {
     outcome?: DxOutcome
     confirmed?: boolean
   }[]
-  nurseOrders?: { text: string; how: string; status: string }[]
+  nurseOrders?: { text: string; how: string; status: string; ordered?: string | null }[]
 }
 
 /** Laboratory request and validation details (result report, C3). */
@@ -349,7 +349,9 @@ function medWords(t: TFn) {
         ][n - 1] ?? '',
       ),
     complaint: kd('complaint', 'Chief complaint'),
-    nurseOrders: kd('nurseOrders', 'Orders to the nurses'),
+    nurseOrders: kd('nurseOrders', 'Medication and medical acts'),
+    orderedBy: kd('orderedBy', 'Ordered by'),
+    carriedOut: kd('carriedOut', 'Carried out'),
     order: kd('order', 'Order'),
     how: kd('how', 'How'),
     confirmed: kd('confirmed', 'Confirmed'),
@@ -883,12 +885,20 @@ function sixStepPieces(v: ReportVisit, c: Ctx, inVisit: boolean): Piece[] {
   out.push(paraPiece(h(6) + (plan || (empty ? notRecorded(c) : ''))))
   out.push(procedures, medicines)
   if (orders.length) {
+    // 0204: who asked for it beside who carried it out — what the doctor did in person no longer
+    // reads as an order to the nurses
     const cols: FixedColumn[] = [
-      { label: c.w.order, share: 40 },
-      { label: c.w.how, share: 38 },
-      { label: c.w.status, share: 22 },
+      { label: c.w.order, share: 27 },
+      { label: c.w.how, share: 29 },
+      { label: c.w.orderedBy, share: 22 },
+      { label: c.w.carriedOut, share: 22 },
     ]
-    const rows: CellValue[][] = orders.map((o) => [o.text, o.how || null, o.status])
+    const rows: CellValue[][] = orders.map((o) => [
+      o.text,
+      o.how || null,
+      o.ordered ?? null,
+      o.status,
+    ])
     out.push(
       tablePiece(heading(c.w.nurseOrders, true), rows.length, (a, b, w) =>
         fixedTable(cols, rows.slice(a, b), { withHead: w }),

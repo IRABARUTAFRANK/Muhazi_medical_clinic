@@ -5045,6 +5045,12 @@
     "hm": "{{h}} h {{m}} min"
   },
   "rxDoc": {
+    "printAsk": {
+      "title": "Imprimer l’ordonnance ?",
+      "yes": "Imprimer",
+      "includeReg": "Ajouter le numéro d’inscription du prescripteur",
+      "regHint": "Le numéro enregistré dans le profil du prescripteur ; sans numéro, une ligne vide à remplir à la main."
+    },
     "title": "Ordonnance",
     "number": "N° d’ordonnance",
     "date": "Date",
@@ -5297,6 +5303,8 @@
     "visitsCount_one": "{{count}} visite",
     "visitsCount_other": "{{count}} visites",
     "doc": {
+      "orderedBy": "Prescrit par",
+      "carriedOut": "Fait",
       "visitDate": "Date de la visite",
       "department": "Service",
       "attending": "Clinicien traitant",
@@ -5393,7 +5401,7 @@
       "step5": "Diagnostic définitif",
       "step6": "Plan de traitement",
       "complaint": "Motif de consultation",
-      "nurseOrders": "Prescriptions aux infirmiers",
+      "nurseOrders": "Médicaments et actes médicaux",
       "order": "Prescription",
       "how": "Modalités",
       "confirmed": "Confirmé",
@@ -11014,6 +11022,10 @@
     "doneOff": "{{name}} n’est plus marqué médecin et ne voit plus les dossiers médicaux."
   },
   "nurseOrders": {
+    "reportRecorded": "Enregistré par {{name}} pour la tâche « {{title}} »",
+    "reportSelf": "{{name}}, fait en personne",
+    "reportForOne": "{{name}}, pour {{nurse}}",
+    "reportForAll": "{{name}}, pour les infirmiers",
     "homeTitle": "Prescriptions à exécuter",
     "homePanel": "Des médecins : actes et médicaments à administrer",
     "openCount_one": "{{count}} en cours",

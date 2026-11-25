@@ -51,7 +51,14 @@ export interface SixStepsSource {
         untilStopped?: boolean
         part?: number | null
         partText?: string | null
-        doses?: { given: boolean; by: string | null; at: string }[]
+        doses?: { given: boolean; by: string | null; at: string; byId?: string | null }[]
+        /** 0204: who wrote it and for whom (null: all the nurses); a nurse's record for a task. */
+        by?: string | null
+        byId?: string | null
+        assignedTo?: string | null
+        assignedName?: string | null
+        taskId?: string | null
+        taskTitle?: string | null
       }[]
     | null
 }
@@ -109,6 +116,7 @@ export function sixStepsOfVisit(
           ? {
               text: o.text,
               how: partLines(t, { ...o, quantity: Number(o.quantity ?? 1) }).join('; '),
+              ordered: orderedBy(t, o),
               status: onceState(t, o),
             }
           : isRepeated(o)
@@ -116,6 +124,7 @@ export function sixStepsOfVisit(
                 // 0198: a repeated order: what each time, how often, and how many were given
                 text: o.text,
                 how: partLines(t, { ...o, quantity: Number(o.quantity ?? 1) }).join('; '),
+                ordered: orderedBy(t, o),
                 status:
                   o.dosesPlanned == null
                     ? t('nurseOrders.givenSoFar', { count: o.given })
@@ -137,6 +146,7 @@ export function sixStepsOfVisit(
                 ]
                   .filter(Boolean)
                   .join(' · '),
+                ordered: orderedBy(t, o),
                 status: t(
                   o.kind === 'drug' ? 'nurseOrders.progressDrug' : 'nurseOrders.progressAct',
                   {
@@ -150,6 +160,21 @@ export function sixStepsOfVisit(
 }
 
 type SourceOrder = NonNullable<SixStepsSource['nurseOrders']>[number]
+/**
+ * 0204 · Who asked for it, for the record (Frank: what the doctor did himself read as an order to
+ * the nurses): "Dr. A, for the nurses", "Dr. A, for Nurse B", "Dr. A, done in person" (kept for
+ * himself, or carried out by the one who wrote it), or a nurse's record for a task of the doctor.
+ */
+function orderedBy(t: TFn, o: SourceOrder): string | null {
+  if (!o.by) return null
+  if (o.taskId) return t('nurseOrders.reportRecorded', { name: o.by, title: o.taskTitle ?? '' })
+  const doneBy = [...(o.doses ?? [])].reverse().find((x) => x.given)?.byId ?? null
+  if ((o.byId && o.assignedTo === o.byId) || (o.byId && doneBy === o.byId))
+    return t('nurseOrders.reportSelf', { name: o.by })
+  return o.assignedTo
+    ? t('nurseOrders.reportForOne', { name: o.by, nurse: o.assignedName ?? '' })
+    : t('nurseOrders.reportForAll', { name: o.by })
+}
 /** A one-time order's state for the record: "Given by Nurse A, 20/11/2026 10:52", or "To do". */
 function onceState(t: TFn, o: SourceOrder): string {
   const d = [...(o.doses ?? [])].reverse().find((x) => x.given)

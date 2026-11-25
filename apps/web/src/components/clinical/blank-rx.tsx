@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Printer, UserRound, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useAskRxPrint } from '@/components/clinical/rx-print-ask'
 import type { StaffUser } from '@mmc/shared'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
@@ -51,6 +52,7 @@ export function BlankRxForm({
   onClose?: () => void
 }) {
   const { t } = useTranslation()
+  const askRxPrint = useAskRxPrint()
   const letterhead = useLetterhead()
   const { data: creds } = useMyCredentials(user.id)
   // the doctor types how many lines (1–30); an emptied field is typed again, not refused
@@ -63,9 +65,12 @@ export function BlankRxForm({
   const [error, setError] = useState<string | null>(null)
   const who = patient ?? chosen
 
-  const print = () => {
+  const print = async () => {
     setError(null)
-    // the window opens on the click itself (a browser blocks one opened after a wait)
+    // 0204: whether to put the prescriber's registration no. on it, asked first; the window opens
+    // on that answer's click (a browser blocks one opened long after a click)
+    const ask = await askRxPrint()
+    if (!ask.ok) return
     const w = window.open('', '_blank')
     if (!w) return setError(t('report.popupBlocked'))
     const date = new Date()
@@ -88,6 +93,7 @@ export function BlankRxForm({
       medicines: [],
       givenHere: [],
       outside: false,
+      showRegistration: ask.showRegistration,
       blankRows: lines,
       prescriber: signs
         ? {
@@ -180,7 +186,7 @@ export function BlankRxForm({
           onChange={(e) => setRows(e.target.value)}
           wrapperClassName="w-40"
         />
-        <Button type="button" variant="primary" onClick={print} disabled={!lines}>
+        <Button type="button" variant="primary" onClick={() => void print()} disabled={!lines}>
           <Printer size={16} aria-hidden="true" />
           {t('rxDoc.blank.print')}
         </Button>

@@ -5045,6 +5045,12 @@
     "hm": "{{h}} h {{m}} min"
   },
   "rxDoc": {
+    "printAsk": {
+      "title": "Print the prescription?",
+      "yes": "Print",
+      "includeReg": "Include the prescriber’s registration no.",
+      "regHint": "The number saved in the prescriber’s profile; without one, a blank line to write it by hand."
+    },
     "title": "Prescription",
     "number": "Prescription no.",
     "date": "Date",
@@ -5297,6 +5303,8 @@
     "visitsCount_one": "{{count}} visit",
     "visitsCount_other": "{{count}} visits",
     "doc": {
+      "orderedBy": "Ordered by",
+      "carriedOut": "Carried out",
       "visitDate": "Visit date",
       "department": "Department",
       "attending": "Attending clinician",
@@ -5393,7 +5401,7 @@
       "step5": "Definitive diagnosis",
       "step6": "Treatment plan",
       "complaint": "Chief complaint",
-      "nurseOrders": "Orders to the nurses",
+      "nurseOrders": "Medication and medical acts",
       "order": "Order",
       "how": "How",
       "confirmed": "Confirmed",
@@ -11014,6 +11022,10 @@
     "doneOff": "{{name}} is no longer marked a doctor and no longer sees patient records."
   },
   "nurseOrders": {
+    "reportRecorded": "Recorded by {{name}} for the task “{{title}}”",
+    "reportSelf": "{{name}}, done in person",
+    "reportForOne": "{{name}}, for {{nurse}}",
+    "reportForAll": "{{name}}, for the nurses",
     "homeTitle": "Orders to carry out",
     "homePanel": "From the doctors: acts and medicines to give",
     "openCount_one": "{{count}} open",

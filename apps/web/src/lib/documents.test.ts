@@ -201,6 +201,8 @@ describe('prescription', () => {
         diagnosis: null,
         patient: { name: '', fileNumber: '' },
         prescriber: { name: '', title: '', registrationNo: null },
+        // 0204: asked for at printing
+        showRegistration: true,
       }),
       { t, lang: 'en' },
       { autoPrint: false, printedAt: at, fonts },
@@ -221,14 +223,24 @@ describe('prescription', () => {
     expect(html).not.toMatch(/ICD|B50\.9/)
   })
 
-  it('prints the validity, the quantity in words and never a medicine given here', () => {
+  // 0204 (Frank): no validity, only the date of issue; the registration no. only when asked for
+  it('prints the date of issue (no validity), the quantity in words and never a medicine given here', () => {
     const html = buildPrescriptionHtml(
       rx(),
       { t, lang: 'en' },
       { autoPrint: false, printedAt: at, fonts },
     )
-    expect(html).toContain('<dt>Valid until</dt><dd>31/10/2026</dd>')
-    expect(html).toContain('Valid for 7 days from date of issue')
+    expect(html).toContain('<dt>Date</dt><dd>24/10/2026</dd>')
+    expect(html).not.toContain('Valid until')
+    expect(html).not.toContain('Valid for 7 days')
+    expect(html).not.toContain('Registration no.')
+    expect(
+      buildPrescriptionHtml(
+        rx({ showRegistration: true }),
+        { t, lang: 'en' },
+        { autoPrint: false, printedAt: at, fonts },
+      ),
+    ).toContain('Registration no.:</span> RMDC/1')
     expect(html).toContain('(fifteen)')
     expect(html).not.toContain('Paracetamol')
     expect(html).toContain('"Muhazi Medical Clinic Ltd  ·  RX-2026-000321"')

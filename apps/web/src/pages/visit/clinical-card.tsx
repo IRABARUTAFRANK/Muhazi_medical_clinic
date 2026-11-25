@@ -104,6 +104,7 @@ import {
 import { openMedicalReport, type ReportMedicine } from '@/lib/medical-report'
 import { useLetterhead, useMedicalReportLabels } from '@/lib/report-parts'
 import { useConfirm } from '@/lib/confirm'
+import { useAskRxPrint } from '@/components/clinical/rx-print-ask'
 import { Seg } from '@/components/ui/seg'
 import { noDiagnosisText } from '@/lib/no-diagnosis'
 import { sixStepsOfVisit } from '@/lib/six-steps-report'
@@ -490,6 +491,7 @@ export function ClinicalCard({
   // 0125: no primary diagnosis at Finish: "No diagnosis found" and why
   const [noDx, setNoDx] = useState<{ kind: NoDiagnosisKind; note: string } | null>(null)
   const confirm = useConfirm()
+  const askRxPrint = useAskRxPrint()
   const name = patient?.name || t('confirm.visit.thisPatient')
   const isManager = user.role === 'manager'
   // 0173: "Given here" comes from the clinic's one stock, whoever gives (no store to hold)
@@ -648,7 +650,10 @@ export function ClinicalCard({
   const printRx = async () => {
     if (!data || !patient || printingRx || !hasOutside) return
     setLocalError(null)
-    // the window opens on the click itself (a browser blocks one opened after a wait)
+    // 0204: whether to put the prescriber's registration no. on it, asked first; the window opens
+    // on that answer's click (a browser blocks one opened long after a click)
+    const ask = await askRxPrint()
+    if (!ask.ok) return
     const w = window.open('', '_blank')
     if (!w) return setLocalError(t('report.popupBlocked'))
     setPrintingRx(true)
@@ -706,6 +711,7 @@ export function ClinicalCard({
         givenHere: [],
         outside: true,
         prescriber,
+        showRegistration: ask.showRegistration,
         printedBy: user.name,
       }
       w.document.open()

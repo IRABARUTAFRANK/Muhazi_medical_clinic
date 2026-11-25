@@ -99,10 +99,15 @@ export interface RxDoc {
     name: string
     /** Qualification ("Medical doctor", "Clinical officer"). */
     title: string
-    /** RMDC / council registration no.; empty prints a ruled blank. */
+    /** RMDC / council registration no.; empty prints a ruled blank (only with showRegistration). */
     registrationNo?: string | null
     phone?: string | null
   }
+  /**
+   * 0204 (Frank): the prescriber's registration no. is printed only when the person printing ticks
+   * it in the question before printing (empty in the profile: a ruled blank to write it).
+   */
+  showRegistration?: boolean
   /** Number of refills allowed; none = "Refill: No". */
   refills?: number | null
   /** Full name of the user who prints ("Printed … by …"). */
@@ -140,9 +145,6 @@ export interface RxDocLabels {
   validity?: string
   asWritten?: string
 }
-
-/** A prescription is valid this many days from its date (the `rxDoc.validity` sentence). */
-export const RX_VALID_DAYS = 7
 
 const ROUTES = ['oral', 'IV', 'IM', 'SC', 'topical', 'rectal', 'inhaled', 'other'] as const
 const FREQUENCIES = ['OD', 'BD', 'TDS', 'QID', 'Q8H', 'Q6H', 'NOCTE', 'PRN', 'STAT'] as const
@@ -539,8 +541,8 @@ function closingHtml(o: {
   clinicName: string
   dl: DocLabels
   prescribedBy: string
-  /** "Valid for 7 days from date of issue", printed under the totals. */
-  validity?: string
+  /** 0204: the prescriber's registration no., only when asked for at printing. */
+  showRegistration?: boolean
   totals: [label: string, value: string][]
 }): string {
   const { prescriber: p, dl } = o
@@ -558,13 +560,17 @@ function closingHtml(o: {
   const pair = (k: string, html: string) =>
     `<span><span class="lbl">${esc(k)}:</span> ${html}</span>`
   return `<section class="rx-close"><div class="rx-sig-main">
-<div class="pairs rx-totals">${o.totals.map(([k, v]) => pair(k, esc(v))).join('')}</div>${
-    o.validity ? `<div class="rx-valid">${esc(o.validity)}</div>` : ''
-  }
+<div class="pairs rx-totals">${o.totals.map(([k, v]) => pair(k, esc(v))).join('')}</div>
 <div>${pair(o.prescribedBy, who)}</div>
-<div class="pairs">${pair(dl.registrationNo, reg ? esc(reg) : '<span class="rx-line reg"></span>')}${
-    phone ? pair(dl.phone, esc(phone)) : ''
-  }</div>
+${
+  o.showRegistration || phone
+    ? `<div class="pairs">${
+        o.showRegistration
+          ? pair(dl.registrationNo, reg ? esc(reg) : '<span class="rx-line reg"></span>')
+          : ''
+      }${phone ? pair(dl.phone, esc(phone)) : ''}</div>`
+    : ''
+}
 <div class="rx-sig-row"><span class="lbl">${esc(dl.signature)}:</span><span class="rx-line"></span></div>
 <div class="rx-sig-row"><span class="lbl">${esc(dl.date)}:</span><span class="rx-line date"></span></div>
 </div><div class="rx-stamp"><span class="lbl">${esc(dl.stamp)}:</span><div class="rx-stamp-box"></div></div></section>${
@@ -703,7 +709,6 @@ export function buildPrescriptionHtml(
       meta: [
         [r('number'), rxNo],
         [dl.date, docDate(d.date)],
-        [r('validUntil'), docDate(new Date(d.date.getTime() + RX_VALID_DAYS * 86_400_000))],
       ],
     }),
     identityHtml(left, right),
@@ -718,7 +723,7 @@ export function buildPrescriptionHtml(
       clinicName: lh.legalName,
       dl,
       prescribedBy: r('prescriber'),
-      validity: r('validity'),
+      showRegistration: !!d.showRegistration,
       totals: [
         [r('totalItems'), blank > 0 ? '________' : String(d.medicines.length)],
         [r('refill'), refill],
@@ -727,8 +732,8 @@ export function buildPrescriptionHtml(
     `</div>`,
   ].join('')
 
-  // footer: "clinic · prescription no." over "Printed … by …"; the validity is printed in the
-  // body (meta box and closing line), and the A5 line has no room for the confidentiality note
+  // footer: "clinic · prescription no." over "Printed … by …" (0204: no validity any more); the
+  // A5 line has no room for the confidentiality note
   const footer = `@page { ${bottomLeftCss(
     'a5',
     footerLines({

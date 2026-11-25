@@ -5054,6 +5054,12 @@
     "hm": "amasaha {{h}} n’iminota {{m}}"
   },
   "rxDoc": {
+    "printAsk": {
+      "title": "Gucapa urupapuro rw’imiti?",
+      "yes": "Capa",
+      "includeReg": "Shyiraho nimero y’iyandikwa ya muganga wanditse imiti",
+      "regHint": "Nimero yanditse mu mwirondoro we; iyo nta yo, umurongo w’ubusa wo kuyandika n’intoki."
+    },
     "title": "Urupapuro rw’imiti",
     "number": "Nimero y’urupapuro",
     "date": "Itariki",
@@ -5306,6 +5312,8 @@
     "visitsCount_one": "Yivuje inshuro {{count}}",
     "visitsCount_other": "Yivuje inshuro {{count}}",
     "doc": {
+      "orderedBy": "Byategetswe na",
+      "carriedOut": "Byakozwe",
       "visitDate": "Itariki yo kwivuza",
       "department": "Ishami",
       "attending": "Muganga wamuvuye",
@@ -5402,7 +5410,7 @@
       "step5": "Indwara yemejwe",
       "step6": "Gahunda yo kuvura",
       "complaint": "Icyamuzanye",
-      "nurseOrders": "Amategeko ku baforomo",
+      "nurseOrders": "Imiti n’ibikorwa by’ubuvuzi",
       "order": "Itegeko",
       "how": "Uko bikorwa",
       "confirmed": "Yemejwe",
@@ -11023,6 +11031,10 @@
     "doneOff": "{{name}} ntakiri muganga mu buryo bwanditswe, ntakibona amakuru y’abarwayi."
   },
   "nurseOrders": {
+    "reportRecorded": "Byanditswe na {{name}} ku gikorwa “{{title}}”",
+    "reportSelf": "{{name}}, yabikoze ubwe",
+    "reportForOne": "{{name}}, kuri {{nurse}}",
+    "reportForAll": "{{name}}, ku baforomo",
     "homeTitle": "Amategeko yo gushyira mu bikorwa",
     "homePanel": "Biturutse kwa muganga: ibikorwa n’imiti yo gutanga",
     "openCount_one": "{{count}} ritarakorwa",
