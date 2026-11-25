@@ -295,7 +295,10 @@ export function apiError(e: DbErrorLike | null | undefined): ApiError {
       ? i18n.t('apiErrors.notAllowed', { defaultValue: inner })
       : !kind && !known && !hint && code === 'P0002'
         ? i18n.t('apiErrors.notFound', { defaultValue: inner })
-        : null
+        : // 0201: "canceling statement due to statement timeout" — the database took too long
+          !kind && !known && code === '57014'
+          ? i18n.t('apiErrors.timeout', { defaultValue: inner })
+          : null
   const text = kind
     ? i18n.t(`stockErrors.${kind}`, { defaultValue: inner, n: n ?? '' })
     : (known ?? generic ?? inner)

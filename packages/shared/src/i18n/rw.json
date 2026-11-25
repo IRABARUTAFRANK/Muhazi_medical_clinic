@@ -8187,7 +8187,8 @@
   },
   "apiErrors": {
     "notAllowed": "Ntabwo wemerewe gukora ibi. Baza umuyobozi niba ubikeneye.",
-    "notFound": "Ntibibonetse cyangwa byamaze gufungwa. Vugurura urupapuro."
+    "notFound": "Ntibibonetse cyangwa byamaze gufungwa. Vugurura urupapuro.",
+    "timeout": "Ububiko bw’amakuru bwatinze gusubiza. Ongera ugerageze mu kanya; nibikomeza, menyesha ushinzwe sisitemu."
   },
   "dbErrors": {
     "24976874": "Iki gice ntigishoboka kuri uyu muti (½ ku muti utangwa mu bice bibiri; ¼, ½ cyangwa ¾ ku utangwa mu bice bine; ml ku icupa).",

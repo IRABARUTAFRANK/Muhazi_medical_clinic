@@ -8178,7 +8178,8 @@
   },
   "apiErrors": {
     "notAllowed": "You are not allowed to do this. Ask the manager if you need it.",
-    "notFound": "Not found, or already closed. Refresh the page."
+    "notFound": "Not found, or already closed. Refresh the page.",
+    "timeout": "The database took too long to answer. Try again in a moment; if it keeps happening, tell the person who looks after the system."
   },
   "dbErrors": {
     "24976874": "This part is not possible for this medicine (½ for halves; ¼, ½ or ¾ for quarters; ml for a bottle).",

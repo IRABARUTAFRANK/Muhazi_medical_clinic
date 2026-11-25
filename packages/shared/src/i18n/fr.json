@@ -8178,7 +8178,8 @@
   },
   "apiErrors": {
     "notAllowed": "Vous n'êtes pas autorisé à faire ceci. Demandez au gestionnaire si vous en avez besoin.",
-    "notFound": "Introuvable ou déjà clôturé. Actualisez la page."
+    "notFound": "Introuvable ou déjà clôturé. Actualisez la page.",
+    "timeout": "La base de données a mis trop de temps à répondre. Réessayez dans un instant ; si cela se répète, prévenez la personne qui s’occupe du système."
   },
   "dbErrors": {
     "24976874": "Cette partie n’est pas possible pour ce médicament (½ s’il se donne en moitiés ; ¼, ½ ou ¾ en quarts ; des ml pour un flacon).",

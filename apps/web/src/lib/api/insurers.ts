@@ -529,6 +529,17 @@ export function useInsurerTariff(payerId: string | null | undefined) {
     staleTime: 60_000,
     queryFn: async (): Promise<InsurerTariff> => {
       if (!supabase) return sampleTariff(payerId!)
+      // 0201: the window without its lines, then the lines in parts (all of them in one statement
+      // passed the time a signed-in person's statement is allowed: "statement timeout")
+      const head = await supabase.rpc('insurer_tariff_head', { p_payer: payerId })
+      if (!head.error) {
+        const d = (head.data ?? {}) as Record<string, unknown>
+        const ids = (v: unknown) => (Array.isArray(v) ? v.map(String) : [])
+        const rows = await tariffLinesInParts(payerId!, ids(d.serviceIds), ids(d.itemIds))
+        return toTariff({ ...d, rows })
+      }
+      if (!isMissingFunction(head.error)) throw apiError(head.error)
+      // a database before 0201: the whole table in one go
       const { data, error } = await supabase.rpc('insurer_tariff_rows', { p_payer: payerId })
       // the website can run ahead of the database (0115 not applied yet): say so plainly
       if (error && isMissingFunction(error)) throw new Error(i18n.t('analytics.needsUpdate'))
@@ -536,6 +547,45 @@ export function useInsurerTariff(payerId: string | null | undefined) {
       return toTariff((data ?? {}) as Record<string, unknown>)
     },
   })
+}
+
+/** Lines read in one statement: small enough to stay far within the time limit. */
+const PART = 150
+/** Parts read at the same time. */
+const AT_ONCE = 4
+
+/**
+ * 0201 · The insurer's lines of these treatments and medicines (payer_lines, the bill's own price
+ * search), read PART at a time, AT_ONCE parts together, in the order of the whole table: the
+ * treatments, then the medicines, each by name and code.
+ */
+async function tariffLinesInParts(
+  payerId: string,
+  serviceIds: readonly string[],
+  itemIds: readonly string[],
+): Promise<Record<string, unknown>[]> {
+  const parts: { services: string[]; items: string[] }[] = []
+  for (let i = 0; i < serviceIds.length; i += PART)
+    parts.push({ services: serviceIds.slice(i, i + PART), items: [] })
+  for (let i = 0; i < itemIds.length; i += PART)
+    parts.push({ services: [], items: itemIds.slice(i, i + PART) })
+  const got: Record<string, unknown>[][] = new Array(parts.length)
+  let next = 0
+  const worker = async () => {
+    while (next < parts.length) {
+      const k = next++
+      const p = parts[k]!
+      const { data, error } = await supabase!.rpc('payer_lines', {
+        p_payer: payerId,
+        p_services: p.services,
+        p_items: p.items,
+      })
+      if (error) throw apiError(error)
+      got[k] = Array.isArray(data) ? (data as Record<string, unknown>[]) : []
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(AT_ONCE, parts.length) }, worker))
+  return got.flat()
 }
 
 /**

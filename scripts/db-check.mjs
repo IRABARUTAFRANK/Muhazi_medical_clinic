@@ -31491,6 +31491,55 @@ await step('0200: tidy — the visit of these checks leaves no trace for the oth
   return 'done'
 })
 // @@t200-end
+// @@t201-begin
+// ---------------------------------------------------------------- 0201 the insurer's tariff read in parts
+await step(
+  '0201: the tariff window in parts — insurer_tariff_head gives all but the lines; payer_lines over its ids, in parts, gives exactly the lines of insurer_tariff_rows',
+  async () => {
+    await asAdmin()
+    const sql = await readFile(
+      path.join(migrationsDir, '20270220090000_tariff_in_parts.sql'),
+      'utf8',
+    )
+    await db.exec(sql)
+    await db.exec(sql)
+    const fx = (who) => `has_function_privilege('${who}', 'insurer_tariff_head(uuid)', 'execute')`
+    const grants = await one(`select ${fx('authenticated')} as auth, ${fx('anon')} as anon`)
+    await as(staff.manager)
+    const head = (await one(`select insurer_tariff_head($1) as j`, [t198.ins])).j
+    const whole = (await one(`select insurer_tariff_rows($1) as j`, [t198.ins])).j
+    const chunk = (ids, n) => {
+      const out = []
+      for (let i = 0; i < ids.length; i += n) out.push(ids.slice(i, i + n))
+      return out
+    }
+    const parts = []
+    for (const ids of chunk(head.serviceIds, 7))
+      parts.push(
+        ...(await one(`select payer_lines($1, $2::uuid[], '{}'::uuid[]) as j`, [t198.ins, ids])).j,
+      )
+    for (const ids of chunk(head.itemIds, 5))
+      parts.push(
+        ...(await one(`select payer_lines($1, '{}'::uuid[], $2::uuid[]) as j`, [t198.ins, ids])).j,
+      )
+    await asAdmin()
+    const sig = (r) => `${r.kind}:${r.id}:${r.price}:${r.source}:${r.coveragePct}:${r.patientShare}`
+    const a = whole.rows.map(sig).sort()
+    const b = parts.map(sig).sort()
+    const same = (k) => json198(head[k]) === json198(whole[k])
+    const r = {
+      grants: [grants.auth, grants.anon],
+      noRows: !('rows' in head),
+      ids: [head.serviceIds.length + head.itemIds.length, whole.rows.length],
+      equal: json198(a) === json198(b),
+      head: ['coveragePct', 'notListedRule', 'lists', 'books', 'name'].every(same),
+    }
+    if (!r.grants[0] || r.grants[1] || !r.noRows || r.ids[0] !== r.ids[1] || !r.equal || !r.head)
+      throw new Error(json198(r))
+    return `the head for a signed-in person (not anon), without lines; ${r.ids[0]} ids = ${r.ids[1]} lines of the whole table; read 7 and 5 at a time they are the very same lines (price, source, coverage, patient's share); coverage, rule, lists and the official lists the same`
+  },
+)
+// @@t201-end
 finish()
 
 function finish() {
