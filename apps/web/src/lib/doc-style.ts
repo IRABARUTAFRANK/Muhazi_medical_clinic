@@ -688,11 +688,14 @@ img { max-width: 100%; }
   padding: 0 0 5pt; line-height: 1.25; }
 .lh img { height: var(--logo); width: auto; display: block; }
 .lh.compact { --logo: 15mm; }
+.lh-main { min-width: 0; overflow-wrap: break-word; }
 .lh-name { font-size: var(--fs-clinic); font-weight: 700; color: var(--accent-ink); letter-spacing: 0.01em; margin-bottom: 2pt; }
 .lh-line { font-size: var(--fs-small); color: var(--ink-2); }
 .lh-line + .lh-line { margin-top: 0.5pt; }
 .lh-contact { font-size: var(--fs-small); color: var(--ink-2); text-align: right; line-height: 1.45; white-space: nowrap; }
 .lh-contact .lbl, .lh-line .lbl { color: var(--ink); }
+/* the address is a sentence: it wraps at its spaces instead of running under the contacts */
+.lh-line.pairs > span.lh-addr { display: inline; white-space: normal; }
 .lh-band { display: flex; height: 3pt; margin: 0 0 10pt; }
 .lh-band > i { display: block; height: 100%; }
 .lh-band > i:first-child { flex: 3 1 0; background: var(--accent); }
@@ -832,7 +835,10 @@ const pair = (label: string, value: string | null | undefined) =>
  */
 export function letterheadHtml(lh: Letterhead, l: DocLabels, variant: 'full' | 'compact' = 'full') {
   const lines = [
-    [lh.addressLine ? `<span>${esc(lh.addressLine)}</span>` : '', pair(l.poBox, lh.poBox)].join(''),
+    [
+      lh.addressLine ? `<span class="lh-addr">${esc(lh.addressLine)}</span>` : '',
+      pair(l.poBox, lh.poBox),
+    ].join(''),
     [
       pair(l.tin, lh.tin),
       pair(l.mohLicence, lh.mohLicence),

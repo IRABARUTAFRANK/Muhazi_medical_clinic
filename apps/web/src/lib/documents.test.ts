@@ -6,6 +6,7 @@ import {
   documentHtml,
   footerLines,
   keyFiguresHtml,
+  letterheadHtml,
   makeDocLabels,
   tableHtml,
   titleBlockHtml,
@@ -80,6 +81,20 @@ describe('document standard v2', () => {
     })
     expect(receipt).not.toContain('@bottom-left')
     expect(receipt).not.toContain('printed-fallback">')
+  })
+
+  // 0203: on the A5 prescription the address ran under "Email" on the right: it is a sentence
+  // that wraps, beside label-value pairs that stay whole
+  it('lets the letterhead address wrap instead of running under the contacts', () => {
+    const head = letterheadHtml(lh, dl)
+    expect(head).toContain(
+      '<span class="lh-addr">Kiramuruzi, Gatsibo District, Eastern Province, Rwanda</span>',
+    )
+    const html = buildPrescriptionHtml(rx(), { t, lang: 'en' }, { autoPrint: false, fonts })
+    expect(html).toContain(
+      '.lh-line.pairs > span.lh-addr { display: inline; white-space: normal; }',
+    )
+    expect(html).toContain('.lh-main { min-width: 0;')
   })
 
   it('lays the title meta out as a label | value box and leaves empty values out', () => {
