@@ -205,6 +205,10 @@ export function CashierDashboard({ user }: { user: StaffUser }) {
             {t('receipts.printList', { defaultValue: 'Print the list of receipts' })}
           </Button>
           {printError && <span className="text-red text-[13px] font-semibold">{printError}</span>}
+          {/* 0212: the two buttons are grey while none of my receipts is in the period: say so */}
+          {receipts.data && receipts.data.receipts.length === 0 && (
+            <span className="text-ink-3 basis-full text-[13px]">{t('receipts.noneToPrint')}</span>
+          )}
           <StaffLink
             to="/app/bills"
             className={buttonVariants({ variant: canTake ? 'primary' : 'default', size: 'md' })}

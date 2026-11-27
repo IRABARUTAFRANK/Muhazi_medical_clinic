@@ -9089,6 +9089,7 @@
     "allMethods": "All methods",
     "allCashiers": "All cashiers",
     "mineNote": "The receipts you gave.",
+    "noneToPrint": "Nothing to print yet: you have given no receipt in this period. Choose a longer period above (this week, this month…) to print earlier ones.",
     "cols": {
       "bill": "Bill no.",
       "balance": "Still due"

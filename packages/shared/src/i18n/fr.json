@@ -9089,6 +9089,7 @@
     "allMethods": "Tous les modes",
     "allCashiers": "Tous les caissiers",
     "mineNote": "Les reçus que vous avez donnés.",
+    "noneToPrint": "Rien à imprimer pour l’instant : vous n’avez donné aucun reçu sur cette période. Choisissez une période plus longue plus haut (cette semaine, ce mois…) pour imprimer les précédents.",
     "cols": {
       "bill": "N° de facture",
       "balance": "Reste dû"
