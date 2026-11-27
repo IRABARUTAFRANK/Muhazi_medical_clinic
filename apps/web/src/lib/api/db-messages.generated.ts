@@ -34,6 +34,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^not allowed: a booking is changed by its doctor, reception or the manager$/, 'dbErrors.99bcd654', 0], // change_booking
   [/^not allowed: an employee sees their own documents, the manager everyone's$/, 'dbErrors.888650d3', 0], // staff_documents
   [/^only the clinician who wrote the diagnosis \(or the manager\) can change it$/, 'dbErrors.31b050c2', 0], // remove_condition, remove_condition_none_found, update_condition
+  [/^not allowed: a booking is closed by its doctor, reception or the manager$/, 'dbErrors.b1be2496', 0], // set_appointment_outcome, undo_no_show
   [/^only the manager, or a head for their own department, can send messages$/, 'dbErrors.cdc4fb66', 0], // send_notification
   [/^the rule for a line without a price is cash_covered, not_covered or ask$/, 'dbErrors.a588956d', 0], // upsert_payer
   [/^count whole pieces here; a part of a piece \(½, ¼ or ml\) is given apart$/, 'dbErrors.4dd3f277', 0], // create_order_planned, record_for_task
@@ -101,6 +102,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^you may not start visits \(the manager has not allowed it\)$/, 'dbErrors.d9af705e', 0], // begin_visit, open_encounter, start_visit
   [/^a primary diagnosis is required before closing the visit$/, 'dbErrors.e4c9a0f6', 0], // close_encounter
   [/^only a list of treatments has lines to add as treatments$/, 'dbErrors.af56f7e3', 0], // adopt_tariff_lines
+  [/^only a past booking marked as not come can be taken back$/, 'dbErrors.e12ff67d', 0], // undo_no_show
   [/^only the person who gave it \(or the manager\) can undo it$/, 'dbErrors.6de6c2e4', 0], // undo_order_doses
   [/^the cash of that day is already counted: ask the manager$/, 'dbErrors.f64b8e4d', 0], // void_payment
   [/^this order is repeated: record each time on its own line$/, 'dbErrors.5d5934c7', 0], // give_nurse_order, skip_nurse_dose
@@ -109,6 +111,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^an order given on another day is undone by the manager$/, 'dbErrors.38396af5', 0], // undo_order_doses
   [/^invoice (.+?) is posted and immutable; issue a credit note$/, 'dbErrors.e246a4c8', 1], // guard_posted_invoice
   [/^the month’s remittance was already paid: undo it first$/, 'dbErrors.af1298eb', 0], // unpay_salary
+  [/^the patient came: a visit was opened from this booking$/, 'dbErrors.3fc275cc', 0], // undo_no_show
   [/^too early: this is planned for more than 2 hours later$/, 'dbErrors.c7689bd2', 0], // give_nurse_order, give_order_time, skip_order_time
   [/^not allowed: this visit's record is not yours to read$/, 'dbErrors.fc369004', 0], // prescription_number
   [/^only the doctor of this calendar declines the booking$/, 'dbErrors.090c842f', 0], // decline_appointment
@@ -526,7 +529,7 @@ export const DB_MESSAGES: ReadonlyArray<readonly [RegExp, string, number]> = [
   [/^unknown language (.+?)$/, 'dbErrors.07e0078a', 1], // save_display_screen
   [/^already dispensed$/, 'dbErrors.17b7fdbc', 0], // dispense_prescription
   [/^approve or refuse$/, 'dbErrors.1779e4aa', 0], // answer_record_access
-  [/^booking not found$/, 'dbErrors.f0c2044d', 0], // change_booking
+  [/^booking not found$/, 'dbErrors.f0c2044d', 0], // change_booking, undo_no_show
   [/^choose the doctor$/, 'dbErrors.138aa8a0', 0], // approve_inquiry, book_follow_up
   [/^expense not found$/, 'dbErrors.382311f5', 0], // void_expense
   [/^insurer not found$/, 'dbErrors.b8d140db', 0], // delete_payer, import_price_list, import_tariff, …

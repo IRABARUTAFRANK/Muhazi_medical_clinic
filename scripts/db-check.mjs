@@ -31859,6 +31859,194 @@ await step('0206: tidy — the stays and visits of these checks leave no trace',
   return 'done'
 })
 // @@t206-end
+// @@t208-begin
+// ---------------------------------------------------------------- 0208 My bookings: the doctor closes his missed bookings
+const t208 = {}
+const at208 = (days, hhmm) => at125(`(${days})`, hhmm)
+const status208 = async (id) => {
+  await asAdmin()
+  return one(`select status::text as s, cancel_reason as r from appointment where id = $1`, [id])
+}
+const out208 = (who, id, status, reason = null) =>
+  msg197b(who, `select set_appointment_outcome($1, $2::appointment_status, $3)`, [
+    id,
+    status,
+    reason,
+  ])
+const undo208 = (who, id) => msg197b(who, `select undo_no_show($1)`, [id])
+await step(
+  '0208: the booking’s own doctor marks a past booking “did not come” or cancels it (with the reason); another doctor or a nurse cannot; not “did not come” for a booking still to come; reception still can',
+  async () => {
+    await asAdmin()
+    const sql = await readFile(
+      path.join(migrationsDir, '20270224090000_my_booking_outcome.sql'),
+      'utf8',
+    )
+    await db.exec(sql)
+    await db.exec(sql)
+    const t = globalThis.t125
+    t208.t = t
+    const fx = (who, f) => `has_function_privilege('${who}', '${f}', 'execute')`
+    const g = await one(
+      `select ${fx('authenticated', 'set_appointment_outcome(uuid, appointment_status, text)')} as outcome,
+              ${fx('authenticated', 'undo_no_show(uuid)')} as undo, ${fx('anon', 'undo_no_show(uuid)')} as undo_anon`,
+    )
+    const pr = (
+      await one(`select id from practitioner where user_id = $1 and deleted_at is null`, [t.docX])
+    ).id
+    const book = async (days, status = 'confirmed') =>
+      (
+        await one(
+          `insert into appointment (status, source, patient_id, practitioner_id, starts_at, ends_at, reason, approved_at)
+           values ($1, 'reception', $2, $3, ${at208(days, '08:00')}, ${at208(days, '08:30')}, 'Check 208', now() - interval '8 days')
+           returning id`,
+          [status, t.p3, pr],
+        )
+      ).id
+    t208.b1 = await book(-1)
+    t208.b2 = await book(-2)
+    t208.b3 = await book(5)
+    t208.b4 = await book(-3)
+    t208.b5 = await book(-4)
+    t208.b6 = await book(-5, 'approved')
+    const r = {
+      grants: [g.outcome, g.undo, g.undo_anon],
+      other: await out208(t.docY, t208.b1, 'no_show'),
+      nurse: await out208(t127.nurseA, t208.b1, 'no_show'),
+      own: await out208(t.docX, t208.b1, 'no_show'),
+      ownStatus: (await status208(t208.b1)).s,
+      again: await out208(t.docX, t208.b1, 'no_show'),
+      future: await out208(t.docX, t208.b3, 'no_show'),
+      noReason: await out208(t.docX, t208.b2, 'cancelled', '   '),
+      cancel: await out208(t.docX, t208.b2, 'cancelled', 'Travelled to Kigali'),
+      cancelled: await status208(t208.b2),
+      futureCancel: await out208(t.docX, t208.b3, 'cancelled', 'The patient called: will not come'),
+      reception: await out208(t.rec, t208.b4, 'no_show'),
+    }
+    const notAllowed =
+      '42501||not allowed: a booking is closed by its doctor, reception or the manager'
+    if (
+      !r.grants[0] ||
+      !r.grants[1] ||
+      r.grants[2] ||
+      r.other !== notAllowed ||
+      r.nurse !== notAllowed ||
+      r.own !== 'ok' ||
+      r.ownStatus !== 'no_show' ||
+      r.again !== 'P0002||this appointment can no longer be changed' ||
+      r.future !== '22023||a booking still to come is cancelled, not marked as no-show' ||
+      r.noReason !== '22023||give the reason for the cancellation' ||
+      r.cancel !== 'ok' ||
+      r.cancelled.s !== 'cancelled' ||
+      r.cancelled.r !== 'Travelled to Kigali' ||
+      r.futureCancel !== 'ok' ||
+      r.reception !== 'ok'
+    )
+      throw new Error(json198(r))
+    return 'runs twice; his own past booking: did not come (once), cancelled with its reason (refused without), a coming one cancelled but not marked “did not come”; another doctor and a nurse refused; reception as before; undo for signed-in people only'
+  },
+)
+await step(
+  '0208: a wrong “did not come” is taken back by the same people (back to confirmed, or to “waiting for the doctor”); not once a visit came from the booking, not for a cancelled one, not by another doctor',
+  async () => {
+    const t = t208.t
+    const r = {
+      other: await undo208(t.docY, t208.b1),
+      own: (await as197b(t.docX, `select undo_no_show($1) as j`, [t208.b1])).status,
+      after: (await status208(t208.b1)).s,
+      cancelled: await undo208(t.docX, t208.b2),
+    }
+    // reception marked b4 "did not come", then a visit is opened from it: it cannot be taken back
+    await asAdmin()
+    const enc = (
+      await one(`insert into encounter (patient_id, appointment_id) values ($1, $2) returning id`, [
+        t.p3,
+        t208.b4,
+      ])
+    ).id
+    r.visit = await undo208(t.rec, t208.b4)
+    await asAdmin()
+    await db.query(`update encounter set deleted_at = now() where id = $1`, [enc])
+    r.visitGone = await undo208(t.rec, t208.b4)
+    // a booking still waiting for the doctor's answer goes back to waiting
+    r.approvedOut = await out208(t.docX, t208.b6, 'no_show')
+    r.approvedBack = (await as197b(t.docX, `select undo_no_show($1) as j`, [t208.b6])).status
+    const mine = await as197b(t.docX, `select my_bookings() as j`)
+    const row = mine.rows.find((x) => x.id === t208.b1)
+    r.history = (row?.history ?? [])
+      .map((h) => h.status)
+      .filter(Boolean)
+      .slice(-2)
+    if (
+      r.other !==
+        '42501||not allowed: a booking is closed by its doctor, reception or the manager' ||
+      r.own !== 'confirmed' ||
+      r.after !== 'confirmed' ||
+      r.cancelled !== '22023||only a past booking marked as not come can be taken back' ||
+      r.visit !== '22023||the patient came: a visit was opened from this booking' ||
+      r.visitGone !== 'ok' ||
+      r.approvedOut !== 'ok' ||
+      r.approvedBack !== 'approved' ||
+      json198(r.history) !== json198(['no_show', 'confirmed'])
+    )
+      throw new Error(json198(r))
+    return 'his own: back to confirmed (its history: did not come, then confirmed); one waiting for his answer: back to waiting; a cancelled one refused; with a visit opened from it refused (allowed again once that visit is gone); another doctor refused'
+  },
+)
+await step(
+  '0208: the doctor books a missed booking at a new time (change_booking): the same booking, confirmed, to come, no longer late; not to a past time, not a cancelled one',
+  async () => {
+    const t = t208.t
+    const past = await msg197b(
+      t.docX,
+      `select change_booking($1, ${at208(-1, '17:00')}, null, null, null, 'Did not come') as j`,
+      [t208.b5],
+    )
+    const j = await as197b(
+      t.docX,
+      `select change_booking($1, ${at208(6, '17:00')}, null, null, null, 'Did not come; booked again') as j`,
+      [t208.b5],
+    )
+    const mine = await as197b(t.docX, `select my_bookings() as j`)
+    const row = mine.rows.find((x) => x.id === t208.b5)
+    const cancelled = await msg197b(
+      t.docX,
+      `select change_booking($1, ${at208(7, '17:00')}, null, null, null, 'Book it again') as j`,
+      [t208.b2],
+    )
+    const r = {
+      past,
+      id: j.id === t208.b5,
+      status: j.status,
+      moved: j.moved,
+      ahead: new Date(j.startsAt).getTime() > Date.now(),
+      late: row?.late,
+      cancelled,
+    }
+    if (
+      r.past !== '22023||the chosen time is in the past' ||
+      !r.id ||
+      r.status !== 'confirmed' ||
+      r.moved !== true ||
+      !r.ahead ||
+      r.late !== false ||
+      r.cancelled !== '22023||this booking can no longer be changed'
+    )
+      throw new Error(json198(r))
+    return 'moved from 4 days ago to 6 days ahead: same id, confirmed, not late in My bookings; a past time and a cancelled booking refused'
+  },
+)
+await step('0208: tidy — the bookings of these checks leave no trace', async () => {
+  await asAdmin()
+  await db.query(`update appointment set deleted_at = now() where id = any($1::uuid[])`, [
+    [t208.b1, t208.b2, t208.b3, t208.b4, t208.b5, t208.b6],
+  ])
+  await db.query(`delete from notification where params ->> 'appointment' = any($1::text[])`, [
+    [t208.b1, t208.b2, t208.b3, t208.b4, t208.b5, t208.b6],
+  ])
+  return 'done'
+})
+// @@t208-end
 finish()
 
 function finish() {

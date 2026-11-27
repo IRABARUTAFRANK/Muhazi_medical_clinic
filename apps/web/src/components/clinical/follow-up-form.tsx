@@ -116,8 +116,10 @@ export function FollowUpForm({
         ? user.id
         : '',
   )
-  const [day, setDay] = useState(change ? isoDate(new Date(change.startsAt)) : addDays(1))
-  const [time, setTime] = useState(change ? hhmm(change.startsAt) : '')
+  // 0208: a booking whose time has passed (the patient did not come) moves to a day still to come
+  const [past] = useState(() => !!change && new Date(change.startsAt).getTime() < Date.now())
+  const [day, setDay] = useState(change && !past ? isoDate(new Date(change.startsAt)) : addDays(1))
+  const [time, setTime] = useState(change && !past ? hhmm(change.startsAt) : '')
   const [reason, setReason] = useState(change ? (change.reason ?? '') : initialReason)
   const [note, setNote] = useState(change?.note ?? '')
   const [why, setWhy] = useState('')

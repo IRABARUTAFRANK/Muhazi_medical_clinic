@@ -12,7 +12,10 @@ import {
   History,
   Info,
   MessageSquare,
+  Phone,
   Stethoscope,
+  Undo2,
+  UserX,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDate, formatTime, isoDate, type StaffUser } from '@mmc/shared'
@@ -26,7 +29,13 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { ShownList } from '@/components/ui/list-tools'
 import { SidePanel } from '@/components/ui/side-panel'
 import type { HomeToAccept } from '@/lib/api/home'
-import { useMyBookings, type MyBooking, type MyBookingStatus } from '@/lib/api/my-bookings'
+import {
+  useMyBookingActions,
+  useMyBookings,
+  type MyBooking,
+  type MyBookingStatus,
+} from '@/lib/api/my-bookings'
+import { useConfirm } from '@/lib/confirm'
 import { useDayNames } from '@/lib/hooks'
 import { navForUser } from '@/lib/nav'
 import { useOpenFile } from '@/lib/panel-url'
@@ -43,6 +52,9 @@ import { ErrorBox } from '@/pages/home/role-panels'
  * manager). Reception books; the person answers here (Accept, Another time, Decline), sees what
  * is coming over the next 3 weeks by day, and what happened over the last 30 days. A row opens
  * the booking beside the list (rose: bookings) with its history.
+ * 0208: a booking whose time passed without the patient ("Not seen") is closed here: Did not
+ * come, Another time, Cancel the booking (kept in the history), Call; a closed one is booked
+ * again, and a wrong "Did not come" is taken back.
  */
 
 const TONE: Record<string, 'blue' | 'green' | 'yellow' | 'red' | 'grey'> = {
@@ -57,6 +69,18 @@ const TONE: Record<string, 'blue' | 'green' | 'yellow' | 'red' | 'grey'> = {
   left_unseen: 'yellow',
 }
 const CLOSED: readonly MyBookingStatus[] = ['declined', 'cancelled', 'left_unseen']
+/** 0208: the bookings that will not happen any more: booked again from here. */
+const ENDED: readonly MyBookingStatus[] = ['no_show', ...CLOSED]
+/** 0208: booked or confirmed, its time passed, the patient not seen: to close ("Not seen"). */
+const isMissed = (b: MyBooking) => changeable(b.status) && Date.parse(b.startsAt) <= Date.now()
+const describe = (e: unknown) => (e instanceof Error ? e.message : String(e))
+/** A Rwandan number written 07…, 2507… or +2507… as +2507… (for the call link). */
+const intl = (phone: string) => {
+  const d = phone.replace(/[^\d]/g, '')
+  if (d.startsWith('250')) return `+${d}`
+  if (d.startsWith('0')) return `+250${d.slice(1)}`
+  return `+250${d}`
+}
 const rowClass =
   'border-grid flex min-h-11 flex-wrap items-center gap-2.5 border-b py-2 text-[14px] last:border-b-0'
 
@@ -105,9 +129,13 @@ export function MyBookingsPage({ user, focus }: { user: StaffUser; focus?: strin
   const toAnswer = rows.filter((b) => b.status === 'approved')
   const kept = rows.filter((b) => b.status !== 'approved' && !CLOSED.includes(b.status))
   const coming = kept.filter((b) => at(b) >= today && at(b) < horizon)
+  // the bookings not seen (to close) first, then the latest first
   const earlier = rows
     .filter((b) => b.status !== 'approved' && (at(b) < today || CLOSED.includes(b.status)))
-    .sort((a, b) => b.startsAt.localeCompare(a.startsAt))
+    .sort(
+      (a, b) => Number(isMissed(b)) - Number(isMissed(a)) || b.startsAt.localeCompare(a.startsAt),
+    )
+  const notSeen = earlier.filter(isMissed).length
   const todayCount = kept.filter((b) => at(b) >= today && at(b) < tomorrow).length
   const weekCount = kept.filter((b) => at(b) >= monday && at(b) < nextMonday).length
   const closedCount = rows.filter((b) => CLOSED.includes(b.status)).length
@@ -312,6 +340,12 @@ export function MyBookingsPage({ user, focus }: { user: StaffUser; focus?: strin
                       <Pill tint="teal">{formatTime(new Date(b.startsAt))}</Pill>
                       {who(b)}
                       {statusBadge(b)}
+                      {/* 0208: today's time passed without the patient: say what happened */}
+                      {isMissed(b) && (
+                        <Button size="xs" variant="tint-coral" onClick={() => setSelected(b.id)}>
+                          {t('myBookings.whatHappened')}
+                        </Button>
+                      )}
                       {visitLink(b)}
                     </div>
                   ))}
@@ -324,7 +358,16 @@ export function MyBookingsPage({ user, focus }: { user: StaffUser; focus?: strin
               icon={History}
               tint="violet"
               title={t('myBookings.earlier')}
-              right={String(earlier.length)}
+              right={
+                <span className="inline-flex flex-wrap items-center justify-end gap-2">
+                  {notSeen > 0 && (
+                    <Badge tone="red" icon={<UserX size={12} aria-hidden="true" />}>
+                      {t('myBookings.notSeenCount', { count: notSeen })}
+                    </Badge>
+                  )}
+                  <span>{earlier.length}</span>
+                </span>
+              }
             >
               {!isLoading && earlier.length === 0 && (
                 <Empty icon={History}>{t('myBookings.nothingEarlier')}</Empty>
@@ -334,9 +377,24 @@ export function MyBookingsPage({ user, focus }: { user: StaffUser; focus?: strin
                   <div className="flex flex-col">
                     {shown.map((b) => (
                       <div key={b.id} className={rowClass}>
-                        <Pill tint="violet">{when(b.startsAt)}</Pill>
+                        <Pill tint={isMissed(b) ? 'coral' : 'violet'}>{when(b.startsAt)}</Pill>
                         {who(b, CLOSED.includes(b.status) ? b.cancelReason : null)}
-                        {statusBadge(b)}
+                        {isMissed(b) ? (
+                          <>
+                            <Badge tone="red" icon={<UserX size={12} aria-hidden="true" />}>
+                              {t('myBookings.notSeen')}
+                            </Badge>
+                            <Button
+                              size="xs"
+                              variant="tint-coral"
+                              onClick={() => setSelected(b.id)}
+                            >
+                              {t('myBookings.whatHappened')}
+                            </Button>
+                          </>
+                        ) : (
+                          statusBadge(b)
+                        )}
                       </div>
                     ))}
                   </div>
@@ -377,9 +435,17 @@ function BookingPanel({
 }) {
   const { t } = useTranslation()
   const openFile = useOpenFile()
+  const confirm = useConfirm()
+  const actions = useMyBookingActions()
   const [error, setError] = useState<string | null>(null)
   // 0125: "Change booking": the same form as a new booking, on this one
   const [changing, setChanging] = useState<string | null>(null)
+  // 0208: "Book again": a new booking for the same patient; the message after an action
+  const [rebooking, setRebooking] = useState<string | null>(null)
+  const [done, setDone] = useState<{ id: string; text: string } | null>(null)
+  const busy = actions.outcome.isPending || actions.undo.isPending
+  const missed = !!b && isMissed(b)
+  const ended = !!b && ENDED.includes(b.status)
   const rows: [string, string | null | undefined][] = b
     ? [
         [t('ops.detail.when'), when(b.startsAt)],
@@ -407,6 +473,83 @@ function BookingPanel({
       ? t('myBookings.step.requested')
       : t(`ops.appts.status.${s ?? ''}`, { defaultValue: s ?? '' })
 
+  /** An action on the booking; the panel stays open with the message (then "Book again"). */
+  const run = async (id: string, fn: () => Promise<unknown>, text: string) => {
+    setError(null)
+    setDone(null)
+    try {
+      await fn()
+      setDone({ id, text })
+    } catch (e) {
+      setError(describe(e))
+    }
+  }
+  const noShow = async (x: MyBooking) => {
+    if (
+      !(await confirm({
+        title: t('myBookings.act.noShowConfirm', { name: x.name, when: when(x.startsAt) }),
+        body: t('myBookings.act.noShowBody'),
+        confirmLabel: t('myBookings.act.noShowYes'),
+        tone: 'danger',
+      }))
+    )
+      return
+    await run(
+      x.id,
+      () => actions.outcome.mutateAsync({ id: x.id, status: 'no_show' }),
+      t('myBookings.act.noShowDone', { name: x.name }),
+    )
+  }
+  const cancel = async (x: MyBooking) => {
+    const r = await confirm({
+      title: t('myBookings.act.cancelConfirm', { name: x.name, when: when(x.startsAt) }),
+      body: t('myBookings.act.cancelBody'),
+      input: {
+        label: t('myBookings.act.cancelWhy'),
+        placeholder: t('myBookings.act.cancelPh'),
+        required: true,
+        multiline: true,
+        maxLength: 300,
+      },
+      confirmLabel: t('confirm.desks.appointment.cancelYes'),
+      tone: 'danger',
+    })
+    if (!r.ok) return
+    await run(
+      x.id,
+      () => actions.outcome.mutateAsync({ id: x.id, status: 'cancelled', reason: r.value }),
+      t('myBookings.act.cancelDone', { name: x.name }),
+    )
+  }
+  const undo = async (x: MyBooking) => {
+    if (
+      !(await confirm({
+        title: t('myBookings.act.undoConfirm', { name: x.name }),
+        body: t('myBookings.act.undoBody'),
+        confirmLabel: t('myBookings.act.undoYes'),
+      }))
+    )
+      return
+    await run(
+      x.id,
+      () => actions.undo.mutateAsync(x.id),
+      t('myBookings.act.undoDone', { name: x.name }),
+    )
+  }
+  const startChange = (x: MyBooking) => {
+    setRebooking(null)
+    setDone(null)
+    setChanging(x.id)
+  }
+
+  // the patient's phone, to agree a new time or hear why they did not come
+  const call = b?.phone ? (
+    <a href={`tel:${intl(b.phone)}`} className={buttonVariants({ size: 'sm', variant: 'default' })}>
+      <Phone size={14} aria-hidden="true" />
+      {t('common.call')}
+    </a>
+  ) : null
+
   return (
     <SidePanel
       open={b !== null}
@@ -417,9 +560,16 @@ function BookingPanel({
       subtitle={b ? when(b.startsAt) : undefined}
       tags={
         b ? (
-          <Badge tone={TONE[b.status] ?? 'grey'}>
-            {t(`ops.appts.status.${b.status}`, { defaultValue: b.status })}
-          </Badge>
+          <>
+            <Badge tone={TONE[b.status] ?? 'grey'}>
+              {t(`ops.appts.status.${b.status}`, { defaultValue: b.status })}
+            </Badge>
+            {missed && (
+              <Badge tone="red" icon={<UserX size={12} aria-hidden="true" />}>
+                {t('myBookings.notSeen')}
+              </Badge>
+            )}
+          </>
         ) : undefined
       }
     >
@@ -434,6 +584,11 @@ function BookingPanel({
               <span>{error}</span>
             </p>
           )}
+          {done?.id === b.id && (
+            <Flash key={done.text} onClose={() => setDone(null)}>
+              {done.text}
+            </Flash>
+          )}
           {b.status === 'approved' && (
             <div className="flex flex-wrap items-center gap-2">
               <BookingAnswer
@@ -443,6 +598,49 @@ function BookingPanel({
                 onAnswered={onClose}
               />
             </div>
+          )}
+          {/* 0208: the time passed without the patient: say what happened */}
+          {missed && (
+            <section className="border-red/25 bg-red-bg/60 flex flex-col gap-2.5 rounded-md border p-3">
+              <p className="text-ink m-0 flex items-start gap-2 text-[14px] font-medium">
+                <UserX size={16} aria-hidden="true" className="text-red mt-0.5 flex-none" />
+                <span>{t('myBookings.act.missedLead', { name: b.name })}</span>
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="danger-solid"
+                  disabled={busy}
+                  onClick={() => void noShow(b)}
+                >
+                  <UserX size={14} aria-hidden="true" />
+                  {t('myBookings.act.noShow')}
+                </Button>
+                {b.status === 'confirmed' && changing !== b.id && (
+                  <Button
+                    size="sm"
+                    variant="tint-violet"
+                    disabled={busy}
+                    onClick={() => startChange(b)}
+                  >
+                    <CalendarSync size={14} aria-hidden="true" />
+                    {t('home.otherTime')}
+                  </Button>
+                )}
+                {b.status === 'confirmed' && (
+                  <Button
+                    size="sm"
+                    variant="tint-coral"
+                    disabled={busy}
+                    onClick={() => void cancel(b)}
+                  >
+                    <CalendarX size={14} aria-hidden="true" />
+                    {t('myBookings.act.cancel')}
+                  </Button>
+                )}
+                {call}
+              </div>
+            </section>
           )}
           <dl
             className={cn(
@@ -460,35 +658,78 @@ function BookingPanel({
               ))}
           </dl>
           {changing === b.id && (
-            <FollowUpForm
-              user={user}
-              patient={{
-                id: b.patientId ?? b.id,
-                name: b.name,
-                fileNumber: b.fileNumber,
-                phone: b.phone,
-              }}
-              change={{
-                id: b.id,
-                startsAt: b.startsAt,
-                withUserId: user.id,
-                reason: b.reason,
-                note: b.note ?? null,
-              }}
-              onDone={(m) => {
-                setChanging(null)
-                onChanged(m)
-              }}
-              onCancel={() => setChanging(null)}
-            />
+            <Reveal>
+              <FollowUpForm
+                user={user}
+                patient={{
+                  id: b.patientId ?? b.id,
+                  name: b.name,
+                  fileNumber: b.fileNumber,
+                  phone: b.phone,
+                }}
+                change={{
+                  id: b.id,
+                  startsAt: b.startsAt,
+                  withUserId: user.id,
+                  reason: b.reason,
+                  note: b.note ?? null,
+                }}
+                onDone={(m) => {
+                  setChanging(null)
+                  onChanged(m)
+                }}
+                onCancel={() => setChanging(null)}
+              />
+            </Reveal>
+          )}
+          {/* 0208: a booking that will not happen: a new one for the same patient */}
+          {rebooking === b.id && b.patientId && (
+            <Reveal>
+              <FollowUpForm
+                user={user}
+                patient={{
+                  id: b.patientId,
+                  name: b.name,
+                  fileNumber: b.fileNumber,
+                  phone: b.phone,
+                }}
+                reason={b.reason ?? ''}
+                onDone={(m) => {
+                  setRebooking(null)
+                  onChanged(m)
+                }}
+                onCancel={() => setRebooking(null)}
+              />
+            </Reveal>
           )}
           <div className="flex flex-wrap gap-2">
-            {changeable(b.status) && changing !== b.id && (
-              <Button size="sm" variant="tint-violet" onClick={() => setChanging(b.id)}>
+            {changeable(b.status) && !missed && changing !== b.id && (
+              <Button size="sm" variant="tint-violet" onClick={() => startChange(b)}>
                 <CalendarSync size={14} aria-hidden="true" />
                 {t('followUp.change.button')}
               </Button>
             )}
+            {b.status === 'confirmed' && !missed && (
+              <Button size="sm" variant="tint-coral" disabled={busy} onClick={() => void cancel(b)}>
+                <CalendarX size={14} aria-hidden="true" />
+                {t('myBookings.act.cancel')}
+              </Button>
+            )}
+            {ended && b.patientId && rebooking !== b.id && (
+              <Button
+                size="sm"
+                variant="tint-violet"
+                onClick={() => {
+                  setChanging(null)
+                  setDone(null)
+                  setRebooking(b.id)
+                }}
+              >
+                <CalendarPlus size={14} aria-hidden="true" />
+                {t('ops.appts.bookAgain')}
+              </Button>
+            )}
+            {!missed && call}
             {b.patientId && (
               <Button
                 size="sm"
@@ -514,6 +755,15 @@ function BookingPanel({
               </StaffLink>
             )}
           </div>
+          {/* 0208: a wrong "Did not come" is taken back (no visit came from the booking) */}
+          {b.status === 'no_show' && !b.encounterId && (
+            <div>
+              <Button size="xs" variant="ghost" disabled={busy} onClick={() => void undo(b)}>
+                <Undo2 size={14} aria-hidden="true" />
+                {t('myBookings.act.undo')}
+              </Button>
+            </div>
+          )}
           {b.history.length > 0 && (
             <section className="flex flex-col gap-2">
               <h3 className="text-ink m-0 flex items-center gap-2 text-[15px] font-semibold">

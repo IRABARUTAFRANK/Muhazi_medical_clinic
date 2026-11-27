@@ -1,13 +1,17 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isoDate } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
+import { useSession } from '@/store/session'
 import { apiError, isMissingFunction } from './errors'
 import { withLeftUnseen } from './booking-status'
 
 /**
  * The bookings made with the signed-in person (`my_bookings`, 0099): every booking still
  * waiting for their answer, and the others from 30 days back to 3 weeks ahead, each with its
- * history. The manager may read a colleague's (`userId`). Sample mode shows example bookings.
+ * history. The manager may read a colleague's (`userId`). Sample mode shows example bookings
+ * (kept for the session, so the actions below can be tried).
+ * 0208: the person closes a missed booking ("Did not come", "Cancel the booking") and takes a
+ * wrong "Did not come" back (`set_appointment_outcome`, `undo_no_show`).
  */
 
 export type MyBookingStatus =
@@ -169,8 +173,129 @@ function sampleBookings(): MyBookings {
       row('mb-10', -9, 11, 30, 'cancelled', 'Mukeshimana Grace', 'Pregnancy check', {
         cancelReason: 'The patient called to cancel.',
       }),
+      // 0208: two confirmed bookings whose time passed without the patient (to close)
+      row('mb-11', -2, 9, 0, 'confirmed', 'Mutoni Aline', 'Blood pressure check'),
+      row('mb-12', -1, 14, 30, 'confirmed', 'Hakizimana Yves', 'Wound dressing', {
+        phone: null,
+      }),
     ],
   }
+}
+
+// the sample bookings live for the session: the actions change them
+let sample: MyBookings | null = null
+const sampleStore = () => (sample ??= sampleBookings())
+const sampleRow = (id: string) => (supabase ? undefined : sample?.rows.find((b) => b.id === id))
+const sampleStep = (status: string, startsAt: string, extra: Partial<MyBookingStep> = {}) => ({
+  at: new Date().toISOString(),
+  by: useSession.getState().user?.name ?? null,
+  status,
+  startsAt,
+  moved: false,
+  ...extra,
+})
+
+/** Sample mode: a booking of My bookings moved (Change booking) keeps the page in step. */
+export function sampleMyBookingMoved(id: string, startsAt: string | null, why: string | null) {
+  const b = sampleRow(id)
+  if (!b || !startsAt || startsAt === b.startsAt) return
+  b.startsAt = startsAt
+  b.late = false
+  b.history = [...b.history, sampleStep(b.status, startsAt, { moved: true, why })]
+}
+
+/** Sample mode: a booking made with oneself ("Book again") shows in My bookings. */
+export function sampleMyBookingAdded(i: {
+  id: string
+  patientId: string
+  name: string
+  startsAt: string
+  reason: string | null
+  note: string | null
+}) {
+  if (supabase || !sample) return
+  const from = sample.rows.find((b) => b.patientId === i.patientId)
+  const me = useSession.getState().user?.name ?? null
+  const now = new Date().toISOString()
+  sample.rows.push({
+    id: i.id,
+    status: 'confirmed',
+    startsAt: i.startsAt,
+    endsAt: null,
+    reason: i.reason,
+    note: i.note,
+    category: null,
+    source: 'clinician',
+    reference: null,
+    channel: null,
+    cancelReason: null,
+    createdAt: now,
+    patientId: i.patientId,
+    fileNumber: from?.fileNumber ?? null,
+    name: i.name,
+    phone: from?.phone ?? null,
+    bookedBy: me,
+    bookedAt: now,
+    acceptedBy: me,
+    acceptedAt: now,
+    encounterId: null,
+    late: false,
+    history: [sampleStep('confirmed', i.startsAt)],
+  })
+}
+
+export type BookingOutcome = 'no_show' | 'cancelled'
+
+/**
+ * 0208: what the person does with a booking of theirs that will not happen: "Did not come"
+ * (its time passed), "Cancel the booking" (with the reason; it stays in the history as
+ * cancelled), and "Undo" of a wrong "Did not come" (back to what it was before).
+ */
+export function useMyBookingActions() {
+  const qc = useQueryClient()
+  const refresh = () => {
+    void qc.invalidateQueries({ queryKey: ['appointments'] })
+    void qc.invalidateQueries({ queryKey: ['home'] })
+    void qc.invalidateQueries({ queryKey: ['nav-counts'] })
+  }
+  const outcome = useMutation({
+    mutationFn: async (i: { id: string; status: BookingOutcome; reason?: string | null }) => {
+      if (!supabase) {
+        const b = sampleRow(i.id)
+        if (b) {
+          b.status = i.status
+          b.late = false
+          if (i.reason?.trim()) b.cancelReason = i.reason.trim()
+          b.history = [...b.history, sampleStep(i.status, b.startsAt)]
+        }
+        return
+      }
+      const { error } = await supabase.rpc('set_appointment_outcome', {
+        p_appointment_id: i.id,
+        p_status: i.status,
+        p_reason: i.reason?.trim() || null,
+      })
+      if (error) throw apiError(error)
+    },
+    onSuccess: refresh,
+  })
+  const undo = useMutation({
+    mutationFn: async (id: string): Promise<'approved' | 'confirmed'> => {
+      if (!supabase) {
+        const b = sampleRow(id)
+        if (b) {
+          b.status = 'confirmed'
+          b.history = [...b.history, sampleStep('confirmed', b.startsAt)]
+        }
+        return 'confirmed'
+      }
+      const { data, error } = await supabase.rpc('undo_no_show', { p_appointment_id: id })
+      if (error) throw apiError(error)
+      return (data as { status: 'approved' | 'confirmed' }).status
+    },
+    onSuccess: refresh,
+  })
+  return { outcome, undo }
 }
 
 /** The person's bookings from `from` to `to` (Kigali days), plus everything still to answer. */
@@ -181,7 +306,12 @@ export function useMyBookings(userId?: string | null) {
     queryKey: ['appointments', 'mine', userId ?? 'me', from, to],
     refetchInterval: 30_000,
     queryFn: async (): Promise<MyBookings> => {
-      if (!supabase) return sampleBookings()
+      if (!supabase) {
+        // by time, as my_bookings gives them (a moved or new booking takes its place)
+        const s = sampleStore()
+        const rows = s.rows.map((b) => ({ ...b }))
+        return { ...s, rows: rows.sort((a, b) => a.startsAt.localeCompare(b.startsAt)) }
+      }
       const { data, error } = await supabase.rpc('my_bookings', {
         p_from: from,
         p_to: to,

@@ -26,7 +26,7 @@ import {
   Wallet,
   X,
 } from 'lucide-react'
-import { useNavigate } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { formatDuration } from '@/lib/duration'
 import { rowSignature, useChanged } from '@/lib/motion'
@@ -804,6 +804,8 @@ function DoctorPanels({ data, onError }: PanelProps) {
   // "Tests & results" for whoever has the page in their menu: every result in full
   const user = useSession((u) => u.user)
   const seeAll = !!user && navForUser(user).some((n) => n.to === '/app/results')
+  // 0208: a booking whose time passed without the patient opens in My bookings (to close it)
+  const myBookings = !!user && navForUser(user).some((n) => n.to === '/app/my-bookings')
   return (
     <>
       <Panel
@@ -843,6 +845,15 @@ function DoctorPanels({ data, onError }: PanelProps) {
                     <span className="text-ink-2 text-[13px] font-semibold">
                       {t(`home.apptStatus.${c.status}`)}
                     </span>
+                    {c.status === 'late' && !c.encounterId && myBookings && (
+                      <Link
+                        to="/app/my-bookings"
+                        search={{ focus: c.id }}
+                        className={buttonVariants({ size: 'sm', variant: 'tint-coral' })}
+                      >
+                        {t('myBookings.whatHappened')}
+                      </Link>
+                    )}
                     {c.encounterId && (
                       <StaffLink
                         to="/app/visit"

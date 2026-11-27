@@ -3,6 +3,7 @@ import { isoDate } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
 import { apiError, isMissingFunction } from './errors'
+import { sampleMyBookingAdded, sampleMyBookingMoved } from './my-bookings'
 import { sampleNextAppointment } from './patients'
 
 /**
@@ -280,6 +281,16 @@ export function useBookFollowUp() {
           mine: self,
           upcoming: true,
         })
+        // 0208: a booking with oneself shows in My bookings too ("Book again")
+        if (self)
+          sampleMyBookingAdded({
+            id,
+            patientId: i.patientId,
+            name: i.patientName,
+            startsAt: i.startsAt,
+            reason: i.reason?.trim() || null,
+            note: i.note?.trim() || null,
+          })
         if (i.encounterId)
           sampleNextAppointment.set(i.encounterId, {
             id,
@@ -362,6 +373,8 @@ export function useChangeBooking() {
             note: i.note ?? row.note,
             status,
           })
+        // 0208: the same booking in My bookings follows (a missed one booked at a new time)
+        sampleMyBookingMoved(i.id, i.startsAt, i.why?.trim() || null)
         return {
           id: i.id,
           status: status === 'approved' ? 'approved' : 'confirmed',
