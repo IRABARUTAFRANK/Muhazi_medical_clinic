@@ -531,7 +531,8 @@ export function paperLayout(cfg: PaperCfg, choice: PaperChoice | null | undefine
   const labelH = group === 'label' ? mm(h!) : '40mm'
   const css = `
 :root { --fs-title: ${s.title}pt; --fs-clinic: ${s.clinic}pt; --fs-h: ${s.h}pt; --fs-sub: ${s.sub}pt; --fs-body: ${s.body}pt; --fs-table: ${s.table}pt; --fs-small: ${s.small}pt;
-  --logo: ${s.logo}; --id-label: ${s.idLabel}; --stamp-w: ${s.stampW}; --stamp-h: ${s.stampH}; --label-w: ${labelW}; --label-h: ${labelH}; --wide-sheet: ${mm(wideW)}; }
+  --logo: ${s.logo}; --id-label: ${s.idLabel}; --stamp-w: ${s.stampW}; --stamp-h: ${s.stampH}; --label-w: ${labelW}; --label-h: ${labelH}; --wide-sheet: ${mm(wideW)};
+  --sheet-w: ${s.sheetW}; --sheet-pad: ${s.pad}; }
 @page { ${s.page} }${wide ? `\n@page wide { ${wide} }` : ''}${footer}
 @media screen { .sheet { width: ${s.sheetW}; padding: ${s.pad}; } }
 `

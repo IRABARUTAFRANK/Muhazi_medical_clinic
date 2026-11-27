@@ -883,6 +883,8 @@ html:is(.pw-xs, .pw-s) h2 { padding-left: 4pt; padding-right: 4pt; }
   .sheet { background: #ffffff; max-width: 100%; margin: 0 auto; border-radius: 2px;
     box-shadow: 0 1px 3px rgba(11, 34, 82, 0.14), 0 10px 28px rgba(11, 34, 82, 0.10); }
   html.paper-label .sheet { padding: 0; box-shadow: none; background: transparent; }
+  /* while the print window measures the tables (lib/print-runtime.ts): the sheet at its paper's width */
+  html.fit-measure .sheet { max-width: none; }
   html.paper-label .label { background: #ffffff; outline: 1px solid #bbbbbb; margin: 0 auto 6mm; }
 }
 /* a phone-width window: the options scroll away with the page instead of covering it */

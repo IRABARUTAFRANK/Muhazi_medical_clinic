@@ -113,6 +113,46 @@ export function printRuntime(
     fit.textContent = css
   }
 
+  /**
+   * 0211: a table wider than its page (a report's 12 columns on A5) gets smaller type, just enough
+   * to fit, measured at the paper's own width (`fit-measure`, whatever the screen's width): the
+   * browser would otherwise shrink the whole printout, every page, to fit that one table.
+   */
+  function fitTables(): void {
+    const tables = doc.querySelectorAll('table.dt')
+    if (!tables.length) return
+    tables.forEach((t) => (t as HTMLElement).style.removeProperty('font-size'))
+    if (!lay.ok || lay.group !== 'sheet') return
+    root.classList.add('fit-measure')
+    try {
+      tables.forEach((el) => {
+        const t = el as HTMLElement
+        const box = t.closest('.rs') as HTMLElement | null
+        if (!box) return
+        // the table's narrowest width (all it can wrap, wrapped), not its 100 % of the page
+        t.style.width = 'min-content'
+        try {
+          for (let k = 0; k < 8; k++) {
+            const avail = box.clientWidth
+            const need = t.offsetWidth
+            // room to spare: print lays text out a little wider than the screen does
+            if (!avail || need <= avail * 0.95) break
+            const cur = parseFloat(getComputedStyle(t).fontSize)
+            // the cell padding does not shrink with the text: aim lower, step by step. Never
+            // below 7 px (about 5.3 pt): past that the browser's own shrinking is no worse
+            const next = Math.max(7, cur * ((avail * 0.92) / need))
+            if (!(next < cur - 0.05)) break
+            t.style.fontSize = next.toFixed(2) + 'px'
+          }
+        } finally {
+          t.style.removeProperty('width')
+        }
+      })
+    } finally {
+      root.classList.remove('fit-measure')
+    }
+  }
+
   function say(message: string | null): void {
     if (!err) return
     err.textContent = message || ''
@@ -138,6 +178,7 @@ export function printRuntime(
     l.cls.forEach((c) => root.classList.add(c))
     if (ori && l.group === 'sheet' && !touched) ori.value = l.orientation
     fitRoll()
+    fitTables()
     // the labels fit their text again (lib/dispense-label.ts)
     try {
       window.dispatchEvent(new Event('mmc-paper'))
@@ -309,6 +350,7 @@ export function printRuntime(
     .catch(() => null)
   Promise.race([ready, cap]).then(() => {
     fitRoll()
+    fitTables()
     if (straight) print()
   })
 }

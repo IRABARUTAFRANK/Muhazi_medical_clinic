@@ -416,26 +416,26 @@ const REPORT_CSS = `
 .rs.keep, .pair.keep { break-inside: avoid; page-break-inside: avoid; }
 .dt tr.total { break-before: avoid; page-break-before: avoid; }
 .dt tbody tr:nth-last-child(2) { break-after: avoid; page-break-after: avoid; }
-/* a table with more than 7 columns gets its own landscape pages of the same paper (the
-   "@page wide" of the paper's CSS, lib/paper.ts); the rest stays portrait. On a landscape page
-   (the report's own, or the one chosen in the print window) nothing changes. */
-html.paper-portrait .rs:is(.wide, .portrait-wide) { page: wide; }
-html.paper-portrait .rs:is(.wide, .portrait-wide) > h2:first-child { margin-top: 0; }
-/* on screen (the preview before printing) a wide section shows as its own landscape sheet, centred
-   on the portrait one, instead of running off its right edge; on a narrow screen it scrolls */
+/* 0211: the report runs in parts — what prints portrait, then a table with more than 7 columns
+   (with the notes and signatures when it ends the report) on its own landscape pages of the same
+   paper (the "@page wide" of lib/paper.ts), then portrait again. On a landscape page (the
+   report's own, or the one chosen in the print window) nothing changes. */
+html.paper-portrait .part-wide { page: wide; }
+html.paper-portrait .part-wide > .rs:first-child > h2:first-child { margin-top: 0; }
+/* on screen (the preview before printing) each part is its own sheet, one under the other: the
+   landscape one as wide as its paper (it scrolls on a narrow screen), never laid over the other;
+   on landscape paper there is one kind of page: the report stays one sheet */
 @media screen {
-  html.paper-portrait .rs:is(.wide, .portrait-wide) { --wide-w: min(var(--wide-sheet, 297mm), 100vw - 24px); box-sizing: border-box; width: var(--wide-w);
-    margin: 10mm 0 10mm calc(50% - var(--wide-w) / 2); padding: 12mm 18mm; background: #ffffff;
-    border-radius: 2px; box-shadow: 0 1px 3px rgba(11, 34, 82, 0.14), 0 10px 28px rgba(11, 34, 82, 0.10);
-    overflow-x: auto; }
-  /* the notes and signatures that follow a wide table stay on its sheet (as on the printed page) */
-  html.paper-portrait .wide-tail { --wide-w: min(var(--wide-sheet, 297mm), 100vw - 24px); box-sizing: border-box; width: var(--wide-w);
-    margin: 0 0 10mm calc(50% - var(--wide-w) / 2); padding: 0 18mm 12mm; background: #ffffff;
-    border-radius: 0 0 2px 2px; box-shadow: 0 1px 3px rgba(11, 34, 82, 0.14), 0 10px 28px rgba(11, 34, 82, 0.10); }
-  html.paper-portrait .rs:is(.wide, .portrait-wide):has(+ .wide-tail) { margin-bottom: 0; border-radius: 2px 2px 0 0; padding-bottom: 4mm; }
+  html.paper-portrait .sheet:has(> .part) { width: auto; padding: 0; background: transparent; box-shadow: none; }
+  html.paper-portrait .part { box-sizing: border-box; width: var(--sheet-w, 210mm); max-width: 100%; margin: 0 auto 10mm;
+    padding: var(--sheet-pad, 15mm 18mm); background: #ffffff; border-radius: 2px;
+    box-shadow: 0 1px 3px rgba(11, 34, 82, 0.14), 0 10px 28px rgba(11, 34, 82, 0.10); }
+  html.paper-portrait .part-wide { width: min(var(--wide-sheet, 297mm), 100vw - 24px); max-width: none;
+    margin-left: auto; margin-right: auto; overflow-x: auto; }
+  /* while the print window measures the tables (lib/print-runtime.ts): each part at its paper's width */
+  html.fit-measure.paper-portrait .part { width: var(--sheet-w, 210mm); max-width: none; }
+  html.fit-measure.paper-portrait .part-wide { width: var(--wide-sheet, 297mm); }
 }
-/* the signature lines stay on the last landscape page when the report ends with a wide table */
-html.paper-portrait .wide-tail { page: wide; }
 /* the signature lines never stand alone at the top of a page: the last rows come with them */
 .sig-wrap, .wide-tail { break-before: avoid; page-break-before: avoid; }
 /* report centre tables: a group's heading across the table, its subtotal, the totals on top */
@@ -471,13 +471,13 @@ const sectionHtml = (t: ReportTable, total: string, extra = '', landscape = fals
  * two short ones are kept whole together; with one long table, the long one goes on the left so
  * it can run on to the next page in its own column. Two long small tables each take a half row.
  */
-function sectionsHtml(tables: ReportTable[], total: string, landscape = false): string {
-  const out: string[] = []
+function sectionsHtml(tables: ReportTable[], total: string, landscape = false): Piece[] {
+  const out: Piece[] = []
   for (let i = 0; i < tables.length; i++) {
     const a = tables[i]
     if (!a) continue
     if (!isHalf(a)) {
-      out.push(sectionHtml(a, total, '', landscape))
+      out.push({ html: sectionHtml(a, total, '', landscape), wide: isWidePdf(a) })
       continue
     }
     const next = tables[i + 1]
@@ -485,11 +485,35 @@ function sectionsHtml(tables: ReportTable[], total: string, landscape = false): 
     if (b) i++
     const pair: ReportTable[] = b ? (keepWhole(b) ? [a, b] : [b, a]) : [a]
     const keepPair = pair.every(keepWhole)
-    out.push(
-      `<div class="pair${keepPair ? ' keep' : ''}">${pair.map((t) => sectionHtml(t, total)).join('')}</div>`,
-    )
+    out.push({
+      html: `<div class="pair${keepPair ? ' keep' : ''}">${pair.map((t) => sectionHtml(t, total)).join('')}</div>`,
+      wide: false,
+    })
   }
-  return out.join('')
+  return out
+}
+
+/** A piece of the report and whether it is a wide table (its own landscape pages). */
+interface Piece {
+  html: string
+  wide: boolean
+}
+
+/** 0211: the pieces in runs, each run one part: portrait, then landscape, then portrait… */
+const partsHtml = (pieces: Piece[]): string => {
+  const runs: Piece[][] = []
+  for (const p of pieces) {
+    if (!p.html) continue
+    const run = runs[runs.length - 1]
+    if (run && run[0]!.wide === p.wide) run.push(p)
+    else runs.push([p])
+  }
+  return runs
+    .map(
+      (r) =>
+        `<div class="part${r[0]!.wide ? ' part-wide' : ''}">${r.map((p) => p.html).join('')}</div>`,
+    )
+    .join('')
 }
 
 /** The full HTML of the PDF report (pure, so it can be rendered outside the app). */
@@ -517,27 +541,45 @@ export function reportHtml(report: Report, opts: { autoPrint?: boolean } = {}): 
     { stamp: false, note: false },
   )
 
-  const body = [
-    letterheadHtml(lh, l, 'compact'),
-    titleBlockHtml({
-      title: report.title,
-      scope: scopeLine(report),
-      meta: [
-        [w.reportNo, no],
-        [w.printed, docDateTime(at)],
-        [w.preparedBy, report.producedBy],
-      ],
-    }),
-    report.figures?.length
-      ? keyFiguresHtml(report.figures.map((f) => ({ label: f.label, value: figureText(f) })))
-      : '',
-    report.summaryText ? `<p class="summary-text">${esc(report.summaryText)}</p>` : '',
-    sections,
-    cash ? sectionHtml(cash, w.total, '', landscape) : '',
-    last && isWidePdf(last)
-      ? `<div class="wide-tail">${notesHtml(report)}${signatures}</div>`
-      : notesHtml(report) + signatures,
-  ].join('')
+  const endsWide = !!last && isWidePdf(last)
+  const pieces: Piece[] = [
+    { html: letterheadHtml(lh, l, 'compact'), wide: false },
+    {
+      html: titleBlockHtml({
+        title: report.title,
+        scope: scopeLine(report),
+        meta: [
+          [w.reportNo, no],
+          [w.printed, docDateTime(at)],
+          [w.preparedBy, report.producedBy],
+        ],
+      }),
+      wide: false,
+    },
+    {
+      html: report.figures?.length
+        ? keyFiguresHtml(report.figures.map((f) => ({ label: f.label, value: figureText(f) })))
+        : '',
+      wide: false,
+    },
+    {
+      html: report.summaryText ? `<p class="summary-text">${esc(report.summaryText)}</p>` : '',
+      wide: false,
+    },
+    ...sections,
+    {
+      html: cash ? sectionHtml(cash, w.total, '', landscape) : '',
+      wide: !!cash && isWidePdf(cash),
+    },
+    // the notes and signatures stay with a wide table that ends the report (its last page)
+    {
+      html: endsWide
+        ? `<div class="wide-tail">${notesHtml(report)}${signatures}</div>`
+        : notesHtml(report) + signatures,
+      wide: endsWide,
+    },
+  ]
+  const body = partsHtml(pieces)
 
   return documentHtml({
     base: {
