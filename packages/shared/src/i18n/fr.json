@@ -3617,6 +3617,7 @@
       "notArrived": "Pas arrivé",
       "notArrivedDay": "Jamais venu",
       "requestsHint": "L’heure demandée par ces personnes est passée : appelez-les, réservez une autre heure ou refusez la demande.",
+      "notReception": "Vous pouvez clore ici un rendez-vous en retard (Non venu, Autre heure, Annuler le rendez-vous). Reprendre un rendez-vous et répondre aux demandes restent à la réception ; pour le faire vous-même, le gestionnaire active pour vous « Répondre aux demandes de rendez-vous » dans Paramètres → Qui peut faire quoi.",
       "hint": "Un rendez-vous est en retard 15 minutes après son heure sans le patient ; une demande, dès que l’heure demandée est passée. La réception en est avertie une fois. Répondez à chacun ici : il quitte alors cette liste."
     }
   },

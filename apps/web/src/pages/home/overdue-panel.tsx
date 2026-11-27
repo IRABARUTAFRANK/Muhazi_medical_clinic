@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { AlarmClock, CalendarPlus, X } from 'lucide-react'
+import { AlarmClock, CalendarPlus, CalendarSync, CalendarX, UserX } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatDayMonth, isoDate } from '@mmc/shared'
 import { Empty, Hint, Panel, Pill } from '@/components/dash/kit'
@@ -28,6 +28,10 @@ const subTitle = 'text-ink-3 m-0 text-[12px] font-bold tracking-wide uppercase'
  * still in time. Reception answers each one here: Arrived (today) / No-show / Cancel / Book again
  * for a booking; Book another time / Reject for a request. The database tells reception once of
  * each (overdue_booking_notices, asked while this panel is open).
+ *
+ * 0210: a late booking is closed by reception, the manager or the booking's own doctor (as the
+ * database allows since 0208): Did not come / Another time / Cancel the booking; Book again and
+ * the requests stay reception's (answer booking requests), which the panel says to the others.
  */
 export function OverduePanel({
   i = 2,
@@ -38,10 +42,16 @@ export function OverduePanel({
   onRegister,
   onBookingClosed,
   hideWhenEmpty,
+  mayClose,
+  onChangeTime,
 }: {
   i?: number
   canAct: boolean
   canArrive?: boolean
+  /** 0210: who may close this late booking without reception's right (the manager, its doctor). */
+  mayClose?: (a: DayAppointment) => boolean
+  /** 0210: "Another time": the booking opens with the form to move it. */
+  onChangeTime?: (id: string) => void
   onSelect?: (id: string) => void
   /** "Book again" for a late booking (Bookings page). */
   onRebook?: (a: DayAppointment) => void
@@ -68,6 +78,7 @@ export function OverduePanel({
   const total = bookings.length + overdueRequests.length
 
   if (hideWhenEmpty && total === 0) return null
+  const closes = (a: DayAppointment) => canAct || !!mayClose?.(a)
 
   const run = async (fn: () => Promise<unknown>) => {
     setError(null)
@@ -156,7 +167,7 @@ export function OverduePanel({
                 <span className="text-red text-[13px] font-semibold">
                   {t(isToday ? 'ops.overdue.notArrived' : 'ops.overdue.notArrivedDay')}
                 </span>
-                {(canAct || (canArrive ?? canAct)) && (
+                {(closes(a) || (canArrive ?? canAct)) && (
                   <span className="flex flex-wrap gap-1">
                     {isToday && (canArrive ?? canAct) && (
                       <Button
@@ -182,21 +193,22 @@ export function OverduePanel({
                         {t('ops.appts.arrived')}
                       </Button>
                     )}
-                    {canAct && (
+                    {closes(a) && (
                       <Button size="sm" variant="tint-coral" onClick={() => void noShow(a)}>
-                        <X size={14} aria-hidden="true" />
-                        {t('ops.appts.noShow')}
+                        <UserX size={14} aria-hidden="true" />
+                        {t('myBookings.act.noShow')}
                       </Button>
                     )}
-                    {canAct && (
-                      <Button
-                        size="sm"
-                        variant="tint-coral"
-                        aria-label={t('ops.appts.cancel')}
-                        title={t('ops.appts.cancel')}
-                        onClick={() => void cancel(a)}
-                      >
-                        <X size={14} aria-hidden="true" />
+                    {closes(a) && onChangeTime && (
+                      <Button size="sm" variant="tint-violet" onClick={() => onChangeTime(a.id)}>
+                        <CalendarSync size={14} aria-hidden="true" />
+                        {t('home.otherTime')}
+                      </Button>
+                    )}
+                    {closes(a) && (
+                      <Button size="sm" variant="tint-coral" onClick={() => void cancel(a)}>
+                        <CalendarX size={14} aria-hidden="true" />
+                        {t('myBookings.act.cancel')}
                       </Button>
                     )}
                     {canAct && onRebook && a.patientId && (
@@ -253,6 +265,8 @@ export function OverduePanel({
         onRegister={onRegister}
         onBookingClosed={onBookingClosed}
       />
+      {/* 0210: someone who may close a late booking but not answer the requests is told why */}
+      {!canAct && <Hint>{t('ops.overdue.notReception')}</Hint>}
       <Hint>{t('ops.overdue.hint')}</Hint>
     </Panel>
   )

@@ -3621,6 +3621,7 @@
       "notArrived": "Ntaraza",
       "notArrivedDay": "Ntiyigeze aza",
       "requestsHint": "Isaha aba bantu basabye yarenze: bahamagare, ufate indi saha cyangwa wange icyifuzo.",
+      "notReception": "Hano ushobora gufunga gahunda yatinze (Ntiyaje, Ikindi gihe, Hagarika gahunda). Kongera gufata gahunda no gusubiza ubusabe bikorwa n’aho bakirira abarwayi; kugira ngo ubyikorere, umuyobozi agufungurira “Gusubiza ubusabe bwa gahunda” muri Igenamiterere → Ninde ukora iki.",
       "hint": "Gahunda iba yatinze iminota 15 nyuma y’isaha yayo umurwayi ataraza; icyifuzo, isaha yasabwe irenze. Abakira abarwayi babimenyeshwa rimwe. Subiza buri kimwe hano: gihita kiva kuri uru rutonde."
     }
   },

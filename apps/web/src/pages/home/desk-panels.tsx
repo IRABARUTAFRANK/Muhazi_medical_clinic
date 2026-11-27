@@ -1,10 +1,12 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { useNow } from '@/lib/hooks'
 import {
   AlarmClock,
   BedDouble,
   CalendarCheck,
   CalendarPlus,
+  CalendarX,
   Check,
   Clock,
   FilePen,
@@ -12,6 +14,7 @@ import {
   ListTodo,
   Sparkles,
   Ticket,
+  UserX,
   X,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -96,11 +99,14 @@ export function AppointmentsPanel({
   onSelect,
   onRebook,
   canArrive,
+  mayClose,
 }: {
   i?: number
   day?: Date
   limit?: number
   canAct: boolean
+  /** 0210: who may close this booking without reception's right (the manager, its own doctor). */
+  mayClose?: (a: DayAppointment) => boolean
   footer?: ReactNode
   /** Opens the booking's details (appointments page). */
   onSelect?: (id: string) => void
@@ -124,6 +130,10 @@ export function AppointmentsPanel({
   const todayKey = isoDate(new Date())
   const isToday = dayKey === todayKey
   const isPast = dayKey < todayKey
+  const now = useNow(60_000)
+  const closes = (a: DayAppointment) => canAct || !!mayClose?.(a)
+  // "Did not come" once the booking's time has passed (the database refuses it before)
+  const timePassed = (a: DayAppointment) => isPast || (isToday && Date.parse(a.startsAt) <= now)
   const rows = limit ? appts.slice(0, limit) : appts
   const paged = usePaged(rows, limit ? rows.length || 1 : 10, String(day.getTime()))
 
@@ -228,7 +238,7 @@ export function AppointmentsPanel({
                     </span>
                     {/* Arrived needs only "Start visits" (appointment_arrived asks for nothing
                         else that the manager switches); No-show and Cancel answer the booking */}
-                    {(canAct || (canArrive ?? canAct)) && open && (
+                    {(closes(a) || (canArrive ?? canAct)) && open && (
                       <span className="flex flex-wrap gap-1">
                         {isToday && (canArrive ?? canAct) && (
                           <Button
@@ -258,21 +268,16 @@ export function AppointmentsPanel({
                             {t('ops.appts.arrived')}
                           </Button>
                         )}
-                        {canAct && (isToday || isPast) && (
+                        {closes(a) && timePassed(a) && (
                           <Button size="sm" variant="tint-coral" onClick={() => void noShow(a)}>
-                            <X size={14} aria-hidden="true" />
-                            {t('ops.appts.noShow')}
+                            <UserX size={14} aria-hidden="true" />
+                            {t('myBookings.act.noShow')}
                           </Button>
                         )}
-                        {canAct && !isPast && (
-                          <Button
-                            size="sm"
-                            variant="tint-coral"
-                            aria-label={t('ops.appts.cancel')}
-                            title={t('ops.appts.cancel')}
-                            onClick={() => void cancel(a)}
-                          >
-                            <X size={14} aria-hidden="true" />
+                        {closes(a) && !isPast && (
+                          <Button size="sm" variant="tint-coral" onClick={() => void cancel(a)}>
+                            <CalendarX size={14} aria-hidden="true" />
+                            {t('myBookings.act.cancel')}
                           </Button>
                         )}
                       </span>

@@ -40,6 +40,12 @@ export function AppointmentsPage({ user, initialDay }: { user: StaffUser; initia
   const dayNames = useDayNames()
   const [offset, setOffset] = useState(() => offsetOf(initialDay) ?? 0)
   const [selected, setSelected] = useState<string | null>(null)
+  // 0210: "Another time" from the late list opens the booking with the form to move it
+  const [changeFirst, setChangeFirst] = useState(false)
+  const select = (id: string | null) => {
+    setChangeFirst(false)
+    setSelected(id)
+  }
   // "Register the patient now" from a booking request: the new-file form opens on the left.
   const [registering, setRegistering] = useState<RegisterRequest | null>(null)
   // "New booking": a phone caller or a patient at the desk
@@ -51,11 +57,17 @@ export function AppointmentsPage({ user, initialDay }: { user: StaffUser; initia
     const o = offsetOf(iso)
     if (o === null) return
     setOffset(o)
-    setSelected(null)
+    select(null)
   }
   // booking, cancelling and the arrival follow Who may do what (the manager's switches)
   const can = useCan(user)
   const canAct = can('appointment.approve')
+  // 0210 (database 0208): a booking is closed by reception, the manager or its own doctor
+  const mayClose = (doctorUserId: string | null | undefined) =>
+    canAct ||
+    !!user.isManager ||
+    user.role === 'manager' ||
+    (!!doctorUserId && doctorUserId === user.id)
   const rebook = (a: DayAppointment) =>
     a.patientId &&
     setBooking({
@@ -173,8 +185,9 @@ export function AppointmentsPage({ user, initialDay }: { user: StaffUser; initia
                   key={offset}
                   day={day}
                   canAct={canAct}
+                  mayClose={(a) => mayClose(a.doctorUserId)}
                   canArrive={can('visit.start')}
-                  onSelect={setSelected}
+                  onSelect={select}
                   onRebook={rebook}
                 />
                 {/* 0153: the bookings and requests past their time, answered here */}
@@ -182,7 +195,12 @@ export function AppointmentsPage({ user, initialDay }: { user: StaffUser; initia
                   i={2}
                   canAct={canAct}
                   canArrive={can('visit.start')}
-                  onSelect={setSelected}
+                  mayClose={(a) => mayClose(a.doctorUserId)}
+                  onChangeTime={(id) => {
+                    setSelected(id)
+                    setChangeFirst(true)
+                  }}
+                  onSelect={select}
                   onRebook={rebook}
                   onRegister={setRegistering}
                   onBookingClosed={() => setRegistering(null)}
@@ -219,7 +237,12 @@ export function AppointmentsPage({ user, initialDay }: { user: StaffUser; initia
           <p className="text-ink-3 m-0 text-xs">{t('ops.appts.flow')}</p>
         </section>
         {/* one booking opens beside the list (rose: bookings); Back / Escape returns to it */}
-        <AppointmentDetail id={selected} onClose={() => setSelected(null)} />
+        <AppointmentDetail
+          id={selected}
+          onClose={() => select(null)}
+          mayClose={mayClose}
+          changeFirst={changeFirst}
+        />
       </main>
     </StaffShell>
   )

@@ -3617,6 +3617,7 @@
       "notArrived": "Not arrived",
       "notArrivedDay": "Never arrived",
       "requestsHint": "The time these people asked for has passed: call them, book another time, or reject the request.",
+      "notReception": "You may close a late booking here (Did not come, Another time, Cancel the booking). Booking again and answering the requests stay with reception; to do them yourself, the manager switches on “Answer booking requests” for you in Settings → Who may do what.",
       "hint": "A booking is late 15 minutes after its time without the patient; a request, once the time asked for has passed. Reception is told once of each. Answer each one here: it then leaves this list."
     }
   },
