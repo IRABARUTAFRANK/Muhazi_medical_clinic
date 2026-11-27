@@ -3830,6 +3830,16 @@
       "moved": "{{name}} moved from {{from}} to {{bed}}",
       "ended": "The stay of {{name}} in {{bed}} has ended: the bed is to be cleaned"
     },
+    "bedEnding": {
+      "last": "{{name}}: last expected day in {{bed}}",
+      "over_one": "{{name}}: {{count}} day past the expected stay in {{bed}}",
+      "over_other": "{{name}}: {{count}} days past the expected stay in {{bed}}",
+      "expectedFrom_one": "{{count}} day expected from {{since}}",
+      "expectedFrom_other": "{{count}} days expected from {{since}}",
+      "billNext": "Tomorrow goes on the bill unless the stay ends today",
+      "billEach": "Each new day goes on the bill until the stay ends",
+      "ask": "Extend the stay, or end it and let the patient go home?"
+    },
     "nurseOrderLate": "Late: {{title}} for {{name}} was due at {{time}}",
     "taskRecorded": "{{by}} recorded {{what}}",
     "taskRecordedDone": "{{by}} recorded {{what}} and did the task",
@@ -12142,6 +12152,9 @@
     "expected_one": "{{count}} day expected",
     "expected_other": "{{count}} days expected",
     "notDecided": "days not decided yet",
+    "lastDay": "Last expected day: extend the stay or end it",
+    "overBy_one": "{{count}} day past the expected stay: extend it or end it",
+    "overBy_other": "{{count}} days past the expected stay: extend it or end it",
     "amount": "Bed days on the bill: {{amount}}",
     "owed": "Still to pay on the bill: {{amount}}",
     "why": "Why: {{reason}}",

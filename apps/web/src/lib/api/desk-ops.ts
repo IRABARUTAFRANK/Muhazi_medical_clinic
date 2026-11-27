@@ -272,7 +272,8 @@ const sampleAppts: DayAppointment[] = [
     late: false,
   },
 ]
-/** Sample beds (exported for the bed actions of lib/api/beds.ts). 0197: Bed 1 for three days. */
+/** Sample beds (exported for the bed actions of lib/api/beds.ts). 0197: Bed 1 for three days;
+ *  0206: its third day is the last expected one. */
 export const sampleBeds: BoardBed[] = Array.from({ length: 6 }, (_, i) => ({
   id: `b-${i + 1}`,
   name: `Bed ${i + 1}`,
@@ -281,14 +282,14 @@ export const sampleBeds: BoardBed[] = Array.from({ length: 6 }, (_, i) => ({
   patient: i === 0 ? 'Uwase Claudine' : i === 3 ? 'Mugisha Kevin' : null,
   since: i === 0 ? new Date(Date.now() - 2 * 86_400_000).toISOString() : i === 3 ? at(9, 15) : null,
   nightlyPrice: i === 5 ? 20000 : 15000,
-  nights: i === 0 ? 5 : null,
-  until: i === 0 ? new Date(Date.now() + 3 * 86_400_000).toISOString() : null,
+  nights: i === 0 ? 3 : null,
+  until: i === 0 ? new Date(Date.now() + 86_400_000).toISOString() : null,
   stayId: i === 0 || i === 3 ? `s-${i}` : null,
   patientId: i === 0 || i === 3 ? `p-${i}` : null,
   fileNumber: i === 0 ? 'MMC-000124' : i === 3 ? 'MMC-000131' : null,
   byDay: i === 0 || i === 3 ? true : null,
   days: i === 0 ? 3 : i === 3 ? 1 : null,
-  expectedDays: i === 0 ? 5 : null,
+  expectedDays: i === 0 ? 3 : null,
   reason:
     i === 0 ? 'Severe malaria: treatment by drip' : i === 3 ? 'Observation after a fall' : null,
   givenBy: i === 0 || i === 3 ? 'Dr. Mukamana Béatrice' : null,

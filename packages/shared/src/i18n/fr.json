@@ -3830,6 +3830,16 @@
       "moved": "{{name}} change du lit {{from}} au lit {{bed}}",
       "ended": "Le séjour de {{name}} dans le lit {{bed}} est terminé : le lit est à nettoyer"
     },
+    "bedEnding": {
+      "last": "{{name}} : dernier jour prévu dans le lit {{bed}}",
+      "over_one": "{{name}} : {{count}} jour au-delà du séjour prévu dans le lit {{bed}}",
+      "over_other": "{{name}} : {{count}} jours au-delà du séjour prévu dans le lit {{bed}}",
+      "expectedFrom_one": "{{count}} jour prévu depuis le {{since}}",
+      "expectedFrom_other": "{{count}} jours prévus depuis le {{since}}",
+      "billNext": "Demain s’ajoute à la facture si le séjour ne se termine pas aujourd’hui",
+      "billEach": "Chaque nouveau jour s’ajoute à la facture jusqu’à la fin du séjour",
+      "ask": "Prolonger le séjour, ou y mettre fin et laisser le patient rentrer chez lui ?"
+    },
     "nurseOrderLate": "En retard : {{title}} pour {{name}} était prévu à {{time}}",
     "taskRecorded": "{{by}} a enregistré {{what}}",
     "taskRecordedDone": "{{by}} a enregistré {{what}} et a fait la tâche",
@@ -12142,6 +12152,9 @@
     "expected_one": "{{count}} jour prévu",
     "expected_other": "{{count}} jours prévus",
     "notDecided": "jours pas encore décidés",
+    "lastDay": "Dernier jour prévu : prolonger le séjour ou y mettre fin",
+    "overBy_one": "{{count}} jour au-delà du séjour prévu : le prolonger ou y mettre fin",
+    "overBy_other": "{{count}} jours au-delà du séjour prévu : le prolonger ou y mettre fin",
     "amount": "Jours de lit sur la facture : {{amount}}",
     "owed": "Reste à payer sur la facture : {{amount}}",
     "why": "Pourquoi : {{reason}}",

@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import {
+  AlarmClock,
   ArrowRightLeft,
   BedDouble,
   CalendarClock,
@@ -48,8 +49,24 @@ export function StayFacts({
   className?: string
 }) {
   const { t } = useTranslation()
+  // 0206: the last expected day, or past it — extend the stay or end it (the nurses and the doctor
+  // in charge are told once a day too)
+  const over = stay.expectedDays ? stay.days - stay.expectedDays : null
   return (
     <span className={cn('flex min-w-0 flex-wrap gap-x-4 gap-y-1', className)}>
+      {over != null && over >= 0 && (
+        <span
+          className={cn(
+            'inline-flex max-w-full min-w-0 items-start gap-1.5 rounded-md px-2 py-0.5 text-[13px] font-semibold',
+            over > 0 ? 'bg-red-bg text-red' : 'bg-amber-bg text-amber',
+          )}
+        >
+          <AlarmClock size={14} aria-hidden="true" className="mt-0.5 flex-none" />
+          <span className="min-w-0 break-words">
+            {over > 0 ? t('beds.overBy', { count: over }) : t('beds.lastDay')}
+          </span>
+        </span>
+      )}
       {showBed && (
         <span className={cn(fact, 'text-ink font-semibold')}>
           <BedDouble size={14} aria-hidden="true" className={factIcon} />

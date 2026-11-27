@@ -323,6 +323,26 @@ export function useWording() {
           ]),
         }
       }
+      // 0206: a stay on its last expected day, or past it — extend it, or end it (the patient goes home)
+      case 'bed_stay_ending': {
+        const over = p.what === 'over' ? Math.max(1, num(p.over)) : 0
+        const days = num(p.days)
+        return {
+          title: over
+            ? t('notify.bedEnding.over', { name: p.name ?? '', bed: p.bed ?? '', count: over })
+            : t('notify.bedEnding.last', { name: p.name ?? '', bed: p.bed ?? '' }),
+          body: joinParts([
+            days > 0
+              ? t('notify.bedEnding.expectedFrom', {
+                  count: days,
+                  since: p.since ? formatDate(new Date(String(p.since))) : '',
+                })
+              : null,
+            t(over ? 'notify.bedEnding.billEach' : 'notify.bedEnding.billNext'),
+            t('notify.bedEnding.ask'),
+          ]),
+        }
+      }
       case 'inquiry':
         // the doctor named in the request is told too: reception books it, the doctor then accepts
         return {

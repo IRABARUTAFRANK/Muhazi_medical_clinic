@@ -31721,6 +31721,144 @@ await step('0205: tidy — the visit of these checks leaves no trace for the oth
   return 'done'
 })
 // @@t205-end
+// @@t206-begin
+// ---------------------------------------------------------------- 0206 a bed stay reaching its expected days
+const t206 = {}
+const told206 = async (visit) =>
+  (
+    await db.query(
+      `select recipient_user, params ->> 'what' as what, (params ->> 'over')::int as over
+         from notification where kind = 'bed_stay_ending' and params ->> 'encounterId' = $1
+        order by created_at, recipient_user`,
+      [visit],
+    )
+  ).rows
+await step(
+  '0206: the doctor in charge and the nurses are asked on the last expected day, then each day past it — once each; nothing before, nothing again after a move to another bed, nothing for a stay without days, a new last day after an extension',
+  async () => {
+    await asAdmin()
+    const sql = await readFile(
+      path.join(migrationsDir, '20270223090000_bed_stay_ending.sql'),
+      'utf8',
+    )
+    await db.exec(sql)
+    await db.exec(sql)
+    const fx = (who, f) => `has_function_privilege('${who}', '${f}', 'execute')`
+    const g = await one(
+      `select ${fx('authenticated', 'bed_stay_alerts()')} as run, ${fx('anon', 'bed_stay_alerts()')} as run_anon,
+              ${fx('authenticated', 'bed_stay_in_charge(uuid)')} as in_charge`,
+    )
+    const bed = async (name) =>
+      (
+        await one(
+          `insert into bed (name, sort_order, nightly_price, status) values ($1, 900, 10000, 'free') returning id`,
+          [name],
+        )
+      ).id
+    t206.bed = await bed('Bed 206')
+    t206.bed2 = await bed('Bed 206 b')
+    t206.bed3 = await bed('Bed 206 c')
+    t206.v = await t127.ov(t127.doc)
+    t206.v2 = await t127.ov(t127.doc)
+    t206.stay = (
+      await as197b(t127.doc, `select keep_in_bed($1, $2, 3, 'Observation 206') as j`, [
+        t206.v,
+        t206.bed,
+      ])
+    ).stayId
+    t206.stay2 = (
+      await as197b(t127.doc, `select keep_in_bed($1, $2, null, 'No days 206') as j`, [
+        t206.v2,
+        t206.bed2,
+      ])
+    ).stayId
+    const run = () => as197b(t127.nurseA, `select bed_stay_alerts() as j`)
+    const shift = (visit, days) =>
+      db.query(
+        `update bed_stay set admitted_at = now() - make_interval(days => $2) where encounter_id = $1`,
+        [visit, days],
+      )
+    // day 1 of 3: nothing yet
+    await run()
+    const first = (await told206(t206.v)).length
+    // day 3 of 3 (the last expected day): told once
+    await asAdmin()
+    await shift(t206.v, 2)
+    await shift(t206.v2, 5)
+    await run()
+    await run()
+    const last = await told206(t206.v)
+    // moved to another bed the same day: a new stay, the same visit — not told again
+    await as197b(t127.doc, `select move_to_bed($1, $2, null) as j`, [t206.v, t206.bed3])
+    await run()
+    const moved = (await told206(t206.v)).length - last.length
+    // two days past: one more notice, once
+    await asAdmin()
+    await shift(t206.v, 4)
+    await run()
+    await run()
+    const over = await told206(t206.v)
+    // extended to 6 days: its new last day is still ahead — nothing new today
+    await as197b(t127.doc, `select set_bed_days($1, 6) as j`, [t206.v])
+    await run()
+    const extended = (await told206(t206.v)).length
+    await asAdmin()
+    const nurses = (
+      await one(`select count(*)::int as n from profiles p where p.active and is_nurse_role(p.id)`)
+    ).n
+    const whoLast = new Set(last.map((x) => x.recipient_user))
+    const r = {
+      grants: [g.run, g.run_anon, g.in_charge],
+      first,
+      last: [last.length, [...new Set(last.map((x) => x.what))]],
+      doctorTold: whoLast.has(t127.doc),
+      cashierTold: whoLast.has(staff.cashier),
+      nurses,
+      moved,
+      over: [
+        over.length - last.length,
+        over.filter((x) => x.what === 'over').map((x) => x.over)[0],
+      ],
+      extended: extended - over.length,
+      noDays: (await told206(t206.v2)).length,
+    }
+    if (
+      !r.grants[0] ||
+      r.grants[1] ||
+      r.grants[2] ||
+      r.first !== 0 ||
+      r.last[0] !== whoLast.size ||
+      json198(r.last[1]) !== json198(['last']) ||
+      !r.doctorTold ||
+      r.cashierTold ||
+      r.moved !== 0 ||
+      whoLast.size < nurses + 1 ||
+      json198(r.over) !== json198([whoLast.size, 2]) ||
+      r.extended !== 0 ||
+      r.noDays !== 0
+    )
+      throw new Error(json198(r))
+    return `for a signed-in person (not anon), the list of who is in charge internal; day 1 of 3: nothing; the last day: one notice each to ${whoLast.size} people (the doctor who gave the bed and the ${nurses} nurses; not the cashier), not twice, not again after a move to another bed; 2 days past: one more each ("2 days over"), not twice; extended to 6 days: nothing new; a stay without days: nothing`
+  },
+)
+await step('0206: tidy — the stays and visits of these checks leave no trace', async () => {
+  await asAdmin()
+  for (const v of [t206.v, t206.v2]) {
+    await db.query(
+      `update bed_stay set discharged_at = now() where encounter_id = $1 and discharged_at is null`,
+      [v],
+    )
+    await db.query(`update queue_entry set deleted_at = now() where encounter_id = $1`, [v])
+    await db.query(`update encounter set deleted_at = now() where id = $1`, [v])
+  }
+  await db.query(`update bed set status = 'free' where id in ($1, $2, $3)`, [
+    t206.bed,
+    t206.bed2,
+    t206.bed3,
+  ])
+  return 'done'
+})
+// @@t206-end
 finish()
 
 function finish() {

@@ -3839,6 +3839,16 @@
       "moved": "{{name}} yimuwe kuri {{from}} ajyanwa kuri {{bed}}",
       "ended": "{{name}} yasezerewe kuri {{bed}}: igitanda kigomba gusukurwa"
     },
+    "bedEnding": {
+      "last": "{{name}}: umunsi wa nyuma uteganyijwe kuri {{bed}}",
+      "over_one": "{{name}}: yarengejeho umunsi {{count}} ku minsi yari iteganyijwe kuri {{bed}}",
+      "over_other": "{{name}}: yarengejeho iminsi {{count}} ku minsi yari iteganyijwe kuri {{bed}}",
+      "expectedFrom_one": "Umunsi {{count}} uteganyijwe guhera {{since}}",
+      "expectedFrom_other": "Iminsi {{count}} iteganyijwe guhera {{since}}",
+      "billNext": "Ejo hazashyirwa kuri fagitire niba atasezerewe uyu munsi",
+      "billEach": "Buri munsi mushya ushyirwa kuri fagitire kugeza asezerewe",
+      "ask": "Ongera igihe, cyangwa umusezerere atahe?"
+    },
     "nurseOrderLate": "Byakerewe: {{title}} cya {{name}} cyagombaga gutangwa saa {{time}}",
     "taskRecorded": "{{by}} yanditse {{what}}",
     "taskRecordedDone": "{{by}} yanditse {{what}} kandi yakoze igikorwa",
@@ -12151,6 +12161,9 @@
     "expected_one": "Umunsi {{count}} uteganyijwe",
     "expected_other": "Iminsi {{count}} iteganyijwe",
     "notDecided": "iminsi ntiramenyekana",
+    "lastDay": "Umunsi wa nyuma uteganyijwe: ongera igihe cyangwa umusezerere",
+    "overBy_one": "Yarengejeho umunsi {{count}} ku yari iteganyijwe: ongera igihe cyangwa umusezerere",
+    "overBy_other": "Yarengejeho iminsi {{count}} ku yari iteganyijwe: ongera igihe cyangwa umusezerere",
     "amount": "Iminsi y’igitanda kuri fagitire: {{amount}}",
     "owed": "Ibisigaye kwishyurwa kuri fagitire: {{amount}}",
     "why": "Impamvu: {{reason}}",

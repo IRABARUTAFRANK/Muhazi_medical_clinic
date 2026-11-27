@@ -2,6 +2,7 @@ import { Fragment, type CSSProperties } from 'react'
 import {
   AlarmClock,
   ArrowRightLeft,
+  BedDouble,
   Bell,
   FlaskConical,
   HeartHandshake,
@@ -53,6 +54,9 @@ const LOOK: Record<string, { icon: LucideIcon; tint: Tint }> = {
   access_request: { icon: LockKeyhole, tint: 'amber' },
   access_answer: { icon: ShieldCheck, tint: 'mint' },
   access_emergency: { icon: Siren, tint: 'coral' },
+  // 0197 / 0206: a patient in a bed (given, moved, ended), a stay on or past its expected days
+  bed_stay: { icon: BedDouble, tint: 'teal' },
+  bed_stay_ending: { icon: BedDouble, tint: 'amber' },
 }
 
 /**

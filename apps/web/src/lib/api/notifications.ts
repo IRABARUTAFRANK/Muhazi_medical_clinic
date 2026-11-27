@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
-import { apiError } from './errors'
+import { apiError, isMissingFunction } from './errors'
 
 /**
  * Notifications (migration 0026). Each person sees only what is addressed to them: their own
@@ -75,6 +75,28 @@ let sample: Notice[] = (
       sender: 'Dr. Uwase Aline',
     },
     {
+      // 0206: the sample Bed 1 (Uwase Claudine) is on its last expected day — doctor and nurses
+      id: 'n-bed',
+      at: new Date(Date.now() - 8 * 60_000).toISOString(),
+      kind: 'bed_stay_ending',
+      params: {
+        what: 'last',
+        stayId: 's-0',
+        encounterId: 'e-0',
+        bed: 'Bed 1',
+        name: 'Uwase Claudine',
+        days: '3',
+        since: new Date(Date.now() - 2 * 86_400_000).toISOString().slice(0, 10),
+        over: '0',
+      },
+      title: null,
+      body: null,
+      link: '/app/visit?encounter=e-0',
+      urgent: false,
+      read: false,
+      sender: null,
+    },
+    {
       // the sample doctor's booking to accept (home.ts sample 'ta-1'): answered in the notice
       id: 'n-acc',
       at: new Date(Date.now() - 5 * 60_000).toISOString(),
@@ -139,6 +161,28 @@ let sample: Notice[] = (
   ] as Omit<Notice, 'today'>[]
 ).map((n) => ({ ...n, today: isKigaliToday(n.at) }))
 
+/** When this screen last asked for the stays reaching their expected days. */
+let bedEndingAsked = 0
+/**
+ * 0206: a bed stay on its last expected day (or past it) — the doctor in charge and the nurses are
+ * asked to extend it or end it (bed_stay_alerts writes each notice once). The database has no clock,
+ * so the notices list asks it first, at most every five minutes. Quiet: a database before 0206 (or a
+ * failure) shows the notices as they are.
+ */
+async function askBedStaysEnding(): Promise<void> {
+  if (!supabase) return
+  const now = Date.now()
+  if (now - bedEndingAsked < 300_000) return
+  bedEndingAsked = now
+  try {
+    const { error } = await supabase.rpc('bed_stay_alerts')
+    // a database before 0206: not again for an hour
+    if (error && isMissingFunction(error)) bedEndingAsked = now + 3_600_000
+  } catch {
+    // the notices show as they are
+  }
+}
+
 export function useNotifications(limit = 40) {
   return useQuery({
     queryKey: [...KEY, limit],
@@ -147,13 +191,16 @@ export function useNotifications(limit = 40) {
     queryFn: async (): Promise<NoticeList> => {
       if (!supabase) {
         // the sample handover and booking notices are for the sample doctor only
-        const items = sample.filter(
-          (n) =>
-            !(n.kind.startsWith('handover') || n.kind === 'to_accept') ||
-            useSession.getState().user?.role === 'doctor',
+        const role = useSession.getState().user?.role
+        const items = sample.filter((n) =>
+          n.kind === 'bed_stay_ending'
+            ? role === 'doctor' || role === 'nurse'
+            : !(n.kind.startsWith('handover') || n.kind === 'to_accept') || role === 'doctor',
         )
         return countNotices(items.map((n) => ({ ...n, today: isKigaliToday(n.at) })))
       }
+      // 0206: the stays reaching their expected days are told first (nobody presses anything)
+      await askBedStaysEnding()
       const { data, error } = await supabase.rpc('my_notifications', { p_limit: limit })
       if (error) throw apiError(error)
       const d = data as { unread: number; unreadEarlier?: number; items: Notice[] }
