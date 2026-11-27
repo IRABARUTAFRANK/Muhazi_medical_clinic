@@ -1033,6 +1033,20 @@ table.dt.fixed { table-layout: fixed; }
 .copy-to { font-size: var(--fs-small); color: var(--ink-2); margin-top: 6pt; }
 .lab-notes { font-size: var(--fs-small); color: var(--ink-2); margin-top: 4pt; }
 .lab-notes p { margin: 0 0 2pt; }
+/* 0207, a receipt roll: each test's name on its own line, its result, unit, range and flag under
+   it in four columns (the five columns of A4 do not fit 72 mm) */
+html:is(.pw-xs, .pw-s) table.dt.results, html:is(.pw-xs, .pw-s) .dt.results > thead,
+html:is(.pw-xs, .pw-s) .dt.results > tbody { display: block; }
+html:is(.pw-xs, .pw-s) .dt.results > colgroup { display: none; }
+html:is(.pw-xs, .pw-s) .dt.results tr { display: grid; column-gap: 1.5mm; padding: 2pt 0;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr) minmax(0, 1.1fr) minmax(0, 1.2fr);
+  border-bottom: 0.5pt solid var(--hair); }
+html:is(.pw-xs, .pw-s) .dt.results tr > * { padding: 0.5pt 0; border: 0; background: transparent; }
+html:is(.pw-xs, .pw-s) .dt.results tr > :first-child { grid-column: 1 / -1; }
+html:is(.pw-xs, .pw-s) .dt.results tbody tr > :first-child { font-weight: 600; }
+html:is(.pw-xs, .pw-s) .dt.results td[colspan] { grid-column: span 3; }
+html:is(.pw-xs, .pw-s) .dt.results thead tr { border-bottom: 1pt solid var(--accent); }
+html:is(.pw-xs, .pw-s) .dt.results tr.panel > td { grid-column: 1 / -1; }
 `
 
 export interface MedicalReportContext {
@@ -1074,6 +1088,7 @@ export function buildMedicalReportHtml(
     body: p.body,
     lang: ctx.lang,
     autoPrint: ctx.autoPrint,
+    kind: d.kind === 'history' ? 'history' : 'medicalReport',
   })
 }
 
@@ -1337,6 +1352,7 @@ export function buildMedicalReportsBatchHtml(
     body: `<section class="mr-cover">${coverHtml}</section>${copies}`,
     lang: ctx.lang,
     autoPrint: ctx.autoPrint,
+    kind: 'medicalReport',
   })
 }
 
@@ -1551,6 +1567,7 @@ function labReportHtml(d: MedicalReportDoc, l: MedicalReportLabels, ctx: Medical
     body: body.join(''),
     lang: ctx.lang,
     autoPrint: ctx.autoPrint,
+    kind: 'resultReport',
   })
 }
 

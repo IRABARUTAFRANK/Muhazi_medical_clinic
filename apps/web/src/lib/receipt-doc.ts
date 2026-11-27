@@ -311,6 +311,19 @@ table.rt { width: 100%; border-collapse: collapse; font-size: var(--fs-table); l
 .sign.tall .line { height: 7mm; }
 .r-foot { text-align: center; font-size: var(--fs-small); line-height: 1.35; padding-top: 4pt; border-top: 2.25pt double #000; margin-top: 6pt; }
 .r-foot .thanks { font-size: var(--fs-body); font-weight: 700; margin-top: 2pt; }
+/* 0207, a 58 mm roll (48 mm of print): narrower labels, and each line's name on its own row with
+   its figures under it, right-aligned in fixed columns */
+html.pw-xs { --kv-label: 19mm; }
+html.pw-xs:lang(rw) { --kv-label: 24mm; }
+html.pw-xs table.rt:not(.sums), html.pw-xs .rt:not(.sums) > thead, html.pw-xs .rt:not(.sums) > tbody { display: block; }
+html.pw-xs .rt:not(.sums) tr { display: flex; flex-wrap: wrap; justify-content: flex-end; column-gap: 1.5mm; }
+html.pw-xs .rt:not(.sums) tr > :first-child { flex: 1 0 100%; }
+html.pw-xs .rt:not(.sums) tr > .num { flex: 0 0 12mm; padding-left: 0; }
+html.pw-xs .rt:not(.sums) tr > .num:last-child { flex-basis: 16mm; }
+html.pw-xs .rt:not(.sums) th { border-bottom: 0; padding-bottom: 0; }
+html.pw-xs .rt:not(.sums) thead tr { border-bottom: 0.75pt solid #000; padding-bottom: 2pt; }
+html.pw-xs .rt:not(.sums) td.desc { width: auto; font-weight: 600; }
+html.pw-xs .rt:not(.sums) tbody tr { padding-bottom: 1.5pt; }
 `
 
 /** The receipt's money lines: full charges, the insurer's and the patient's shares, what is due. */
@@ -372,13 +385,14 @@ export function buildReceiptHtml(
     body,
     lang: opts.lang,
     autoPrint: opts.autoPrint,
+    kind: 'receipt',
   })
 }
 
 /**
  * The receipt's body (letterhead to thank-you line) and its title, without the document
- * wrapper: one receipt prints it on the 80 mm roll, the receipts of a period print one copy
- * per page on A4 (`buildReceiptsBatchHtml`).
+ * wrapper: one receipt prints it on the 80 mm roll, the receipts of a period print one after
+ * another (`buildReceiptsBatchHtml`).
  */
 export function receiptBodyHtml(
   d: ReceiptDoc,
@@ -508,17 +522,21 @@ export function receiptBodyHtml(
   return { title, body }
 }
 
-/** The receipts of a period in one document: a cover (figures and the list), then one receipt
- *  per page, each in its 80 mm width, as the cash desk printed it. Pure (no window). */
-const BATCH_CSS = `
+/** The list of the period's receipts (a sheet): its figures and its table. */
+const LIST_CSS = `
 .r-cover .dt { margin-top: 8pt; }
-.r-copy { width: 80mm; margin: 0 auto; padding: 3mm 4mm; border: 0.5pt solid var(--hair);
-  break-before: page; page-break-before: always; break-inside: avoid; page-break-inside: avoid;
-  --fs-title: 11pt; --fs-clinic: 11pt; --fs-h: 9pt; --fs-sub: 9pt; --fs-body: 9pt; --fs-table: 9pt; --fs-small: 8pt;
-  --logo: 14mm; --ink: #000000; --ink-2: #000000; --hair: #000000;
-  font-size: var(--fs-body); line-height: 1.38; color: #000000; }
-.r-copy .r-no { font-size: 8pt; text-align: right; color: #000000; margin: 0 0 3pt; }
 `
+/** The receipts of the period, one after another: each starts a new page; on a receipt roll each
+ *  is a page as long as the receipt (lib/print-runtime.ts, `.roll-page`), so a printer that cuts
+ *  after each page cuts after each receipt, and a dashed line marks where to tear. */
+const COPIES_CSS = `
+.r-copy + .r-copy { break-before: page; page-break-before: always; }
+.r-copy .r-no { font-size: var(--fs-small); text-align: right; margin: 0 0 3pt; }
+html.paper-roll .r-copy { padding-bottom: 3mm; border-bottom: 0.75pt dashed #000; }
+`
+
+/** 0207 (Frank): the list (a sheet) and the receipts (the receipt printer) print apart. */
+export type ReceiptsBatchPart = 'list' | 'receipts'
 
 export interface ReceiptsBatchCover {
   /** "Receipts of the period". */
@@ -555,10 +573,42 @@ export function buildReceiptsBatchHtml(
   rt: ReceiptText,
   dl: DocLabels,
   cover: ReceiptsBatchCover,
-  opts: { lang?: string; autoPrint?: boolean; printedBy?: string | null; printedAt?: Date } = {},
+  opts: {
+    lang?: string
+    autoPrint?: boolean
+    printedBy?: string | null
+    printedAt?: Date
+    /** The list of the receipts (figures and table, a report on a sheet) or the receipts
+     *  themselves, one after another (on the receipt's paper). */
+    part: ReceiptsBatchPart
+  },
 ): string {
   const first = docs[0]
   const lh = first ? letterheadOf(first.clinic) : null
+  const base = {
+    title: cover.title,
+    docNo: null,
+    clinicName: lh?.legalName ?? '',
+    printedBy: opts.printedBy ?? null,
+    printedAt: opts.printedAt,
+    labels: dl,
+  }
+  if (opts.part === 'receipts') {
+    const copies = docs
+      .map((d, i) => {
+        const { body } = receiptBodyHtml(d, rt, dl, opts)
+        return `<section class="r-copy roll-page"><p class="r-no">${i + 1} / ${docs.length}</p>${body}</section>`
+      })
+      .join('\n')
+    return documentHtml({
+      base: { ...base, page: 'receipt' },
+      css: RECEIPT_CSS + COPIES_CSS,
+      body: copies,
+      lang: opts.lang,
+      autoPrint: opts.autoPrint,
+      kind: 'receipt',
+    })
+  }
   const total = docs.reduce((s, d) => s + (d.payment?.amount ?? 0), 0)
   const figures = keyFiguresHtml([
     { label: cover.countLabel, value: docNumber(docs.length), tone: 'teal' },
@@ -610,26 +660,13 @@ export function buildReceiptsBatchHtml(
     figures,
     list,
   ].join('')
-  const copies = docs
-    .map((d, i) => {
-      const { body } = receiptBodyHtml(d, rt, dl, opts)
-      return `<section class="r-copy"><p class="r-no">${i + 1} / ${docs.length}</p>${body}</section>`
-    })
-    .join('\n')
   return documentHtml({
-    base: {
-      page: 'a4',
-      title: cover.title,
-      docNo: null,
-      clinicName: lh?.legalName ?? '',
-      printedBy: opts.printedBy ?? null,
-      printedAt: opts.printedAt,
-      labels: dl,
-    },
-    css: RECEIPT_CSS + BATCH_CSS,
-    body: `<section class="r-cover">${coverHtml}</section>${copies}`,
+    base: { ...base, page: 'a4' },
+    css: LIST_CSS,
+    body: `<section class="r-cover">${coverHtml}</section>`,
     lang: opts.lang,
     autoPrint: opts.autoPrint,
+    kind: 'report',
   })
 }
 

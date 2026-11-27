@@ -2,6 +2,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { useConfirm } from '@/lib/confirm'
 import { usePrefs } from '@/store/prefs'
+import { usePrintChoicesPanel } from '@/store/print-choices'
 import { useSession } from '@/store/session'
 
 /**
@@ -37,5 +38,7 @@ export function useUserActions() {
     myDocuments: () => void navigate({ to: '/app/my-documents' }),
     /** The person's own profile (0125), read only. */
     myProfile: () => void navigate({ to: '/app/staff/profile', search: {} }),
+    /** The paper each document prints on, kept on this computer (0207). */
+    printChoices: () => usePrintChoicesPanel.getState().setOpen(true),
   }
 }

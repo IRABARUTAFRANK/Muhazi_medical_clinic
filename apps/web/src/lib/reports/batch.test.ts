@@ -60,24 +60,37 @@ const receipt = (n: number, method: string, amount: number): ReceiptRow => ({
   balance: 0,
 })
 
-describe('receipts of a period in one document', () => {
-  it('prints a cover line with the count and the total, then one receipt per page', () => {
-    const rows = [receipt(1, 'cash', 5000), receipt(2, 'momo', 7000), receipt(3, 'cash', 3000)]
-    const html = receiptsBatchHtml(
-      { rows, from: '2026-10-24', to: '2026-10-24', clinic, printedBy: 'Mugabo Théogène' },
-      t,
-      { autoPrint: false, now },
-    )
+describe('receipts of a period, the list and the receipts printed apart (0207)', () => {
+  const rows = [receipt(1, 'cash', 5000), receipt(2, 'momo', 7000), receipt(3, 'cash', 3000)]
+  const input = { rows, from: '2026-10-24', to: '2026-10-24', clinic, printedBy: 'Mugabo Théogène' }
+  it('the list: a sheet with the cover line, the figures and the table, no receipt', () => {
+    const html = receiptsBatchHtml(input, t, { autoPrint: false, now, part: 'list' })
     expect(html).toContain('3 receipts · RWF 15,000 · 24/10/2026 · printed by Mugabo Théogène')
-    expect(html.match(/<section class="r-copy">/g)).toHaveLength(3)
-    expect(html).toContain('break-before: page')
-    // each copy is the cash desk's receipt: its number, the title between rules, the sums
-    expect(html).toContain('RCT-2026-000002')
-    expect(html.match(/class="r-title"/g)).toHaveLength(3)
-    expect(html).toContain('1 / 3')
     // the cover lists every receipt with its method in words
-    expect(html).toContain('MTN MoMo')
     expect(html).toContain('<section class="r-cover">')
+    expect(html).toContain('MTN MoMo')
+    expect(html).toContain('RCT-2026-000002')
+    expect(html).not.toContain('class="r-copy')
+    expect(html).not.toContain('class="r-title"')
+    // remembered as a report, on A4 by default
+    expect(html).toContain('data-print-kind="report"')
+    expect(html).toContain('size: A4 portrait')
+  })
+  it('the receipts: each as the cash desk printed it, one after another, on the receipt roll', () => {
+    const html = receiptsBatchHtml(input, t, { autoPrint: false, now, part: 'receipts' })
+    expect(html.match(/<section class="r-copy roll-page">/g)).toHaveLength(3)
+    // each copy is the cash desk's receipt: its number, the title between rules, the sums
+    expect(html.match(/class="r-title"/g)).toHaveLength(3)
+    expect(html).toContain('RCT-2026-000002')
+    expect(html).toContain('1 / 3')
+    // each starts a new page; nothing of the list
+    expect(html).toContain('.r-copy + .r-copy { break-before: page;')
+    expect(html).not.toContain('<section class="r-cover">')
+    expect(html).not.toContain('3 receipts · RWF 15,000')
+    // remembered as a receipt: the 80 mm roll by default, black only, no page footer
+    expect(html).toContain('data-print-kind="receipt"')
+    expect(html).toContain('size: 80mm 200mm; margin: 3mm 4mm;')
+    expect(html).toMatch(/<html[^>]* class="paper-roll [^"]*thermal/)
   })
   it('says the cashier and the method on the cover when filtered', () => {
     const html = receiptsBatchHtml(
@@ -91,7 +104,7 @@ describe('receipts of a period in one document', () => {
         method: 'momo',
       },
       t,
-      { autoPrint: false, now },
+      { autoPrint: false, now, part: 'list' },
     )
     expect(html).toContain('01/10/2026 to 24/10/2026')
     expect(html).toContain('<dt>Cashier</dt><dd>Mugisha Samuel</dd>')

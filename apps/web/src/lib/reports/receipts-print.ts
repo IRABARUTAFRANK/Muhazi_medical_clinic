@@ -2,14 +2,23 @@ import i18n from 'i18next'
 import { formatRwf } from '@mmc/shared'
 import { receiptDocOf, type ReceiptRow } from '@/lib/api/analytics-receipts'
 import { docDate, makeDocLabels, openPrintWindow, type TFn } from '@/lib/doc-style'
-import { buildReceiptsBatchHtml, receiptText, type ReceiptsBatchCover } from '@/lib/receipt-doc'
+import {
+  buildReceiptsBatchHtml,
+  receiptText,
+  type ReceiptsBatchCover,
+  type ReceiptsBatchPart,
+} from '@/lib/receipt-doc'
 import type { LetterheadWithLegacy } from '@/lib/report-parts'
 
 /**
- * "Print all receipts" (0102): the receipts of a period in one document, each as the cash desk
- * printed it, with a cover line "N receipts · RWF total · period · printed by". Pure except for
- * the print window.
+ * The receipts of a period (0102), printed in two parts (0207, Frank: the sheet and the small
+ * receipts go to different printers): "Print the list of receipts" (a sheet: the figures, the
+ * cover line "N receipts · RWF total · period · printed by" and the table, remembered as a
+ * report) and "Print the receipts" (each receipt as the cash desk printed it, one after another,
+ * on the receipt's paper: a 58 or 80 mm roll…). Pure except for the print window.
  */
+
+export type { ReceiptsBatchPart }
 
 const tx = (t: TFn, key: string, en: string, vars?: Record<string, unknown>) => {
   const v = t(key, { defaultValue: en, ...(vars ?? {}) })
@@ -31,7 +40,7 @@ export interface ReceiptsBatchInput {
 export function receiptsBatchHtml(
   input: ReceiptsBatchInput,
   t: TFn,
-  opts: { lang?: string; autoPrint?: boolean; now?: Date } = {},
+  opts: { lang?: string; autoPrint?: boolean; now?: Date; part: ReceiptsBatchPart },
 ): string {
   const dl = makeDocLabels(t)
   const rt = receiptText(t)
@@ -78,12 +87,14 @@ export function receiptsBatchHtml(
     autoPrint: opts.autoPrint,
     printedBy: input.printedBy,
     printedAt: opts.now,
+    part: opts.part,
   })
 }
 
-/** Opens the document in a print window (false when the window is blocked, or nothing to print). */
-export function openReceiptsBatch(input: ReceiptsBatchInput): boolean {
+/** Opens the list or the receipts in a print window, each on its own remembered paper (false
+ *  when the window is blocked, or nothing to print). */
+export function openReceiptsBatch(input: ReceiptsBatchInput, part: ReceiptsBatchPart): boolean {
   if (input.rows.length === 0) return false
   const t: TFn = (key, vars) => i18n.t(key, { ...(vars ?? {}) }) as string
-  return openPrintWindow(receiptsBatchHtml(input, t, { lang: i18n.language }))
+  return openPrintWindow(receiptsBatchHtml(input, t, { lang: i18n.language, part }))
 }

@@ -88,7 +88,7 @@ import { useReceiptsInPeriod } from '@/lib/api/analytics-receipts'
 import { useVisitsInPeriod } from '@/lib/api/analytics-documents'
 import { methodLabel, useDashboard, type RevenuePoint } from '@/lib/api/dashboard'
 import { useLetterhead } from '@/lib/report-parts'
-import { openReceiptsBatch } from '@/lib/reports/receipts-print'
+import { openReceiptsBatch, type ReceiptsBatchPart } from '@/lib/reports/receipts-print'
 import type { ActivityKind } from '@/lib/api/analytics'
 import { categoryName } from '@/lib/api/catalogue'
 import { useDailyStockAlertCheck } from '@/lib/api/pharmacy'
@@ -186,16 +186,14 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
   const docs = useVisitsInPeriod({ from: period.from, to: period.to }, {}, canManage)
   const letterhead = useLetterhead()
   const [printError, setPrintError] = useState<string | null>(null)
-  const printReceipts = () => {
+  // 0207: the receipts (receipt printer) and their list (a sheet) print apart
+  const printReceipts = (part: ReceiptsBatchPart) => {
     setPrintError(null)
     const rows = receipts.data?.receipts ?? []
-    const ok = openReceiptsBatch({
-      rows,
-      from: period.from,
-      to: period.to,
-      clinic: letterhead,
-      printedBy: user.name,
-    })
+    const ok = openReceiptsBatch(
+      { rows, from: period.from, to: period.to, clinic: letterhead, printedBy: user.name },
+      part,
+    )
     if (!ok) setPrintError(rows.length ? t('report.popupBlocked') : t('finance.nothingYet'))
   }
   const documentsHref = `/app/documents?${new URLSearchParams(
@@ -527,11 +525,28 @@ export function DashboardPage({ user, view }: DashboardPageProps) {
                       <Button
                         variant="tint-grey"
                         size="sm"
-                        onClick={printReceipts}
+                        onClick={() => printReceipts('receipts')}
                         disabled={!receipts.data || receipts.data.receipts.length === 0}
+                        title={t('receipts.printEachHint', {
+                          defaultValue:
+                            'Every receipt of the period, one after the other, on the receipt printer',
+                        })}
                       >
                         <Printer size={14} aria-hidden="true" />
-                        {t('receipts.printAll', { defaultValue: 'Print all receipts' })}
+                        {t('receipts.printEach', { defaultValue: 'Print the receipts' })}
+                      </Button>
+                      <Button
+                        variant="tint-grey"
+                        size="sm"
+                        onClick={() => printReceipts('list')}
+                        disabled={!receipts.data || receipts.data.receipts.length === 0}
+                        title={t('receipts.printListHint', {
+                          defaultValue:
+                            'The figures of the period and the table of its receipts, on a sheet',
+                        })}
+                      >
+                        <ListOrdered size={14} aria-hidden="true" />
+                        {t('receipts.printList', { defaultValue: 'Print the list of receipts' })}
                       </Button>
                       {printError && (
                         <span className="text-red text-[13px] font-semibold">{printError}</span>

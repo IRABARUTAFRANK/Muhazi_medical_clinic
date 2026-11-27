@@ -219,6 +219,7 @@ export function buildTransferNoteHtml(
     css: '.dt td .chip { white-space: normal; }',
     body,
     lang: o.lang,
+    kind: 'transferNote',
   })
 }
 

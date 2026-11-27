@@ -1,6 +1,5 @@
 import i18next from 'i18next'
 import {
-  bottomLeftCss,
   docDate,
   docNumber,
   docStamp,
@@ -629,6 +628,17 @@ ol.rx > li.rx-blank { padding: 3pt 0 4pt; }
 .rx-write { display: block; min-height: 6.5mm; border-bottom: 0.5pt dotted var(--rule); }
 .rx-l2.rx-write { margin-top: 3pt; }
 .rx-write-qty { display: inline-block; width: 14mm; height: 1em; vertical-align: bottom; }
+/* 0207, narrow paper (A6, a receipt roll): the signature lines take the room there is; on a roll
+   the stamp goes under the prescriber, in a box of its own */
+html:is(.pw-xs, .pw-s) .rx-close { flex-wrap: wrap; gap: 3mm 4mm; }
+html:is(.pw-xs, .pw-s) .rx-sig-row .rx-line { flex: 1 1 auto; width: auto; max-width: 50mm; min-width: 12mm; }
+html:is(.pw-xs, .pw-s) .rx-sig-row .rx-line.date { max-width: 30mm; }
+html:is(.pw-xs, .pw-s) .rx-sig-main .pairs > span { margin-right: 6pt; }
+html.paper-roll .rx-stamp { flex: 1 0 100%; width: auto; }
+html.paper-roll .rx-stamp-box { height: 18mm; max-width: 45mm; }
+html.pw-xs .rx-l1 { flex-wrap: wrap; }
+html.pw-xs .rx-name { overflow-wrap: anywhere; }
+html.pw-xs .rx-qty { margin-left: 6.6mm; }
 `
 
 /** The prescription's full HTML (A5 portrait), ready to print. */
@@ -734,16 +744,13 @@ export function buildPrescriptionHtml(
 
   // footer: "clinic · prescription no." over "Printed … by …" (0204: no validity any more); the
   // A5 line has no room for the confidentiality note
-  const footer = `@page { ${bottomLeftCss(
-    'a5',
-    footerLines({
-      clinicName: lh.legalName,
-      docNo: rxNo,
-      printedBy: d.printedBy ?? null,
-      printedAt,
-      labels: dl,
-    }),
-  )} }`
+  const footer = footerLines({
+    clinicName: lh.legalName,
+    docNo: rxNo,
+    printedBy: d.printedBy ?? null,
+    printedAt,
+    labels: dl,
+  })
 
   return documentHtml({
     base: {
@@ -761,11 +768,13 @@ export function buildPrescriptionHtml(
       },
       labels: dl,
       fonts: opts.fonts,
+      footer,
     },
-    css: CSS + footer,
+    css: CSS,
     body,
     lang,
     autoPrint: opts.autoPrint,
+    kind: 'prescription',
   })
 }
 

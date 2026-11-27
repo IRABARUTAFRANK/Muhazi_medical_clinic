@@ -111,6 +111,19 @@ export function UserMenu({ user, onOpenSheet }: UserMenuProps) {
               <span>{t(actions.theme === 'light' ? 'common.toDim' : 'common.toLight')}</span>
               <span className="text-ink-3 text-[12px]">{t('common.nightUse')}</span>
             </button>
+            {/* 0207: the paper each document prints on, on this computer */}
+            <button
+              type="button"
+              role="menuitem"
+              className={itemClass}
+              onClick={() => {
+                setOpen(false)
+                actions.printChoices()
+              }}
+            >
+              <span>{t('doc.paper.panel.menu')}</span>
+              <span className="text-ink-3 text-[12px]">{t('doc.paper.panel.menuHint')}</span>
+            </button>
             <button
               type="button"
               role="menuitem"

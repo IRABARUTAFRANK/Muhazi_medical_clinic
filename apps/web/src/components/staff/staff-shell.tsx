@@ -17,6 +17,7 @@ import { TopBar } from './top-bar'
 import { splitNav, useBarCount } from '@/lib/bottom-bar'
 import { NAV_GROUPS, navGroupOf } from '@/lib/nav'
 import { FilePanelHost } from '@/components/clinical/file-panel'
+import { PrintChoicesHost } from './print-choices-panel'
 import { useNoticeFocus } from '@/lib/notice-focus'
 
 interface StaffShellProps {
@@ -93,6 +94,8 @@ export function StaffShell({
         </div>
         {/* The patient file as a side panel (?file=<id> on any staff route), mounted once. */}
         <FilePanelHost />
+        {/* "Printing on this computer", opened from the user menu (0207) */}
+        <PrintChoicesHost />
         {tabletActions && (
           <div
             aria-label={t('common.quickActions')}

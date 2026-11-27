@@ -7,6 +7,7 @@ import {
   Lock,
   LogOut,
   Moon,
+  Printer,
   Settings,
   Sun,
   X,
@@ -194,6 +195,18 @@ export function MoreSheet({ user, nav = [], activeId, sync, onClose }: MoreSheet
               label={t(actions.theme === 'light' ? 'common.toDim' : 'common.toLight')}
               hint={t('common.nightUse')}
             />
+          </button>
+          {/* 0207: the paper each document prints on, on this computer */}
+          <button
+            type="button"
+            className={cn(row, tint.grey)}
+            onClick={() => {
+              onClose()
+              actions.printChoices()
+            }}
+          >
+            <ActionIcon icon={Printer} />
+            <RowText label={t('doc.paper.panel.menu')} hint={t('doc.paper.panel.menuHint')} />
           </button>
           <button
             type="button"

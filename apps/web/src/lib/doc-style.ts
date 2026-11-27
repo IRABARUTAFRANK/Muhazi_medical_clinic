@@ -1,6 +1,23 @@
 import { formatNumber, formatRwf } from '@mmc/shared'
 import sourceSansLatin from '@fontsource-variable/source-sans-3/files/source-sans-3-latin-wght-normal.woff2?url'
 import sourceSansLatinExt from '@fontsource-variable/source-sans-3/files/source-sans-3-latin-ext-wght-normal.woff2?url'
+import {
+  CUSTOM_LIMITS,
+  FS_SMALL,
+  kindOfPage,
+  MARGINS,
+  paperCfg,
+  paperLayout,
+  paperName,
+  readPrintChoice,
+  scaleOf,
+  type DocKind,
+  type PageKind,
+  type PaperCfg,
+  type PaperGroup,
+  type PaperWords,
+} from './paper'
+import { printRuntime } from './print-runtime'
 
 /**
  * The clinic's document design standard (v2), shared by every printed or exported document:
@@ -17,14 +34,17 @@ import sourceSansLatinExt from '@fontsource-variable/source-sans-3/files/source-
  * table headers and key-figure tiles, always as light tints (print-color-adjust: exact) so ink
  * stays low and a black-and-white print turns them into pale greys; red only for ALLERGY / CRIT /
  * AMENDED. Meaning is never carried by colour alone: the word, the weight or the border stays.
- * Thermal pages (80 mm receipt, labels) are pure black on white.
- * Every A4/A5 page carries the footer "clinic · document no." / "Printed … by …" / "Page x of y"
+ * Thermal paper (receipt rolls, labels) is pure black on white.
+ * Every sheet carries the footer "clinic · document no." / "Printed … by …" / "Page x of y"
  * in the @page margin boxes, with an end-of-document fallback where they are not supported.
+ * 0207: each document says its kind and its usual page; the print window offers every paper of
+ * lib/paper.ts allowed for that kind (sheets, receipt rolls, labels, a custom size) and keeps the
+ * choice on this computer (lib/print-runtime.ts).
  */
 
 // ---------------------------------------------------------------- types
 
-export type PageKind = 'a4' | 'a4-landscape' | 'a5' | 'receipt' | 'label'
+export type { DocKind, PageKind }
 
 /** The clinic's identity as printed in letterheads. Missing values are null and never printed. */
 export interface Letterhead {
@@ -91,6 +111,80 @@ export interface DocLabels {
   closed: string
   /** A payment method code (cash, momo, airtel, card, bank, insurer, credit, deposit) in words. */
   method: (code: string) => string
+  /** The print options at the top of the print window (0207). */
+  paper: PaperWords
+}
+
+/** The print options in English, when a translation is missing (a label printed early). */
+const PAPER_EN: Record<string, string> = {
+  options: 'Print options',
+  paper: 'Paper',
+  sheets: 'Sheets',
+  rolls: 'Receipt rolls',
+  labels: 'Labels',
+  custom: 'Custom size',
+  sheet: '{{n}} ({{w}} × {{h}} mm)',
+  roll: 'Receipt roll {{w}} mm',
+  label: 'Label {{w}} × {{h}} mm',
+  customSheet: 'Custom size {{w}} × {{h}} mm',
+  customRoll: 'Custom roll {{w}} mm wide',
+  letter: 'Letter',
+  legal: 'Legal',
+  width: 'Width (mm)',
+  height: 'Height (mm)',
+  heightRoll: 'Height (mm, empty = as long as the content)',
+  orientation: 'Orientation',
+  portrait: 'Portrait (tall)',
+  landscape: 'Landscape (wide)',
+  margins: 'Margins',
+  normal: 'Normal',
+  narrow: 'Narrow',
+  none: 'None',
+  straight: 'Print straight away next time on this computer',
+  print: 'Print',
+  close: 'Close',
+  errWidth: 'Type a width from {{min}} to {{max}} mm.',
+  errHeight: 'Type a height from {{min}} to {{max}} mm.',
+  errHeightRoll: 'Type a height from {{min}} to {{max}} mm, or leave it empty for a roll.',
+}
+
+/** The print options' words (`doc.paper.*`). */
+export function makePaperWords(t: TFn): PaperWords {
+  const p = (key: string, vars: Record<string, unknown> = {}) =>
+    t(`doc.paper.${key}`, { defaultValue: PAPER_EN[key] ?? key, ...vars })
+  const lim = { min: CUSTOM_LIMITS.wMin, max: CUSTOM_LIMITS.wMax }
+  const limH = { min: CUSTOM_LIMITS.hMin, max: CUSTOM_LIMITS.hMax }
+  return {
+    options: p('options'),
+    paper: p('paper'),
+    sheets: p('sheets'),
+    rolls: p('rolls'),
+    labels: p('labels'),
+    custom: p('custom'),
+    sheet: (name, w, h) => p('sheet', { n: name, w, h }),
+    roll: (w) => p('roll', { w }),
+    label: (w, h) => p('label', { w, h }),
+    customSheet: (w, h) => p('customSheet', { w, h }),
+    customRoll: (w) => p('customRoll', { w }),
+    letter: p('letter'),
+    legal: p('legal'),
+    width: p('width'),
+    height: p('height'),
+    heightRoll: p('heightRoll'),
+    orientation: p('orientation'),
+    portrait: p('portrait'),
+    landscape: p('landscape'),
+    margins: p('margins'),
+    normal: p('normal'),
+    narrow: p('narrow'),
+    none: p('none'),
+    straight: p('straight'),
+    print: p('print'),
+    close: p('close'),
+    errWidth: p('errWidth', lim),
+    errHeight: p('errHeight', limH),
+    errHeightRoll: p('errHeightRoll', limH),
+  }
 }
 
 export function makeDocLabels(t: TFn): DocLabels {
@@ -138,6 +232,7 @@ export function makeDocLabels(t: TFn): DocLabels {
     open24: k('open24'),
     closed: k('closed'),
     method: (code) => t(`visit.payment.methods.${code}`, { defaultValue: code }),
+    paper: makePaperWords(t),
   }
 }
 
@@ -415,108 +510,13 @@ export interface PrintBaseOptions {
   labels: DocLabels
   /** Font files; omitted = the Source Sans 3 files bundled with the website (`defaultFonts`). */
   fonts?: FontUrls
+  /** The footer's lines when the document words its own (the prescription: no confidentiality
+   *  note on its narrow line); default `footerLines`. */
+  footer?: string[]
 }
 
-interface Scale {
-  title: number
-  clinic: number
-  h: number
-  sub: number
-  body: number
-  table: number
-  small: number
-  logo: string
-  idLabel: string
-  stampW: string
-  stampH: string
-  sheetW: string
-  pad: string
-  page: string
-}
-
-const SCALES: Record<PageKind, Scale> = {
-  a4: {
-    title: 16,
-    clinic: 15,
-    h: 11,
-    sub: 10,
-    body: 10,
-    table: 9,
-    small: 8,
-    logo: '20mm',
-    idLabel: '28mm',
-    stampW: '40mm',
-    stampH: '28mm',
-    sheetW: '210mm',
-    pad: '15mm 18mm 20mm',
-    page: 'size: A4 portrait; margin: 15mm 18mm 20mm;',
-  },
-  'a4-landscape': {
-    title: 16,
-    clinic: 15,
-    h: 11,
-    sub: 10,
-    body: 10,
-    table: 9,
-    small: 8,
-    logo: '14mm',
-    idLabel: '28mm',
-    stampW: '40mm',
-    stampH: '28mm',
-    sheetW: '297mm',
-    pad: '15mm 18mm 20mm',
-    page: 'size: A4 landscape; margin: 15mm 18mm 20mm;',
-  },
-  a5: {
-    title: 14,
-    clinic: 13,
-    h: 10,
-    sub: 9.5,
-    body: 9.5,
-    table: 9,
-    small: 7.5,
-    logo: '16mm',
-    idLabel: '24mm',
-    stampW: '35mm',
-    stampH: '25mm',
-    sheetW: '148mm',
-    pad: '12mm 12mm 16mm',
-    page: 'size: A5 portrait; margin: 12mm 12mm 16mm;',
-  },
-  receipt: {
-    title: 11,
-    clinic: 11,
-    h: 9,
-    sub: 9,
-    body: 9,
-    table: 9,
-    small: 8,
-    logo: '14mm',
-    idLabel: '22mm',
-    stampW: '0',
-    stampH: '0',
-    sheetW: '80mm',
-    pad: '3mm 4mm',
-    // the height is set to the content by the print script (Chrome ignores "80mm auto")
-    page: 'size: 80mm 200mm; margin: 3mm 4mm;',
-  },
-  label: {
-    title: 10,
-    clinic: 7.5,
-    h: 10,
-    sub: 9.5,
-    body: 7.5,
-    table: 7.5,
-    small: 7.5,
-    logo: '0',
-    idLabel: '0',
-    stampW: '0',
-    stampH: '0',
-    sheetW: '70mm',
-    pad: '0',
-    page: 'size: 70mm 40mm; margin: 0;',
-  },
-}
+/** Thermal pages: made for a receipt roll or label stock (no page footer of their own). */
+const isThermalPage = (page: PageKind) => page === 'receipt' || page === 'label'
 
 /** CSS `content` from a template with {{page}} / {{pages}} placeholders. */
 function pageCounterContent(template: string): string {
@@ -556,28 +556,40 @@ export function footerLines(o: {
   return [first, o.printedBy ? l.printedBy(at, o.printedBy) : l.printedAt(at)]
 }
 
-const marginBox = (page: PageKind) =>
-  `font: 400 ${SCALES[page].small}pt/1.35 ${FONT_STACK}; color: ${FOOT_INK}; white-space: pre; vertical-align: top; padding-top: 2.5mm; border-top: 0.5pt solid ${FOOT_RULE};`
+/** A margin box's look at a type size (points, or the `FS_SMALL` placeholder). */
+const marginBox = (small: number | string) =>
+  `font: 400 ${small}pt/1.35 ${FONT_STACK}; color: ${FOOT_INK}; white-space: pre; vertical-align: top; padding-top: 2.5mm; border-top: 0.5pt solid ${FOOT_RULE};`
 
-/**
- * The bottom-left margin box (the footer lines). A builder that words its own footer (the
- * prescription adds its validity) passes its lines here, inside an `@page { … }` rule.
- */
+const bottomLeft = (small: number | string, lines: string[]) =>
+  `@bottom-left { content: ${lines.map(cssString).join(' "\\A" ')}; ${marginBox(small)} width: 78%; }`
+
+/** The bottom-left margin box (the footer lines) of a page, inside an `@page { … }` rule. */
 export function bottomLeftCss(page: PageKind, lines: string[]): string {
-  return `@bottom-left { content: ${lines.map(cssString).join(' "\\A" ')}; ${marginBox(page)} width: 78%; }`
+  return bottomLeft(scaleOf(page).small, lines)
 }
 
-function marginBoxes(o: PrintBaseOptions): string {
-  if (o.page === 'receipt' || o.page === 'label') return ''
+/**
+ * The page footer (and the running identity of a medical document) in the page margin boxes.
+ * `small` is the type size: the paper's, or `FS_SMALL` in the template the print window fills
+ * for the paper chosen there. `narrow` (an A6 sheet): the running identity is the name and the
+ * file no. across the page, without the title on the right, which would run into it.
+ */
+function marginBoxes(o: PrintBaseOptions, small: number | string, narrow = false): string {
+  if (isThermalPage(o.page)) return ''
   const l = o.labels
-  const box = `font: 400 ${SCALES[o.page].small}pt/1.35 ${FONT_STACK}; color: ${FOOT_INK}; white-space: pre;`
+  const box = `font: 400 ${small}pt/1.35 ${FONT_STACK}; color: ${FOOT_INK}; white-space: pre;`
   // Two lines on the left, the page count on the right: three boxes on one line overlap on
   // A4/A5 (Chrome centres the middle box whatever the width of the left one). Both boxes carry
   // the same hairline, which reads as one footer rule across the page.
   let css = `@page {
-  ${bottomLeftCss(o.page, footerLines(o))}
-  @bottom-right { content: ${pageCounterContent(l.pageOf)}; ${marginBox(o.page)} font-weight: 600; color: #1B3A75; text-align: right; width: 22%; }`
-  if (o.medical && o.identity) {
+  ${bottomLeft(small, o.footer ?? footerLines(o))}
+  @bottom-right { content: ${pageCounterContent(l.pageOf)}; ${marginBox(small)} font-weight: 600; color: #1B3A75; text-align: right; width: 22%; }`
+  if (o.medical && o.identity && narrow) {
+    const id = o.identity
+    const strip = [id.name, id.fileNo].filter(Boolean).join(SEP)
+    css += `
+  @top-left { content: ${cssString(strip)}; ${box} font-weight: 600; vertical-align: bottom; padding-bottom: 2.5mm; border-bottom: 0.5pt solid ${FOOT_RULE}; width: 100%; }`
+  } else if (o.medical && o.identity) {
     const id = o.identity
     const strip = [
       `${l.patient}: ${id.name}`,
@@ -631,40 +643,41 @@ const TILES: Record<TileTone, [string, string]> = {
   coral: ['#FDF0F0', '#B91C1C'],
 }
 
-/**
- * The shared CSS of every document (design v2): tokens, typography, @page size and margin boxes
- * (footer with the clinic, the number and "Page x of y" on every page, running identity strip),
- * branded letterhead with the navy and teal band, title block with its meta box, identity panel,
- * allergy statement, banded section headings, tables with a tinted header, zebra rows and an
- * emphasised total, key-figure tiles, status chips, signature and stamp block, screen preview
- * and print rules. Thermal pages (receipt, label) stay pure black on white.
- * Builders add only the layout specific to their document.
- */
-export function printBase(o: PrintBaseOptions): string {
-  const s = SCALES[o.page]
-  const thermal = o.page === 'receipt' || o.page === 'label'
+/** The colour tokens; thermal paper (a receipt roll, labels) is pure black on white. */
+function colourTokens(thermal: boolean): string {
   const p = PALETTE
   const c = (colour: string) => (thermal ? '#000000' : colour)
   const bg = (colour: string) => (thermal ? 'transparent' : colour)
-  const tiles = TILE_TONES.map(
-    (tone) =>
-      `.kf .tile.${tone} { --tile-bg: ${bg(TILES[tone][0])}; --tile-ink: ${c(TILES[tone][1])}; }`,
-  ).join('\n')
-  return `
-:root {
-  --ink: ${c(p.ink)}; --ink-2: ${c(p.ink2)}; --rule: ${c(p.ink)}; --hair: ${c(p.hair)}; --line: ${c(p.line)};
+  return `--ink: ${c(p.ink)}; --ink-2: ${c(p.ink2)}; --rule: ${c(p.ink)}; --hair: ${c(p.hair)}; --line: ${c(p.line)};
   --accent: ${c(p.accent)}; --accent-ink: ${c(p.accentInk)}; --accent-2: ${c(p.accent2)};
   --tint: ${bg(p.tint)}; --panel: ${bg(p.panel)}; --zebra: ${bg(p.zebra)}; --th-bg: ${bg(p.tint)};
   --alert: ${c(p.alert)}; --alert-bg: ${bg(p.alertBg)};
   --ok: ${c(p.ok)}; --ok-bg: ${bg(p.okBg)}; --warn: ${c(p.warn)}; --warn-bg: ${bg(p.warnBg)};
-  --info: ${c(p.info)}; --info-bg: ${bg(p.infoBg)};
-  --font: ${FONT_STACK};
-  --fs-title: ${s.title}pt; --fs-clinic: ${s.clinic}pt; --fs-h: ${s.h}pt; --fs-sub: ${s.sub}pt;
-  --fs-body: ${s.body}pt; --fs-table: ${s.table}pt; --fs-small: ${s.small}pt;
-  --logo: ${s.logo}; --id-label: ${s.idLabel}; --stamp-w: ${s.stampW}; --stamp-h: ${s.stampH};
+  --info: ${c(p.info)}; --info-bg: ${bg(p.infoBg)};`
 }
-@page { ${s.page} }
-${marginBoxes(o)}
+
+/**
+ * The shared CSS of every document (design v2): tokens, typography, branded letterhead with the
+ * navy and teal band, title block with its meta box, identity panel, allergy statement, banded
+ * section headings, tables with a tinted header, zebra rows and an emphasised total, key-figure
+ * tiles, status chips, signature and stamp block, labels, the print options bar, screen preview
+ * and print rules. The paper's part (type sizes, @page and its footer margin boxes) is the
+ * <style id="mmc-paper"> of `documentHtml`; `html.thermal` (a roll, labels) turns every colour
+ * to black, and the `pw-*` classes (printable width) stack on narrow paper what sits side by
+ * side on A4. Builders add only the layout specific to their document.
+ */
+export function printBase(): string {
+  const tiles = TILE_TONES.map(
+    (tone) => `.kf .tile.${tone} { --tile-bg: ${TILES[tone][0]}; --tile-ink: ${TILES[tone][1]}; }`,
+  ).join('\n')
+  return `
+:root {
+  ${colourTokens(false)}
+  --font: ${FONT_STACK};
+}
+html.thermal {
+  ${colourTokens(true)}
+}
 * { box-sizing: border-box; }
 html {
   font: 400 var(--fs-body)/1.38 var(--font); color: var(--ink); background: #ffffff;
@@ -796,27 +809,88 @@ ${tiles}
 .stamp-space { width: var(--stamp-w); height: var(--stamp-h); border: 0.75pt dashed var(--line); border-radius: 3pt; }
 .sig-note { font-size: var(--fs-small); color: var(--ink-2); margin-top: 8pt; }
 
-/* dispensing labels: one 70 x 40 mm page each, die-cut stock is the border */
-.label { width: 70mm; height: 40mm; padding: 2mm; overflow: hidden; break-after: page; page-break-after: always; line-height: 1.2; }
+/* dispensing labels: one label stock page each (70 x 40 mm by default), die-cut stock is the border */
+.label { width: var(--label-w, 70mm); height: var(--label-h, 40mm); padding: 2mm; overflow: hidden; break-after: page;
+  page-break-after: always; line-height: 1.2; }
 .label:last-child { break-after: auto; page-break-after: auto; }
+html.paper-label.pw-xs .label { padding: 1.2mm; }
+/* labels on a sheet: side by side, each inside a dashed line to cut along */
+html.paper-sheet .label { display: inline-flex; vertical-align: top; margin: 0 2mm 2mm 0; border: 0.5pt dashed #000000;
+  break-after: auto; page-break-after: auto; break-inside: avoid; page-break-inside: avoid; }
+/* labels on a receipt roll: one under the other, each as long as its text */
+html.paper-roll .label { width: auto; height: auto; overflow: visible; padding: 2mm 0 2.5mm; border-bottom: 0.75pt dashed #000000;
+  break-after: auto; page-break-after: auto; }
 
-/* shown only where the browser has no @page margin boxes (Firefox, Safari) */
+/* shown where the page has no footer in its margins: a browser without margin boxes (Firefox,
+   Safari), a receipt roll, a sheet printed without margins */
 .printed-fallback { display: none; font-size: var(--fs-small); color: var(--ink-2); margin-top: 14pt; padding-top: 4pt;
   border-top: 0.5pt solid var(--hair); }
-html.no-margin-boxes .printed-fallback { display: block; }
+html.no-margin-boxes .printed-fallback, html.paper-roll .printed-fallback, html.paper-nofoot .printed-fallback { display: block; }
+html.thermal .kf .tile { --tile-bg: transparent; --tile-ink: #000000; }
+
+/* narrow paper (an A6 sheet, a receipt roll): what sits side by side on A4 goes one under the
+   other, and long words or numbers wrap instead of running out of their box */
+html:is(.pw-xs, .pw-s) .lh { grid-template-columns: auto minmax(0, 1fr); column-gap: 3mm; }
+html:is(.pw-xs, .pw-s) .lh.compact { --logo: 12mm; }
+html:is(.pw-xs, .pw-s) .lh-contact { grid-column: 1 / -1; text-align: left; white-space: normal; margin-top: 2pt; }
+html:is(.pw-xs, .pw-s) .lh-contact > div { display: inline-block; margin-right: 8pt; }
+html:is(.pw-xs, .pw-s) .pairs > span { white-space: normal; }
+html:is(.pw-xs, .pw-s) .tb { flex-direction: column; gap: 5pt; }
+html:is(.pw-xs, .pw-s) .tb-meta { max-width: none; align-self: stretch; }
+html:is(.pw-xs, .pw-s) .idg, html:is(.pw-xs, .pw-s) .idg.lab-grid { grid-template-columns: var(--id-label) minmax(0, 1fr); }
+html:is(.pw-xs, .pw-s) .idg .k.c2 { padding-left: 0; }
+/* a 58 mm roll: the labels as wide as the longest, the values take the rest */
+html.pw-xs .idg, html.pw-xs .idg.lab-grid { grid-template-columns: auto minmax(0, 1fr); column-gap: 2mm; }
+html:is(.pw-xs, .pw-s) .idg .v { overflow-wrap: anywhere; }
+html:is(.pw-xs, .pw-s) .sig { grid-template-columns: minmax(0, 1fr) !important; }
+html:is(.pw-xs, .pw-s) .sig-line { max-width: 100%; flex: 0 1 auto; }
+html:is(.pw-xs, .pw-s) .sig-col .k { width: auto; min-width: var(--id-label); }
+html:is(.pw-xs, .pw-s) .kf { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2mm; }
+html.pw-xs .kf { grid-template-columns: minmax(0, 1fr); }
+html:is(.pw-xs, .pw-s, .pw-m) .kf .v { white-space: normal; overflow-wrap: anywhere; }
+html:is(.pw-xs, .pw-s) .dt th, html:is(.pw-xs, .pw-s) .dt td { padding-left: 2pt; padding-right: 2pt; overflow-wrap: anywhere; }
+html:is(.pw-xs, .pw-s) .dt td.num, html:is(.pw-xs, .pw-s) .dt th.num { white-space: normal; }
+html:is(.pw-xs, .pw-s) h2 { padding-left: 4pt; padding-right: 4pt; }
+
+/* the print options at the top of the window (never printed) */
+[hidden] { display: none !important; }
+.pt { display: none; }
 
 @media screen {
   html { background: #e6eaf0; }
   body { background: #e6eaf0; padding: 0 12px 28px; }
-  .screen-hint { position: sticky; top: 0; z-index: 1; margin: 0 -12px 18px; padding: 9px 12px; background: #0B2252;
-    font: 600 10pt/1.35 var(--font); color: #ffffff; text-align: center; }
-  .sheet { background: #ffffff; width: ${s.sheetW}; max-width: 100%; margin: 0 auto; padding: ${s.pad}; border-radius: 2px;
+  .pt { display: block; position: sticky; top: 0; z-index: 3; margin: 0 -12px 18px; padding: 10px 12px; background: #0B2252;
+    font: 400 14px/1.3 var(--font); color: #ffffff; text-align: left; }
+  .pt-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; max-width: 1080px; margin: 0 auto; }
+  .pt-f { display: flex; flex-direction: column; gap: 3px; min-width: 0; max-width: 100%; }
+  .pt-f > label { font-size: 12.5px; font-weight: 600; color: #D5DFEE; }
+  .pt-size { display: flex; flex-wrap: wrap; gap: 10px 14px; min-width: 0; max-width: 100%; }
+  .pt select, .pt input[type="number"] { font: 400 14px/1.2 var(--font); color: #111418; background: #ffffff;
+    border: 1px solid #9AA8B8; border-radius: 6px; min-height: 36px; padding: 4px 8px; max-width: 100%; }
+  .pt input[type="number"] { width: 7.5em; }
+  .pt-tick { display: flex; align-items: center; gap: 8px; min-height: 36px; max-width: 340px; font-size: 13.5px; cursor: pointer; }
+  .pt-tick input { flex: none; width: 18px; height: 18px; margin: 0; accent-color: #1F6F8B; }
+  .pt-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+  .pt-btn { min-height: 36px; padding: 6px 16px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.6);
+    background: transparent; color: #ffffff; font: 600 14px/1.2 var(--font); cursor: pointer; }
+  .pt-btn:hover { background: rgba(255, 255, 255, 0.12); }
+  .pt-btn.go { background: #ffffff; border-color: #ffffff; color: #0B2252; }
+  .pt-btn.go:hover { background: #E4ECF5; }
+  .pt :focus-visible { outline: 3px solid #7FD3E6; outline-offset: 2px; }
+  .pt-err { max-width: 1080px; margin: 8px auto 0; padding: 6px 10px; border-radius: 6px; background: #FDEDEF; color: #B00020;
+    font-weight: 600; }
+  .pt-hint { max-width: 1080px; margin: 8px auto 0; font-size: 12.5px; line-height: 1.35; color: #D5DFEE; }
+  .sheet { background: #ffffff; max-width: 100%; margin: 0 auto; border-radius: 2px;
     box-shadow: 0 1px 3px rgba(11, 34, 82, 0.14), 0 10px 28px rgba(11, 34, 82, 0.10); }
-  ${o.page === 'label' ? '.sheet { padding: 0; box-shadow: none; background: transparent; } .label { background: #ffffff; outline: 1px solid #bbbbbb; margin: 0 auto 6mm; }' : ''}
-  ${o.page === 'receipt' ? '.sheet { width: 80mm; }' : ''}
+  html.paper-label .sheet { padding: 0; box-shadow: none; background: transparent; }
+  html.paper-label .label { background: #ffffff; outline: 1px solid #bbbbbb; margin: 0 auto 6mm; }
+}
+/* a phone-width window: the options scroll away with the page instead of covering it */
+@media screen and (max-width: 600px) {
+  .pt { position: static; }
 }
 @media print {
-  .screen-hint { display: none; }
+  .screen-hint, .pt { display: none !important; }
   .sheet { width: auto; padding: 0; border: 0; margin: 0; box-shadow: none; }
 }
 `
@@ -1082,37 +1156,77 @@ export function signatureHtml(
 
 // ---------------------------------------------------------------- document and printing
 
-/** The print script: fonts and images ready (3 s cap), receipt height fitted, then print. */
-function printScript(page: PageKind, autoPrint: boolean): string {
-  return `(function(){
-  var ua = navigator.userAgent;
-  if (/firefox|fxios/i.test(ua) || (/safari/i.test(ua) && !/chrome|chromium|crios|edg/i.test(ua))) document.documentElement.classList.add('no-margin-boxes');
-  var cap = new Promise(function(r){ setTimeout(r, 3000); });
-  var loaded = new Promise(function(r){ if (document.readyState === 'complete') r(); else window.addEventListener('load', r, { once: true }); });
-  var ready = loaded.then(function(){
-    var f = document.fonts;
-    var want = f ? Promise.all(['400','600','700'].map(function(w){ return f.load(w + ' 10pt "Source Sans 3"').catch(function(){}); })) : Promise.resolve();
-    return want.then(function(){ return f ? f.ready : null; });
-  }).then(function(){
-    return Promise.all(Array.prototype.map.call(document.images, function(i){ return i.decode ? i.decode().catch(function(){}) : null; }));
-  }).catch(function(){});
-  Promise.race([ready, cap]).then(function(){
-    ${
-      page === 'receipt'
-        ? `var s = document.querySelector('.sheet');
-    if (s) { var mm = Math.ceil(s.scrollHeight * 25.4 / 96) + 8; var st = document.createElement('style');
-      st.textContent = '@page { size: 80mm ' + mm + 'mm; margin: 3mm 4mm; }'; document.head.appendChild(st); }`
-        : ''
-    }
-    ${autoPrint ? 'window.focus(); window.print();' : ''}
-  });
-})();`
+/** JSON inside a <script>: no "</script>" or line separator can end it early. */
+const scriptJson = (v: unknown) =>
+  JSON.stringify(v)
+    .replace(/</g, '\\u003c')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029')
+
+/**
+ * The print options at the top of the window (screen only): the paper (sheets, receipt rolls and
+ * labels allowed for the document, or a custom size in mm), the orientation of a sheet, the
+ * margins, "print straight away next time on this computer", Print and Close, then the hint about
+ * the browser's headers and footers. Native controls, so the keyboard works as everywhere.
+ */
+function printOptionsHtml(cfg: PaperCfg, l: DocLabels): string {
+  const w = l.paper
+  const first = paperLayout(cfg, cfg.def)
+  const group: PaperGroup = first.ok ? first.group : 'sheet'
+  const opt = (value: string, text: string, chosen: string) =>
+    `<option value="${esc(value)}"${value === chosen ? ' selected' : ''}>${esc(text)}</option>`
+  const groups: [PaperGroup, string][] = [
+    ['sheet', w.sheets],
+    ['roll', w.rolls],
+    ['label', w.labels],
+  ]
+  const papers = groups
+    .filter(([g]) => cfg.groups.includes(g))
+    .map(
+      ([g, name]) =>
+        `<optgroup label="${esc(name)}">${cfg.papers
+          .filter((p) => p.group === g)
+          .map((p) => opt(p.id, paperName(p, w), cfg.def.paper))
+          .join('')}</optgroup>`,
+    )
+    .join('')
+  const rolls = cfg.groups.includes('roll')
+  const lim = cfg.limits
+  const field = (id: string, label: string, control: string, extra = '') =>
+    `<div class="pt-f"${extra}><label for="${id}">${esc(label)}</label>${control}</div>`
+  const num = (id: string, min: number, max: number) =>
+    `<input id="${id}" type="number" inputmode="decimal" min="${min}" max="${max}" step="any" autocomplete="off">`
+  return `<div class="pt" role="region" aria-label="${esc(w.options)}"><div class="pt-row">
+${field('pt-paper', w.paper, `<select id="pt-paper">${papers}${opt('custom', w.custom, '')}</select>`)}
+<div class="pt-size" id="pt-custom" hidden>${field('pt-w', w.width, num('pt-w', lim.wMin, lim.wMax))}${field(
+    'pt-h',
+    rolls ? w.heightRoll : w.height,
+    num('pt-h', lim.hMin, lim.hMax),
+  )}</div>
+${field(
+  'pt-o',
+  w.orientation,
+  `<select id="pt-o">${opt('portrait', w.portrait, cfg.def.orientation)}${opt('landscape', w.landscape, cfg.def.orientation)}</select>`,
+  ` id="pt-o-f"${group === 'sheet' ? '' : ' hidden'}`,
+)}
+${field(
+  'pt-m',
+  w.margins,
+  `<select id="pt-m">${MARGINS.map((m) => opt(m, w[m], cfg.def.margins)).join('')}</select>`,
+  ` id="pt-m-f"${group === 'label' ? ' hidden' : ''}`,
+)}
+<label class="pt-tick"><input type="checkbox" id="pt-auto"><span>${esc(w.straight)}</span></label>
+<div class="pt-acts"><button type="button" class="pt-btn go" id="pt-print">${esc(w.print)}</button><button type="button" class="pt-btn" id="pt-close">${esc(w.close)}</button></div>
+</div><p class="pt-err" id="pt-err" role="alert" hidden></p><p class="pt-hint">${esc(l.printHint)}</p></div>`
 }
 
 /**
- * The full HTML of a document: fonts, shared CSS (`printBase`) plus the builder's own CSS,
- * the screen-only hint bar, the body, the "clinic · no. · printed by" fallback for browsers
- * without page margin boxes, and the print script.
+ * The full HTML of a document: fonts, shared CSS (`printBase`) plus the builder's own CSS, the
+ * paper's CSS (its usual page: `<style id="mmc-paper">`), the print options bar (screen only),
+ * the body, the "clinic · no. · printed by" fallback for pages without a footer in their margins,
+ * and the print window's script (lib/print-runtime.ts), which applies the paper kept on this
+ * computer for the document's kind and prints at once only when that kind is set to print
+ * straight away (otherwise Print does it).
  */
 export function documentHtml(o: {
   base: PrintBaseOptions
@@ -1120,45 +1234,108 @@ export function documentHtml(o: {
   css?: string
   body: string
   lang?: string
-  /** Default true; false for previews. */
+  /** Default true (the document is meant to be printed); false for previews: never at once. */
   autoPrint?: boolean
+  /** What the document is (its papers and its remembered choice); default from its page. */
+  kind?: DocKind
 }): string {
   const b = o.base
   const l = b.labels
+  const kind = o.kind ?? kindOfPage(b.page)
+  const sheetDoc = !isThermalPage(b.page)
+  // the footer of a sheet, its type size filled by the paper in use
+  const cfg = paperCfg(
+    kind,
+    b.page,
+    sheetDoc ? marginBoxes(b, FS_SMALL) : null,
+    sheetDoc ? marginBoxes(b, FS_SMALL, true) : null,
+  )
+  const first = paperLayout(cfg, cfg.def)
+  if (!first.ok) throw new Error(`paper ${kind}`)
+  const auto = o.autoPrint !== false
   const windowTitle = [b.title, b.docNo].filter(Boolean).join(' ')
-  const fallback =
-    b.page === 'receipt' || b.page === 'label'
-      ? ''
-      : `<p class="printed-fallback">${esc(footerLines(b).join(SEP))}</p>`
-  return `<!doctype html><html lang="${esc(o.lang ?? 'en')}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(windowTitle)}</title>${fontHead(b.fonts)}<style>${printBase(b)}${o.css ?? ''}</style></head><body class="page-${b.page}"><div class="screen-hint">${esc(l.printHint)}</div><main class="sheet">${o.body}${fallback}</main><script>${printScript(b.page, o.autoPrint !== false)}</script></body></html>`
+  const fallback = sheetDoc
+    ? `<p class="printed-fallback">${esc((b.footer ?? footerLines(b)).join(SEP))}</p>`
+    : ''
+  const errors = {
+    width: l.paper.errWidth,
+    height: cfg.groups.includes('roll') ? l.paper.errHeightRoll : l.paper.errHeight,
+  }
+  const script = `(${String(printRuntime)})(${scriptJson(cfg)}, ${String(paperLayout)}, ${auto}, ${scriptJson(errors)});`
+  return `<!doctype html><html lang="${esc(o.lang ?? 'en')}" class="${first.cls.join(' ')}" data-print-kind="${kind}"${auto ? ' data-auto-print="1"' : ''}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(windowTitle)}</title>${fontHead(b.fonts)}<style>${printBase()}${o.css ?? ''}</style><style id="mmc-paper">${first.css}</style></head><body class="page-${b.page}">${printOptionsHtml(cfg, l)}<main class="sheet">${o.body}${fallback}</main><script>${script}</script></body></html>`
 }
 
+const unescapeHtml = (s: string) =>
+  s
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+
 /**
- * Prints the document. A document that prints itself (a receipt, a report…) is printed from a
- * hidden frame on the page the person is on: the print dialog opens at once, with no new tab to
- * close (the cashier's Print goes straight to the printer dialog). A preview (no auto print)
- * opens in a new window to be read. False when the browser blocked it.
+ * Prints the document. A document meant to be printed opens in a frame on the page the person is
+ * on (never blocked like a new tab opened after a wait):
+ * - when its kind is set to print straight away on this computer, the frame is out of sight and
+ *   the print dialog opens at once on the kept paper (the cashier's Print goes straight to the
+ *   printer dialog);
+ * - otherwise the frame covers the page and shows the document with its print options; Close (or
+ *   Escape) gives the page back, with the focus where it was.
+ * A preview (no auto print) opens in a new window to be read. False when the browser blocked it.
  */
 export function openPrintWindow(html: string): boolean {
-  if (html.includes('window.print();')) {
+  const head = html.slice(0, 2000)
+  if (/<html[^>]*\sdata-auto-print="1"/.test(head)) {
+    const kind = /<html[^>]*\sdata-print-kind="([A-Za-z]+)"/.exec(head)?.[1] as DocKind | undefined
+    const straight = !!kind && readPrintChoice(kind)?.straight === true
     try {
       const f = document.createElement('iframe')
-      f.setAttribute('aria-hidden', 'true')
-      f.tabIndex = -1
-      // in the page but out of sight; a frame of size 0 prints blank in some browsers
-      f.style.cssText =
-        'position:fixed;right:0;bottom:0;width:210mm;height:297mm;border:0;opacity:0;pointer-events:none;'
+      if (straight) {
+        f.setAttribute('aria-hidden', 'true')
+        f.tabIndex = -1
+        // in the page but out of sight; a frame of size 0 prints blank in some browsers
+        f.style.cssText =
+          'position:fixed;right:0;bottom:0;width:210mm;height:297mm;border:0;opacity:0;pointer-events:none;'
+      } else {
+        f.title = unescapeHtml(/<title>([^<]*)<\/title>/.exec(head)?.[1] ?? '')
+        f.style.cssText =
+          'position:fixed;inset:0;width:100%;height:100%;border:0;margin:0;z-index:2147483000;background:#e6eaf0;'
+      }
       document.body.appendChild(f)
       const d = f.contentDocument
       const w = f.contentWindow
       if (!d || !w) throw new Error('no frame')
-      // the frame goes once printing is over (or after 10 minutes at most)
-      const done = () => setTimeout(() => f.remove(), 500)
-      w.addEventListener('afterprint', done, { once: true })
-      setTimeout(() => f.isConnected && f.remove(), 600_000)
       d.open()
       d.write(html)
       d.close()
+      if (straight) {
+        // the frame goes once printing is over (or after 10 minutes at most); added after the
+        // document is written, since writing it clears the frame's listeners
+        w.addEventListener('afterprint', () => setTimeout(() => f.remove(), 500), { once: true })
+        setTimeout(() => f.isConnected && f.remove(), 600_000)
+      } else {
+        // the page behind cannot be reached until the options close
+        const back = document.activeElement as HTMLElement | null
+        const shut: Element[] = []
+        for (const el of Array.from(document.body.children))
+          if (el !== f && !el.hasAttribute('inert')) {
+            el.setAttribute('inert', '')
+            shut.push(el)
+          }
+        let closed = false
+        const close = () => {
+          if (closed) return
+          closed = true
+          shut.forEach((el) => el.removeAttribute('inert'))
+          if (f.isConnected) f.remove()
+          back?.focus?.()
+        }
+        // Close in the options (lib/print-runtime.ts), or Escape even if its script failed
+        f.addEventListener('mmc-print-close', close, { once: true })
+        w.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') close()
+        })
+        w.focus()
+      }
       return true
     } catch {
       // fall back to a window below

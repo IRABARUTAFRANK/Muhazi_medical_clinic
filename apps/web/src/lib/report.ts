@@ -35,7 +35,8 @@ import {
  *   headed table per detail section with its total as the last row, the cash count on a day
  *   close, the notes on how the figures are counted, and "Prepared by" / "Checked by" signature
  *   lines. The footer (clinic, report no., printed by, page x of y) is printed in the page
- *   margin boxes. Only a table with more than 7 columns moves to its own A4 landscape pages (a
+ *   margin boxes. Only a table with more than 7 columns moves to its own landscape pages (A4 by
+ *   default, the paper chosen in the print window otherwise; a
  *   CSS named page); small tables (3 columns or fewer) sit side by side in two columns; tables
  *   of 12 rows or fewer are never split.
  * - Excel (v2): Arial 10, a "Summary" sheet first (key figures as Label | Value | Unit, the
@@ -415,25 +416,26 @@ const REPORT_CSS = `
 .rs.keep, .pair.keep { break-inside: avoid; page-break-inside: avoid; }
 .dt tr.total { break-before: avoid; page-break-before: avoid; }
 .dt tbody tr:nth-last-child(2) { break-after: avoid; page-break-after: avoid; }
-/* a table with more than 7 columns gets its own A4 landscape pages; the rest stays portrait */
-@page wide { size: A4 landscape; margin: 15mm 18mm 20mm; }
-.rs.wide { page: wide; }
-.rs.wide > h2:first-child { margin-top: 0; }
+/* a table with more than 7 columns gets its own landscape pages of the same paper (the
+   "@page wide" of the paper's CSS, lib/paper.ts); the rest stays portrait. On a landscape page
+   (the report's own, or the one chosen in the print window) nothing changes. */
+html.paper-portrait .rs:is(.wide, .portrait-wide) { page: wide; }
+html.paper-portrait .rs:is(.wide, .portrait-wide) > h2:first-child { margin-top: 0; }
 /* on screen (the preview before printing) a wide section shows as its own landscape sheet, centred
    on the portrait one, instead of running off its right edge; on a narrow screen it scrolls */
 @media screen {
-  .rs.wide { --wide-w: min(297mm, 100vw - 24px); box-sizing: border-box; width: var(--wide-w);
+  html.paper-portrait .rs:is(.wide, .portrait-wide) { --wide-w: min(var(--wide-sheet, 297mm), 100vw - 24px); box-sizing: border-box; width: var(--wide-w);
     margin: 10mm 0 10mm calc(50% - var(--wide-w) / 2); padding: 12mm 18mm; background: #ffffff;
     border-radius: 2px; box-shadow: 0 1px 3px rgba(11, 34, 82, 0.14), 0 10px 28px rgba(11, 34, 82, 0.10);
     overflow-x: auto; }
   /* the notes and signatures that follow a wide table stay on its sheet (as on the printed page) */
-  .wide-tail { --wide-w: min(297mm, 100vw - 24px); box-sizing: border-box; width: var(--wide-w);
+  html.paper-portrait .wide-tail { --wide-w: min(var(--wide-sheet, 297mm), 100vw - 24px); box-sizing: border-box; width: var(--wide-w);
     margin: 0 0 10mm calc(50% - var(--wide-w) / 2); padding: 0 18mm 12mm; background: #ffffff;
     border-radius: 0 0 2px 2px; box-shadow: 0 1px 3px rgba(11, 34, 82, 0.14), 0 10px 28px rgba(11, 34, 82, 0.10); }
-  .rs.wide:has(+ .wide-tail) { margin-bottom: 0; border-radius: 2px 2px 0 0; padding-bottom: 4mm; }
+  html.paper-portrait .rs:is(.wide, .portrait-wide):has(+ .wide-tail) { margin-bottom: 0; border-radius: 2px 2px 0 0; padding-bottom: 4mm; }
 }
 /* the signature lines stay on the last landscape page when the report ends with a wide table */
-.wide-tail { page: wide; }
+html.paper-portrait .wide-tail { page: wide; }
 /* the signature lines never stand alone at the top of a page: the last rows come with them */
 .sig-wrap, .wide-tail { break-before: avoid; page-break-before: avoid; }
 /* report centre tables: a group's heading across the table, its subtotal, the totals on top */
@@ -453,11 +455,12 @@ const notesHtml = (r: Report) =>
         .join('')}</ul></section>`
     : ''
 
-/** One headed table (a landscape document needs no landscape page of its own for it). */
+/** One headed table. A wide one gets its own landscape pages when the page is portrait: `wide`
+ *  on a portrait report; `portrait-wide` on a landscape one, for when the print window turns
+ *  its page to portrait (0207). */
 const sectionHtml = (t: ReportTable, total: string, extra = '', landscape = false) => {
-  const cls = ['rs', isWidePdf(t) && !landscape ? 'wide' : '', keepWhole(t) ? 'keep' : '', extra]
-    .filter(Boolean)
-    .join(' ')
+  const wide = isWidePdf(t) ? (landscape ? 'portrait-wide' : 'wide') : ''
+  const cls = ['rs', wide, keepWhole(t) ? 'keep' : '', extra].filter(Boolean).join(' ')
   return `<section class="${cls}"><h2>${esc(t.title)}</h2>${
     t.note ? `<p class="small table-note">${esc(t.note)}</p>` : ''
   }${pdfTable(t, total)}</section>`
@@ -531,7 +534,7 @@ export function reportHtml(report: Report, opts: { autoPrint?: boolean } = {}): 
     report.summaryText ? `<p class="summary-text">${esc(report.summaryText)}</p>` : '',
     sections,
     cash ? sectionHtml(cash, w.total, '', landscape) : '',
-    last && isWidePdf(last) && !landscape
+    last && isWidePdf(last)
       ? `<div class="wide-tail">${notesHtml(report)}${signatures}</div>`
       : notesHtml(report) + signatures,
   ].join('')
@@ -550,6 +553,7 @@ export function reportHtml(report: Report, opts: { autoPrint?: boolean } = {}): 
     body,
     lang: report.lang ?? 'en',
     autoPrint: opts.autoPrint,
+    kind: 'report',
   })
 }
 

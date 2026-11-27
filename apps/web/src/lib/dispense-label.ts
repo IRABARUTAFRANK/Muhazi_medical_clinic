@@ -415,8 +415,10 @@ function phoneOf(clinic: DispenseLabelDoc['clinic']): string | null {
 
 // ---------------------------------------------------------------- layout
 
+// 0207: the type sizes follow the label stock chosen in the print window (lib/paper.ts: 7.5 pt
+// text and 10 pt names on 70 × 40 mm, smaller on 40 × 30 mm, larger on 100 × 50 mm)
 const CSS = `
-.label { display: flex; flex-direction: column; font-size: 7.5pt; line-height: 1.2; color: #000000; overflow-wrap: anywhere; }
+.label { display: flex; flex-direction: column; font-size: var(--fs-body); line-height: 1.2; color: #000000; overflow-wrap: anywhere; }
 .label p { margin: 0; }
 .lb-main { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 0.3mm; }
 .lb-main > * { flex: none; }
@@ -426,13 +428,13 @@ const CSS = `
 .lb-clinic { font-weight: 700; padding-bottom: 0.4mm; border-bottom: 0.75pt solid #000000; }
 .lb-clinic > :last-child { font-weight: 600; }
 .lb-clinic > :first-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.lb-big { font-size: 10pt; font-weight: 700; line-height: 1.1; }
+.lb-big { font-size: var(--fs-title); font-weight: 700; line-height: 1.1; }
 .lb-patient { padding-top: 0.2mm; }
-.lb-patient .lb-big { font-size: 10.5pt; letter-spacing: 0.01em; }
+.lb-patient .lb-big { font-size: calc(var(--fs-title) + 0.5pt); letter-spacing: 0.01em; }
 .lb-patient .lb-big, .lb-med .lb-big { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-.lb-aside { font-size: 7.5pt; font-weight: 700; border: 0.75pt solid #000000; border-radius: 1mm; padding: 0 1mm; }
+.lb-aside { font-size: var(--fs-small); font-weight: 700; border: 0.75pt solid #000000; border-radius: 1mm; padding: 0 1mm; }
 .lb-row > .lb-aside { white-space: normal; max-width: 46%; text-align: right; }
-.lb-rw { font-size: 9.5pt; font-weight: 700; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.lb-rw { font-size: var(--fs-sub); font-weight: 700; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .lb-2nd { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .lb-keep > .lb-keep-words { font-weight: 700; }
 .lb-keep { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
@@ -442,19 +444,27 @@ const CSS = `
 .lb-foot span { display: inline-block; white-space: nowrap; margin-right: 1.8mm; }
 .lb-foot span:last-child { margin-right: 0; }
 .label.drop-2nd .lb-2nd, .label.drop-alt .lb-alt { display: none; }
+/* 0207, small label stock (40 x 30 mm): the directions stay; the keep-out line, the second line
+   of the footer and the clinic line give their room first */
+.label.drop-keep .lb-keep, .label.drop-clinic .lb-clinic { display: none; }
+.label.foot-1 .lb-foot { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; overflow: hidden; }
 `
 
 /**
  * When a label's content does not fit, it tries in order: drop line 5 (second-language
  * directions), then also the second-language halves of the keep-out and instruction lines,
- * then the keep-out line with the instructions on two lines, then on one. The patient name is never shortened. A direction cut
- * short is never printed, and a line that still does not fit whole is hidden. A line counts as
- * fitting only when its box ends within half a pixel of the sticker's text area. Runs again
- * once the fonts are in and just before printing.
+ * then the keep-out line with the instructions on two lines, then on one; then (small stock,
+ * 0207) without the keep-out line, with one footer line, without the clinic line. The patient
+ * name is never shortened. A direction cut short is never printed, and a line that still does
+ * not fit whole is hidden. A line counts as fitting only when its box ends within half a pixel
+ * of the sticker's text area. Runs again once the fonts are in, when the paper changes in the
+ * print window and just before printing.
  */
 const FIT_SCRIPT = `(function(){
-  var STEPS = [[], ['drop-2nd'], ['drop-2nd', 'drop-alt'], ['drop-2nd', 'drop-alt', 'notes-1'],
-    ['drop-2nd', 'drop-alt', 'notes-0']];
+  var LAST = ['drop-2nd', 'drop-alt', 'notes-0'];
+  var STEPS = [[], ['drop-2nd'], ['drop-2nd', 'drop-alt'], ['drop-2nd', 'drop-alt', 'notes-1'], LAST,
+    LAST.concat(['drop-keep']), LAST.concat(['drop-keep', 'foot-1']), LAST.concat(['drop-keep', 'foot-1', 'drop-clinic'])];
+  var ALL = ['drop-2nd', 'drop-alt', 'notes-1', 'notes-0', 'drop-keep', 'foot-1', 'drop-clinic'];
   function shown(c){ return getComputedStyle(c).display !== 'none'; }
   function clipped(el){ return el.scrollHeight > el.clientHeight + 1; }
   function over(m){
@@ -471,7 +481,7 @@ const FIT_SCRIPT = `(function(){
       var s = l.querySelector('.lb-2nd');
       Array.prototype.forEach.call(m.children, function(c){ c.style.visibility = ''; });
       for (var i = 0; i < STEPS.length; i++) {
-        l.classList.remove('drop-2nd', 'drop-alt', 'notes-1', 'notes-0');
+        ALL.forEach(function(c){ l.classList.remove(c); });
         STEPS[i].forEach(function(c){ l.classList.add(c); });
         var cut = s && STEPS[i].indexOf('drop-2nd') < 0 && clipped(s);
         if (!cut && !over(m)) return;
@@ -485,6 +495,7 @@ const FIT_SCRIPT = `(function(){
   fit();
   window.addEventListener('load', fit);
   window.addEventListener('beforeprint', fit);
+  window.addEventListener('mmc-paper', fit);
   if (document.fonts) { document.fonts.addEventListener('loadingdone', fit); document.fonts.ready.then(fit); }
 })();`
 
@@ -557,6 +568,7 @@ ${second && second !== rw ? `<p class="lb-2nd">${esc(second)}</p>` : ''}
     body: `${d.lines.map(label).join('\n')}<script>${FIT_SCRIPT}</script>`,
     lang: w.lang,
     autoPrint: opts.autoPrint,
+    kind: 'label',
   })
 }
 

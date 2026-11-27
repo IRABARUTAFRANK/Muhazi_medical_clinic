@@ -1,5 +1,5 @@
 import { useId, useState } from 'react'
-import { Banknote, Coins, Printer, ReceiptText, Users } from 'lucide-react'
+import { Banknote, Coins, ListOrdered, Printer, ReceiptText, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { CLINIC_PROFILE, formatRwf } from '@mmc/shared'
 import { Hint, Kpi, Panel } from '@/components/dash/kit'
@@ -9,7 +9,7 @@ import { StaffLink } from '@/components/staff/staff-link'
 import { useReceiptsInPeriod, type ReceiptRow } from '@/lib/api/analytics-receipts'
 import { useLetterhead } from '@/lib/report-parts'
 import { receiptsReport } from '@/lib/reports/build'
-import { openReceiptsBatch } from '@/lib/reports/receipts-print'
+import { openReceiptsBatch, type ReceiptsBatchPart } from '@/lib/reports/receipts-print'
 import { cn } from '@/lib/utils'
 import { num, payMethod, when } from '../format'
 import {
@@ -32,8 +32,9 @@ type MethodChoice = (typeof METHODS)[number]
 
 /**
  * The receipts given in the period (0102): how many and for how much, by method and by cashier,
- * the list sorted by time, "Print all receipts" (one document, one receipt per page) and the
- * Excel / PDF export of the list. The cashier filter is in the address (`person=`), the method
+ * the list sorted by time, "Print the receipts" (one after another, on the receipt printer),
+ * "Print the list of receipts" (the figures and the table on a sheet; 0207: apart, as they go to
+ * different printers) and the Excel / PDF export of the list. The cashier filter is in the address (`person=`), the method
  * in `by=`.
  */
 export function ReceiptsView({ user, period, search, update, clinic }: ViewProps) {
@@ -69,17 +70,20 @@ export function ReceiptsView({ user, period, search, update, clinic }: ViewProps
   if (!d) return <ViewSkeleton />
   if (d.needsUpdate) return <NeedsUpdate />
 
-  const printAll = () => {
+  const printBatch = (part: ReceiptsBatchPart) => {
     setError(null)
-    const ok = openReceiptsBatch({
-      rows: d.receipts,
-      from: d.from || p.from,
-      to: d.to || p.to,
-      clinic: letterhead,
-      printedBy: user.name,
-      cashier: d.cashiers.find((c) => c.id === cashier)?.name ?? null,
-      method: method === 'all' ? null : method,
-    })
+    const ok = openReceiptsBatch(
+      {
+        rows: d.receipts,
+        from: d.from || p.from,
+        to: d.to || p.to,
+        clinic: letterhead,
+        printedBy: user.name,
+        cashier: d.cashiers.find((c) => c.id === cashier)?.name ?? null,
+        method: method === 'all' ? null : method,
+      },
+      part,
+    )
     if (!ok) setError(d.receipts.length ? t('report.popupBlocked') : t('analytics.noData'))
   }
   const methodOptions = METHODS.map((m) => ({
@@ -235,9 +239,31 @@ export function ReceiptsView({ user, period, search, update, clinic }: ViewProps
               </select>
             </div>
           )}
-          <Button variant="primary" onClick={printAll} disabled={d.receipts.length === 0}>
+          <Button
+            variant="primary"
+            onClick={() => printBatch('receipts')}
+            disabled={d.receipts.length === 0}
+            title={tx(
+              t,
+              'receipts.printEachHint',
+              'Every receipt of the period, one after the other, on the receipt printer',
+            )}
+          >
             <Printer size={16} aria-hidden="true" />
-            {tx(t, 'receipts.printAll', 'Print all receipts')}
+            {tx(t, 'receipts.printEach', 'Print the receipts')}
+          </Button>
+          <Button
+            variant="tint-grey"
+            onClick={() => printBatch('list')}
+            disabled={d.receipts.length === 0}
+            title={tx(
+              t,
+              'receipts.printListHint',
+              'The figures of the period and the table of its receipts, on a sheet',
+            )}
+          >
+            <ListOrdered size={16} aria-hidden="true" />
+            {tx(t, 'receipts.printList', 'Print the list of receipts')}
           </Button>
           {error && <span className="text-red text-[13px] font-semibold">{error}</span>}
         </div>
