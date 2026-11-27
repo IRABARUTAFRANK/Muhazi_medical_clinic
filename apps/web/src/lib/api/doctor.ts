@@ -118,17 +118,28 @@ sampleOrders.push(
     resultBy: null,
   },
 )
-const sampleRx: MyPrescription[] = [
-  ['Artemether-lumefantrine 20/120 mg', 'Mukamana Alice', 24, 'waiting', null, 30],
-  ['Amoxicillin 500 mg', 'Habimana Eric', 21, 'given', null, 65],
-  ['Ciprofloxacin 500 mg', 'Ingabire Diane', 10, 'not_given', 'Out of stock', 80],
-  ['Ibuprofen 400 mg', 'Mukamana Alice', 15, 'outside', null, 25],
-].map(([item, patient, quantity, state, reason, min], i) => ({
+// 0209: grouped by patient on the page — Mukamana Alice came twice (two prescriptions)
+const RX_PATIENTS: Record<string, [string, string]> = {
+  'Mukamana Alice': ['p-0', 'MMC-000120'],
+  'Habimana Eric': ['p-1', 'MMC-000121'],
+  'Ingabire Diane': ['p-2', 'MMC-000122'],
+}
+const sampleRx: MyPrescription[] = (
+  [
+    ['Artemether-lumefantrine 20/120 mg', 'Mukamana Alice', 24, 'waiting', null, 30, 'e-0'],
+    ['Paracetamol 500 mg', 'Mukamana Alice', 18, 'waiting', null, 29, 'e-0'],
+    ['Ibuprofen 400 mg', 'Mukamana Alice', 15, 'outside', null, 25, 'e-0'],
+    ['Amoxicillin 500 mg', 'Habimana Eric', 21, 'given', null, 65, 'e-1'],
+    ['Oral rehydration salts', 'Habimana Eric', 6, 'given', null, 64, 'e-1'],
+    ['Ciprofloxacin 500 mg', 'Ingabire Diane', 10, 'not_given', 'Out of stock', 80, 'e-2'],
+    ['Metronidazole 250 mg', 'Mukamana Alice', 21, 'given', null, 3 * 24 * 60, 'e-9'],
+  ] as const
+).map(([item, patient, quantity, state, reason, min, encounter], i) => ({
   id: `mp-${i}`,
-  encounterId: `e-${i}`,
-  patientId: `p-${i}`,
+  encounterId: encounter,
+  patientId: RX_PATIENTS[patient]![0],
   patient: patient as string,
-  fileNumber: `MMC-00012${i}`,
+  fileNumber: RX_PATIENTS[patient]![1],
   item: item as string,
   quantity: quantity as number,
   dose: '1 tab',
@@ -144,7 +155,7 @@ const sampleRx: MyPrescription[] = [
   notGivenReason: reason as string | null,
   cancelledAt: null,
   cancelReason: null,
-  visitOpen: true,
+  visitOpen: encounter !== 'e-9',
 }))
 
 /** The days the lists cover, ISO, both included (the shared period filter). */

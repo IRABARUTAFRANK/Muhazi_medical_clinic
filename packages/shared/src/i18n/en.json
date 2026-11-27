@@ -5733,6 +5733,19 @@
     },
     "rxSearch": "Search patient, medicine or file number",
     "noRx": "No prescription in this period.",
+    "rxByPatient": {
+      "open": "Open the prescriptions of {{name}}",
+      "rx_one": "{{count}} prescription",
+      "rx_other": "{{count}} prescriptions",
+      "meds_one": "{{count}} medicine",
+      "meds_other": "{{count}} medicines",
+      "last": "last {{when}}",
+      "rxOf": "Prescription of {{when}}",
+      "visitOpen": "visit still open",
+      "visitDone": "visit finished",
+      "givenAt": "Handed over {{when}}",
+      "period": "Your prescriptions for this patient from {{from}} to {{to}}. Choose a longer period on the list to see older ones."
+    },
     "loading": "Loading…",
     "periodNeedsUpdate": "This system needs its latest update to show lists older than 90 days. Until then, only the last 90 days are shown."
   },

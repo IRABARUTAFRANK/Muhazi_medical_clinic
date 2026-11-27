@@ -5733,6 +5733,19 @@
     },
     "rxSearch": "Chercher un patient, un médicament ou un dossier",
     "noRx": "Aucune ordonnance sur cette période.",
+    "rxByPatient": {
+      "open": "Ouvrir les ordonnances de {{name}}",
+      "rx_one": "{{count}} ordonnance",
+      "rx_other": "{{count}} ordonnances",
+      "meds_one": "{{count}} médicament",
+      "meds_other": "{{count}} médicaments",
+      "last": "dernière le {{when}}",
+      "rxOf": "Ordonnance du {{when}}",
+      "visitOpen": "visite en cours",
+      "visitDone": "visite terminée",
+      "givenAt": "Remis le {{when}}",
+      "period": "Vos ordonnances pour ce patient du {{from}} au {{to}}. Choisissez une période plus longue sur la liste pour voir les plus anciennes."
+    },
     "loading": "Chargement…",
     "periodNeedsUpdate": "Le système a besoin de sa dernière mise à jour pour afficher les listes de plus de 90 jours. En attendant, seuls les 90 derniers jours sont affichés."
   },

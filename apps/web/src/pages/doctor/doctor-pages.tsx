@@ -5,12 +5,10 @@ import {
   CircleCheck,
   Clock,
   FlaskConical,
-  FolderOpen,
   Hourglass,
   ListOrdered,
   Pill as PillIcon,
   Search,
-  Store,
   TestTube,
   TriangleAlert,
   type LucideIcon,
@@ -23,21 +21,12 @@ import { Empty, Panel, Pill } from '@/components/dash/kit'
 import type { Tint } from '@/components/dash/kit-style'
 import { BannerChip, PageBanner } from '@/components/dash/page-banner'
 import { PeriodFilter } from '@/components/dash/period-filter'
-import { buttonVariants } from '@/components/ui/button'
 import { WideResult } from '@/components/clinical/wide-result'
 import { BlankRxForm } from '@/components/clinical/blank-rx'
-import { OpenFileLink } from '@/components/clinical/file-panel'
 import { NextPatientPanel } from '@/components/clinical/next-patient-panel'
 import { ListBar, Pager } from '@/components/ui/list-tools'
-import { StaffLink } from '@/components/staff/staff-link'
 import { StaffShell } from '@/components/staff/staff-shell'
-import {
-  useMyOrders,
-  useMyPrescriptions,
-  type MyOrder,
-  type MyPrescription,
-  type RxState,
-} from '@/lib/api/doctor'
+import { useMyOrders, useMyPrescriptions, type MyOrder, type RxState } from '@/lib/api/doctor'
 import type { TestStatus } from '@/lib/api/lab'
 import {
   mineElsewhere,
@@ -58,10 +47,13 @@ import {
   type VisitBlock,
 } from '@/lib/visit-blocks'
 import { useSearchPeriod, type Period } from '@/lib/period'
+import { groupByPatient } from '@/lib/rx-groups'
 import { cn } from '@/lib/utils'
 import { STATUS_ORDER } from '../lab/lab-report'
 import { OpenNextButton } from '../home/open-next'
 import { MyQueuePanel } from '../home/role-panels'
+import { RxPatientPanel, RxPatientRow } from './rx-by-patient'
+import { VisitLink } from './visit-link'
 
 const when = (iso: string) => `${formatDate(new Date(iso))} ${formatTime(new Date(iso))}`
 
@@ -103,39 +95,6 @@ function Tabs<K extends string>({
         </button>
       ))}
     </div>
-  )
-}
-
-/** Open the visit while it is open, the patient file afterwards. */
-function VisitLink({
-  open,
-  encounterId,
-  patientId,
-}: {
-  open: boolean
-  encounterId: string
-  patientId: string
-}) {
-  const { t } = useTranslation()
-  return open ? (
-    <StaffLink
-      to="/app/visit"
-      search={{ encounter: encounterId }}
-      className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
-    >
-      <FolderOpen size={14} aria-hidden="true" />
-      {t('visits.openVisit')}
-    </StaffLink>
-  ) : (
-    // the file opens in the side panel; the link underneath keeps middle-click and ctrl-click
-    // on the whole page
-    <OpenFileLink
-      patientId={patientId}
-      className={buttonVariants({ size: 'sm', variant: 'tint-blue' })}
-    >
-      <FolderOpen size={14} aria-hidden="true" />
-      {t('visit.patientFile')}
-    </OpenFileLink>
   )
 }
 
@@ -513,14 +472,6 @@ export function ResultsPage({ user }: { user: StaffUser }) {
 
 /* ---------------------------------------------------------------- prescriptions */
 
-const RX_LOOK: Record<RxState, { tint: Tint; icon: LucideIcon }> = {
-  waiting: { tint: 'amber', icon: Hourglass },
-  given: { tint: 'mint', icon: CircleCheck },
-  not_given: { tint: 'coral', icon: Ban },
-  room: { tint: 'teal', icon: PillIcon },
-  outside: { tint: 'violet', icon: Store },
-}
-
 /** Every prescription I wrote and what became of it at the pharmacy. */
 export function PrescriptionsPage({ user }: { user: StaffUser }) {
   const { t } = useTranslation()
@@ -530,11 +481,19 @@ export function PrescriptionsPage({ user }: { user: StaffUser }) {
   const [query, setQuery] = useState('')
   const { data: got, isLoading } = useMyPrescriptions({ from: period.from, to: period.to })
   const data = got?.rows ?? []
-  const count = (k: RxState | 'all') =>
-    k === 'all' ? data.length : data.filter((r) => r.state === k).length
-  const shown = data.filter(
-    (r: MyPrescription) =>
-      (tab === 'all' || r.state === tab) && matches(query, r.patient, r.item, r.fileNumber),
+  // 0209: one row per patient; the row opens their prescriptions (one per visit) beside the list
+  const groups = groupByPatient(data)
+  const [openId, setOpenId] = useState<string | null>(null)
+  const opened = groups.find((g) => g.patientId === openId) ?? null
+  const has = (g: (typeof groups)[number], k: RxState | 'all') => k === 'all' || g.states[k] > 0
+  // the tabs count patients (as the list shows them); the banner still counts the medicines
+  const count = (k: RxState | 'all') => groups.filter((g) => has(g, k)).length
+  const notGiven = data.filter((r) => r.state === 'not_given').length
+  const shown = groups.filter(
+    (g) =>
+      has(g, tab) &&
+      (matches(query, g.patient, g.fileNumber) ||
+        g.visits.some((v) => v.lines.some((r) => matches(query, r.item)))),
   )
   const paged = usePaged(shown, 15, `${tab}|${query}|${period.from}|${period.to}`)
   return (
@@ -547,7 +506,7 @@ export function PrescriptionsPage({ user }: { user: StaffUser }) {
           lead={t('doctorLists.rxLead')}
           meta={
             <BannerChip icon={Ban}>
-              {t('doctorLists.notGivenCount', { count: count('not_given') })}
+              {t('doctorLists.notGivenCount', { count: notGiven })}
             </BannerChip>
           }
         />
@@ -576,51 +535,24 @@ export function PrescriptionsPage({ user }: { user: StaffUser }) {
             </Empty>
           ) : (
             <div className="flex flex-col">
-              {paged.slice.map((r, i) => {
-                const look = RX_LOOK[r.state]
-                return (
-                  <div
-                    key={r.id}
-                    className="border-grid anim-enter flex flex-wrap items-center gap-3 border-b py-3 last:border-b-0"
-                    style={{ '--i': Math.min(i, 12) } as CSSProperties}
-                  >
-                    <Pill tint={look.tint} icon={look.icon}>
-                      {t(`doctorLists.rxTabs.${r.state}`)}
-                    </Pill>
-                    <span className="min-w-[min(200px,100%)] flex-1">
-                      <span className="block font-semibold">
-                        {r.item} × {r.quantity}
-                        <span className="text-ink-2 font-normal"> · {r.patient}</span>
-                      </span>
-                      <span className="text-ink-3 block text-[13px]">
-                        {[
-                          r.fileNumber,
-                          r.dose,
-                          r.frequency,
-                          r.days ? t('clinical.forDays', { count: r.days }) : null,
-                          when(r.at),
-                        ]
-                          .filter(Boolean)
-                          .join(' · ')}
-                      </span>
-                      {r.notGivenReason && (
-                        <span className="text-red block text-[13px] font-semibold">
-                          {t('clinical.notGivenWhy', { reason: r.notGivenReason })}
-                        </span>
-                      )}
-                    </span>
-                    <VisitLink
-                      open={r.visitOpen}
-                      encounterId={r.encounterId}
-                      patientId={r.patientId}
-                    />
-                  </div>
-                )
-              })}
+              {paged.slice.map((g, i) => (
+                <RxPatientRow
+                  key={g.patientId || g.fileNumber}
+                  group={g}
+                  index={i}
+                  onOpen={() => setOpenId(g.patientId)}
+                />
+              ))}
             </div>
           )}
           <Pager {...paged} onPage={paged.setPage} />
         </Panel>
+        <RxPatientPanel
+          group={opened}
+          from={period.from}
+          to={period.to}
+          onClose={() => setOpenId(null)}
+        />
       </main>
     </StaffShell>
   )

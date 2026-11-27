@@ -5742,6 +5742,19 @@
     },
     "rxSearch": "Shakisha umurwayi, umuti cyangwa nimero ya dosiye",
     "noRx": "Nta muti wanditswe muri iki gihe.",
+    "rxByPatient": {
+      "open": "Fungura impapuro z’imiti za {{name}}",
+      "rx_one": "Urupapuro rw’imiti {{count}}",
+      "rx_other": "Impapuro z’imiti {{count}}",
+      "meds_one": "Umuti {{count}}",
+      "meds_other": "Imiti {{count}}",
+      "last": "ubwa nyuma {{when}}",
+      "rxOf": "Urupapuro rw’imiti rwo ku wa {{when}}",
+      "visitOpen": "kwivuza birakomeje",
+      "visitDone": "kwivuza byarangiye",
+      "givenAt": "Yatanzwe {{when}}",
+      "period": "Imiti wandikiye uyu murwayi kuva {{from}} kugeza {{to}}. Hitamo igihe kirekire ku rutonde kugira ngo ubone iya kera."
+    },
     "loading": "Birimo gutegurwa…",
     "periodNeedsUpdate": "Sisitemu ikeneye ivugurura riheruka kugira ngo yerekane urutonde rurengeje iminsi 90. Kugeza icyo gihe, hagaragara iminsi 90 ya nyuma gusa."
   },
