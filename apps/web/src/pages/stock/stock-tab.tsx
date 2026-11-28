@@ -64,6 +64,7 @@ export function StockTab({
   totals,
   manage,
   initialPart,
+  initialOpen,
   onAddStock,
 }: {
   overview: StockOverview | undefined
@@ -73,6 +74,8 @@ export function StockTab({
   manage: boolean
   /** From the address (an older tab): "order" or "prices". */
   initialPart?: string
+  /** 0213: the medicine whose panel is open at first (the search bar's ?open=). */
+  initialOpen?: string
   onAddStock: (itemId?: string) => void
 }) {
   const { t } = useTranslation()
@@ -81,7 +84,7 @@ export function StockTab({
   const [part, setPart] = useState<Part>(
     initialPart === 'order' || initialPart === 'prices' ? initialPart : 'list',
   )
-  const [openId, setOpenId] = useState<string | null>(null)
+  const [openId, setOpenId] = useState<string | null>(initialOpen ?? null)
   const openItem = items.find((i) => i.id === openId) ?? null
 
   return (

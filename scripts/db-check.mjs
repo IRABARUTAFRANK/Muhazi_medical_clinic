@@ -32047,6 +32047,114 @@ await step('0208: tidy — the bookings of these checks leave no trace', async (
   return 'done'
 })
 // @@t208-end
+// @@t213-begin
+// ---------------------------------------------------------------- 0213 the search bar suggests as one types
+const t213 = {}
+const qs213 = async (who, q) => as197b(who, `select quick_search($1) as j`, [q])
+await step(
+  '0213: quick_search finds a patient by name and by part of the file number, the visit, bill and receipt by part of their number, a caller by name; each kind only for those who may see it',
+  async () => {
+    await asAdmin()
+    const sql = await readFile(path.join(migrationsDir, '20270225090000_quick_search.sql'), 'utf8')
+    await db.exec(sql)
+    await db.exec(sql)
+    const g = await one(
+      `select has_function_privilege('authenticated', 'quick_search(text)', 'execute') as auth,
+              has_function_privilege('anon', 'quick_search(text)', 'execute') as anon`,
+    )
+    // a patient, a visit with its bill and a receipt, a caller's request, all with numbers of their own
+    t213.pid = await one(
+      `insert into patient (surname, given_names, sex, phone_1) values ('Quicksearch', 'Amina 213', 'female', '0788213213') returning id, file_number`,
+    )
+    t213.enc = await one(`insert into encounter (patient_id) values ($1) returning id, reference`, [
+      t213.pid.id,
+    ])
+    await db.query(`update encounter set reference = 'V-2099-213213' where id = $1`, [t213.enc.id])
+    t213.inv = (
+      await one(
+        `update invoice set number = 'INV-2099-213213' where encounter_id = $1 returning id`,
+        [t213.enc.id],
+      )
+    ).id
+    await db.query(
+      `insert into payment (invoice_id, method, amount, receipt_no) values ($1, 'cash', 500, 'RCT-2099-213213')`,
+      [t213.inv],
+    )
+    await db.query(
+      `insert into appointment (status, contact_name, contact_phone, reference, preferred_at)
+       values ('inquiry', 'Caller Quicksearch 213', '0722213213', 'MMC-2099-2131', now() + interval '2 days')`,
+    )
+    const file = t213.pid.file_number
+    const part = file.replace(/[^0-9]/g, '').slice(-4)
+    const ids = (arr, key = 'id') => (arr ?? []).map((x) => x[key])
+    const rec = staff.receptionist
+    const byName = await qs213(rec, 'quicksearch ami')
+    const byPart = await qs213(rec, part)
+    const byVisit = await qs213(rec, '2099-213213')
+    const byCaller = await qs213(rec, 'Caller Quick')
+    const short = await qs213(rec, 'q')
+    const asManager = await qs213(staff.manager, 'Mugisha')
+    const asCashier = await qs213(staff.cashier, 'Quicksearch')
+    const may = async (who, perm) =>
+      (await as197b(who, `select has_perm($1) as j`, [perm])) === true
+    const r = {
+      grants: [g.auth, g.anon],
+      name: ids(byName.patients).includes(t213.pid.id),
+      part: [part.length, ids(byPart.patients).includes(t213.pid.id)],
+      visit: ids(byVisit.visits, 'encounterId').includes(t213.enc.id),
+      bill: (byVisit.bills ?? []).some((b) => b.number === 'INV-2099-213213'),
+      receipt: (byVisit.receipts ?? []).some(
+        (b) => b.receiptNo === 'RCT-2099-213213' && b.encounterId === t213.enc.id,
+      ),
+      caller: (byCaller.bookings ?? []).some(
+        (b) => b.reference === 'MMC-2099-2131' && b.phone === '0722213213',
+      ),
+      short: JSON.stringify(short),
+      staffForReception: 'staff' in byCaller,
+      staffForManager: (asManager.staff ?? []).some((s) => s.name === 'Mugisha Samuel'),
+      itemsFollowRight: 'items' in asCashier === (await may(staff.cashier, 'stock.read')),
+      billsFollowRight:
+        'bills' in (await qs213(staff.nurse, '2099-213')) ===
+        ((await may(staff.nurse, 'billing.read')) || (await may(staff.nurse, 'payment.take'))),
+    }
+    let anon = 'ok'
+    try {
+      await as197b(null, `select quick_search('Quicksearch') as j`)
+    } catch (e) {
+      anon = e.code || 'refused'
+    }
+    await asAdmin()
+    if (
+      !r.grants[0] ||
+      r.grants[1] ||
+      !r.name ||
+      !r.part[1] ||
+      !r.visit ||
+      !r.bill ||
+      !r.receipt ||
+      !r.caller ||
+      r.short !== '{}' ||
+      r.staffForReception ||
+      !r.staffForManager ||
+      !r.itemsFollowRight ||
+      !r.billsFollowRight ||
+      anon === 'ok'
+    )
+      throw new Error(json198({ ...r, anon }))
+    return `for a signed-in person only; a name, the last ${part.length} digits of the file number (${file}), part of the visit, bill and receipt numbers and a caller's name all found; one letter: nothing; staff only for the manager; medicines and bills only with their rights; without a session: ${anon}`
+  },
+)
+await step('0213: tidy — the records of these checks leave no trace', async () => {
+  await asAdmin()
+  await db.query(
+    `update payment set voided_at = now(), void_reason = 'check 0213' where receipt_no = 'RCT-2099-213213'`,
+  )
+  await db.query(`update appointment set deleted_at = now() where reference = 'MMC-2099-2131'`)
+  await db.query(`update encounter set deleted_at = now() where id = $1`, [t213.enc.id])
+  await db.query(`update patient set deleted_at = now() where id = $1`, [t213.pid.id])
+  return 'done'
+})
+// @@t213-end
 finish()
 
 function finish() {

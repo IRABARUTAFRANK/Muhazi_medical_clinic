@@ -11,6 +11,35 @@
   "lang": {
     "label": "Language"
   },
+  "search": {
+    "placeholder": "Search patients, receipts, pages…",
+    "groups": {
+      "patients": "Patients",
+      "pages": "Pages and features",
+      "visits": "Visits",
+      "bills": "Bills",
+      "receipts": "Receipts",
+      "bookings": "Bookings and requests",
+      "staff": "Employees",
+      "items": "Medicines and supplies",
+      "recent": "Opened recently"
+    },
+    "age_one": "{{count}} year",
+    "age_other": "{{count}} years",
+    "inClinic": "in the clinic now",
+    "open": "open",
+    "visit": "Visit {{ref}}",
+    "bill": "Bill {{number}}",
+    "receipt": "Receipt {{number}}",
+    "counterSale": "counter sale {{number}}",
+    "noLonger": "no longer working here",
+    "searching": "Searching…",
+    "none": "Nothing found for “{{q}}”.",
+    "noneHint": "Try a name, a file number, a phone number, or a number such as RCT-…, INV-… or V-….",
+    "allPatients": "All patients matching “{{q}}”",
+    "clear": "Clear",
+    "keys": "↑ ↓ to move · Enter to open · Esc to close"
+  },
   "common": {
     "staffSignIn": "Staff sign in",
     "signIn": "Sign in",

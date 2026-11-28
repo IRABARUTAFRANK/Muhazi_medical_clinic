@@ -12,6 +12,35 @@
   "lang": {
     "label": "Ururimi"
   },
+  "search": {
+    "placeholder": "Shakisha abarwayi, inyemezabwishyu, amapaji…",
+    "groups": {
+      "patients": "Abarwayi",
+      "pages": "Amapaji n’ibikorwa",
+      "visits": "Kwivuza",
+      "bills": "Fagitire",
+      "receipts": "Inyemezabwishyu",
+      "bookings": "Gahunda n’ubusabe",
+      "staff": "Abakozi",
+      "items": "Imiti n’ibikoresho",
+      "recent": "Ibyafunguwe vuba"
+    },
+    "age_one": "Umwaka {{count}}",
+    "age_other": "Imyaka {{count}}",
+    "inClinic": "ari ku ivuriro ubu",
+    "open": "birakomeje",
+    "visit": "Kwivuza {{ref}}",
+    "bill": "Fagitire {{number}}",
+    "receipt": "Inyemezabwishyu {{number}}",
+    "counterSale": "igurisha ryo ku irembo {{number}}",
+    "noLonger": "ntagikora hano",
+    "searching": "Birimo gushakwa…",
+    "none": "Nta cyabonetse kuri “{{q}}”.",
+    "noneHint": "Gerageza izina, nimero ya dosiye, telefoni, cyangwa nimero nka RCT-…, INV-… cyangwa V-….",
+    "allPatients": "Abarwayi bose bahuye na “{{q}}”",
+    "clear": "Siba",
+    "keys": "↑ ↓ guhitamo · Enter gufungura · Esc gufunga"
+  },
   "common": {
     "staffSignIn": "Kwinjira kw’abakozi",
     "signIn": "Injira",

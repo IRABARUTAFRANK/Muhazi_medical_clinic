@@ -32,6 +32,8 @@ export const Route = createFileRoute('/app/stock')({
     note: id(search.note),
     request: id(search.request),
     delivery: id(search.delivery),
+    // 0213: a medicine found in the search bar opens on the list
+    open: id(search.open),
     sale: id(search.sale),
   }),
   component: Page,
@@ -39,16 +41,16 @@ export const Route = createFileRoute('/app/stock')({
 
 function Page() {
   const user = useSession((s) => s.user)
-  const { tab, item, location, to, store, note, request, delivery } = Route.useSearch()
+  const { tab, item, location, to, store, note, request, delivery, open } = Route.useSearch()
   if (!user) return null
   // a new address (another tab, another medicine, another note) opens the page afresh on it
   return (
     <StockPage
-      key={[tab, item, location, to, store, note, request, delivery].join('|')}
+      key={[tab, item, location, to, store, note, request, delivery, open].join('|')}
       user={user}
       initialTab={tab}
       preset={{ item, location, to }}
-      focus={{ store, note, request, delivery }}
+      focus={{ store, note, request, delivery, open }}
     />
   )
 }

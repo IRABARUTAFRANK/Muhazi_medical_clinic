@@ -1,14 +1,12 @@
-import { Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { StaffUser, SyncState } from '@mmc/shared'
 import { LangSwitch } from '@/components/public/lang-switch'
 import { Logo } from '@/components/public/logo'
 import { cn } from '@/lib/utils'
+import { GlobalSearch } from './global-search'
 import { NotificationBell } from './notification-bell'
 import { SyncBadge } from './sync-badge'
 import { UserMenu } from './user-menu'
-import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
 
 interface TopBarProps {
   user: StaffUser
@@ -18,63 +16,6 @@ interface TopBarProps {
   title?: string
   /** The sidebar group the page belongs to, between the clinic and the page. */
   group?: string
-}
-
-/**
- * Search any patient from every screen: Enter opens the patient register with the matches
- * (name, file number, phone, national ID). "/" anywhere puts the cursor here.
- */
-function PatientSearch({ className }: { className?: string }) {
-  const { t } = useTranslation()
-  const navigate = useNavigate()
-  const [q, setQ] = useState('')
-  const input = useRef<HTMLInputElement>(null)
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement | null
-      const typing =
-        el &&
-        (el.tagName === 'INPUT' ||
-          el.tagName === 'TEXTAREA' ||
-          el.tagName === 'SELECT' ||
-          el.isContentEditable)
-      // the visible search box only (PC and tablet rows both render one)
-      if (e.key === '/' && !typing && input.current && input.current.offsetParent !== null) {
-        e.preventDefault()
-        input.current.focus()
-      }
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [])
-  return (
-    <form
-      role="search"
-      onSubmit={(e) => {
-        e.preventDefault()
-        const text = q.trim()
-        void navigate({ to: '/app/patients', search: text ? { q: text } : {} })
-      }}
-      className={cn(
-        'border-border bg-surface text-ink-3 focus-within:border-primary focus-within:ring-primary/20 flex h-9 items-center gap-2 rounded-full border px-3 text-[14px] transition-[border-color,box-shadow] duration-120 focus-within:ring-2',
-        className,
-      )}
-    >
-      <Search size={16} aria-hidden="true" />
-      <input
-        ref={input}
-        type="search"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder={t('common.searchPatient')}
-        aria-label={t('common.searchPatient')}
-        className="text-ink placeholder:text-ink-4 min-w-0 flex-1 border-0 bg-transparent outline-none"
-      />
-      <kbd className="border-border text-ink-4 hidden rounded border px-1 text-[11px] leading-4 lg:inline">
-        /
-      </kbd>
-    </form>
-  )
 }
 
 /**
@@ -120,7 +61,7 @@ export function TopBar({ user, sync, onOpenSheet, title, group }: TopBarProps) {
             </>
           )}
         </span>
-        <PatientSearch className="w-[min(320px,20vw)] min-w-[180px] flex-none" />
+        <GlobalSearch user={user} className="w-[min(320px,20vw)] min-w-[180px] flex-none" />
         <SyncBadge state={sync} />
         <NotificationBell user={user} />
         <UserMenu user={user} />
@@ -150,7 +91,7 @@ export function TopBar({ user, sync, onOpenSheet, title, group }: TopBarProps) {
           </span>
           <UserMenu user={user} onOpenSheet={onOpenSheet} />
         </div>
-        <PatientSearch />
+        <GlobalSearch user={user} />
       </div>
     </header>
   )

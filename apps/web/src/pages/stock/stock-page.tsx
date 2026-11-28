@@ -76,6 +76,8 @@ export interface StockFocus {
   note?: string
   request?: string
   delivery?: string
+  /** 0213: the medicine whose panel opens on the list (found in the search bar). */
+  open?: string
 }
 /** Opens "Add stock" or the move between pharmacy stores already filled in (the desk's short
  *  medicine). */
@@ -272,6 +274,7 @@ function AdminStock({
           totals={totals ?? null}
           manage={manage}
           initialPart={part}
+          initialOpen={focus.open}
           onAddStock={(item) => openStock('receive', item ? { item } : {})}
         />
       )}

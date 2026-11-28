@@ -11,6 +11,35 @@
   "lang": {
     "label": "Langue"
   },
+  "search": {
+    "placeholder": "Rechercher patients, reçus, pages…",
+    "groups": {
+      "patients": "Patients",
+      "pages": "Pages et fonctions",
+      "visits": "Visites",
+      "bills": "Factures",
+      "receipts": "Reçus",
+      "bookings": "Rendez-vous et demandes",
+      "staff": "Employés",
+      "items": "Médicaments et fournitures",
+      "recent": "Ouverts récemment"
+    },
+    "age_one": "{{count}} an",
+    "age_other": "{{count}} ans",
+    "inClinic": "à la clinique maintenant",
+    "open": "en cours",
+    "visit": "Visite {{ref}}",
+    "bill": "Facture {{number}}",
+    "receipt": "Reçu {{number}}",
+    "counterSale": "vente au comptoir {{number}}",
+    "noLonger": "ne travaille plus ici",
+    "searching": "Recherche…",
+    "none": "Rien trouvé pour « {{q}} ».",
+    "noneHint": "Essayez un nom, un numéro de dossier, un téléphone, ou un numéro comme RCT-…, INV-… ou V-….",
+    "allPatients": "Tous les patients correspondant à « {{q}} »",
+    "clear": "Effacer",
+    "keys": "↑ ↓ pour choisir · Entrée pour ouvrir · Échap pour fermer"
+  },
   "common": {
     "staffSignIn": "Connexion du personnel",
     "signIn": "Se connecter",

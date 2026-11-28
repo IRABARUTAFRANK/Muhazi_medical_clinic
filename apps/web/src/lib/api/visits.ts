@@ -105,7 +105,7 @@ interface FindRow {
   balance_due?: number | string | null
 }
 
-const samplePatients: PatientHit[] = [
+export const samplePatients: PatientHit[] = [
   {
     id: 'p-1',
     fileNumber: 'MMC-000124',
