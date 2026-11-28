@@ -32155,6 +32155,271 @@ await step('0213: tidy — the records of these checks leave no trace', async ()
   return 'done'
 })
 // @@t213-end
+// @@t214-begin
+// 0214: the rules on salaries, every part editable
+const dq214 = async (sql, params = []) => {
+  try {
+    return await db.query(sql, params)
+  } catch (e) {
+    e.message = sql.replace(/\s+/g, ' ').slice(0, 90) + ' → ' + e.message
+    throw e
+  }
+}
+const one214 = async (sql, params = []) => (await dq214(sql, params)).rows[0]
+await step(
+  '0214: PAYE bands by date with the casual rate (2027 set added and removed, the last set kept, two bands at one amount refused); a rule switched off and on (editing keeps it off); a built-in rule counted on the gross then back; the same rates add no dated row, a dated rate removed, the last one kept; the hand-over day of RSSB moved to the 10th; a salary tried (300,000 → net 225,964 with these rules); the clinic’s share and a hand-over not cancelled from the expenses list; a doctor refused',
+  async () => {
+    // 0214 again: the 0179 step re-ran 0186 (its set_deduction, deductions_list, paye_of,
+    // remittances_due, the two-value set_paye_bands) and 0185 (its void_expense)
+    await asAdmin()
+    await db.exec(
+      await readFile(path.join(migrationsDir, '20270226090000_salary_rules_editable.sql'), 'utf8'),
+    )
+    const refused = await codeAs(d1, `select payslip_preview(300000)`)
+    const refusedBands = await codeAs(d1, `select remove_paye_bands('2024-01-01')`)
+    await as(staff.cashier)
+    const list0 = (await one214(`select deductions_list() as j`)).j
+    const ruleOf = (l, code) => l.rules.find((r) => r.code === code)
+    // PAYE: a new set of bands from 2027 with the casual worker at 12%
+    await dq214(
+      `select set_paye_bands('2027-01-01', '[{"lower":0,"rate":0},{"lower":70000,"rate":10},{"lower":100000,"rate":20},{"lower":200000,"rate":30}]'::jsonb, 12)`,
+    )
+    const p2027 = Number((await one214(`select paye_of(500000, '2027-02-01') as n`)).n)
+    const p2026 = Number((await one214(`select paye_of(500000, '2026-03-01') as n`)).n)
+    const c2027 = Number((await one214(`select paye_of(500000, '2027-02-01', 'casual') as n`)).n)
+    const c2026 = Number((await one214(`select paye_of(500000, '2026-03-01', 'casual') as n`)).n)
+    const sameStart = await codeAs(
+      staff.cashier,
+      `select set_paye_bands('2028-01-01', '[{"lower":0,"rate":0},{"lower":0,"rate":10}]'::jsonb)`,
+    )
+    const badCasual = await codeAs(
+      staff.cashier,
+      `select set_paye_bands('2028-01-01', '[{"lower":0,"rate":0}]'::jsonb, 120)`,
+    )
+    const list1 = (await one214(`select deductions_list() as j`)).j
+    await dq214(`select remove_paye_bands('2027-01-01')`)
+    const back = Number((await one214(`select paye_of(500000, '2027-02-01') as n`)).n)
+    const backCasual = Number(
+      (await one214(`select paye_of(500000, '2027-02-01', 'casual') as n`)).n,
+    )
+    const lastSet = await codeAs(staff.cashier, `select remove_paye_bands('2024-01-01')`)
+    const noSet = await codeAs(staff.cashier, `select remove_paye_bands('2031-01-01')`)
+    // a rule switched off for the clinic: no line on the slip; editing it keeps it off; on again
+    const hazard = ruleOf(list0, 'hazard')
+    await dq214(`select set_deduction_active($1, false)`, [hazard.id])
+    const slipOff = (await one214(`select payslip_preview(300000, '2026-11-01') as j`)).j
+    await dq214(
+      `select set_deduction($1, null, 'rssb', 'gross', true, null, null, 2, null, '2025-01-01', 'Employer only', null)`,
+      [hazard.id],
+    )
+    const stillOff = (await one214(`select active from deduction_rule where id = $1`, [hazard.id]))
+      .active
+    await dq214(`select set_deduction_active($1, true)`, [hazard.id])
+    // a built-in rule counted on the gross instead of the net (Mutuelle), then back
+    const cbhi = ruleOf(list0, 'cbhi')
+    await dq214(
+      `select set_deduction($1, null, 'rssb', 'gross', true, 0.5, null, null, null, '2025-01-01', null, true)`,
+      [cbhi.id],
+    )
+    const slipGross = (await one214(`select payslip_preview(300000, '2026-11-01') as j`)).j
+    await dq214(
+      `select set_deduction($1, null, 'rssb', 'net', true, 0.5, null, null, null, '2025-01-01', '0.5% of the net pay after PAYE, pension and maternity', true)`,
+      [cbhi.id],
+    )
+    // PAYE stays RRA on the gross whatever is sent
+    const paye = ruleOf(list0, 'paye')
+    await dq214(
+      `select set_deduction($1, null, 'other', 'net', true, null, null, null, null, null, $2, true)`,
+      [paye.id, paye.note],
+    )
+    const payeRow = await one(`select agency, base from deduction_rule where id = $1`, [paye.id])
+    // maternity saved again with the same rates from this month: no new dated row; new rates:
+    // a row from that date, removed again; the last row stays
+    const mat = ruleOf(list0, 'maternity')
+    // the rows are read as the database itself; the changes are made as the cashier
+    const ratesOf = async (id) => {
+      await asAdmin()
+      const n = Number(
+        (
+          await one214(
+            `select count(*)::int as n from deduction_rate where rule_id = $1 and deleted_at is null`,
+            [id],
+          )
+        ).n,
+      )
+      await as(staff.cashier)
+      return n
+    }
+    const n0 = await ratesOf(mat.id)
+    await dq214(
+      `select set_deduction($1, null, 'rssb', 'gross', true, 0.3, null, 0.3, null, '2026-11-01', null, true)`,
+      [mat.id],
+    )
+    const nSame = await ratesOf(mat.id)
+    await dq214(
+      `select set_deduction($1, null, 'rssb', 'gross', true, 0.4, null, 0.4, null, '2026-12-01', null, true)`,
+      [mat.id],
+    )
+    const nNew = await ratesOf(mat.id)
+    const list2 = (await one214(`select deductions_list() as j`)).j
+    const dated = ruleOf(list2, 'maternity').rates.find((x) => x.validFrom === '2026-12-01')
+    await dq214(`select remove_deduction_rate($1, '2026-12-01')`, [mat.id])
+    const nBack = await ratesOf(mat.id)
+    const lastRate = await codeAs(staff.cashier, `select remove_deduction_rate($1, '2025-01-01')`, [
+      mat.id,
+    ])
+    const noShare = await codeAs(
+      staff.cashier,
+      `select set_deduction(null, 'Empty rule', 'other', 'gross', false, null, null, null, null, '2026-01-01')`,
+    )
+    // the employees a rule applies to: RAMA (off by default) ticked for the doctor counts one more
+    const rama = ruleOf(list0, 'rama')
+    await dq214(`select set_salary($1, 500000, 'monthly', '2026-02-02', 28, null)`, [d1])
+    const before = ruleOf((await one214(`select deductions_list() as j`)).j, 'rama').people
+    await dq214(`select set_staff_deduction($1, $2, true, null)`, [d1, rama.id])
+    const after = ruleOf((await one214(`select deductions_list() as j`)).j, 'rama').people
+    await dq214(`select set_staff_deduction($1, $2, false, null)`, [d1, rama.id])
+    // a salary tried with the rules as they are
+    const tried = (await one214(`select payslip_preview(300000, '2026-11-01', 'normal') as j`)).j
+    const tl = Object.fromEntries((tried.lines ?? []).map((l) => [l.code ?? l.name, l]))
+    // the hand-over day of RSSB: the 10th of the next month
+    await dq214(`select set_remittance_day('rssb', 10)`)
+    const badDay = await codeAs(staff.cashier, `select set_remittance_day('rra', 31)`)
+    const periods = (await one214(`select salary_periods($1, 2026) as j`, [d1])).j
+    const open = periods.find(
+      (p) => (p.status === 'due' || p.status === 'overdue') && p.dueOn <= '2026-10-31',
+    )
+    if (!open)
+      throw new Error('no open period: ' + JSON.stringify(periods.map((p) => [p.dueOn, p.status])))
+    const paid = (
+      await one(`select pay_salary($1, $2, $3, null, 'bank', 'TRF-0214', null) as j`, [
+        d1,
+        open.periodStart,
+        open.dueOn,
+      ])
+    ).j
+    const month = open.dueOn.slice(0, 7)
+    const remits = (await one214(`select remittances_due(2026) as j`)).j
+    const rssb = remits.find((r) => r.month === month && r.agency === 'rssb')
+    const rra = remits.find((r) => r.month === month && r.agency === 'rra')
+    const shareVoid = await codeAs(staff.cashier, `select void_expense($1, 'try')`, [
+      paid.statutoryExpenseId,
+    ])
+    const handed = (
+      await one(
+        `select pay_remittance('rra', $1::date, $2::date, null, 'bank', 'RRA-0214', null) as j`,
+        [month + '-01', open.dueOn],
+      )
+    ).j
+    const handVoid = await codeAs(staff.cashier, `select void_expense($1, 'try')`, [
+      handed.expenseId,
+    ])
+    await dq214(`select unpay_remittance($1, 'check 0214')`, [handed.id])
+    await dq214(`select unpay_salary($1, 'check 0214')`, [paid.id])
+    await dq214(`select set_remittance_day('rssb', 15)`)
+    await asAdmin()
+    const want = {
+      refused,
+      refusedBands,
+      p2027,
+      p2026,
+      c2027,
+      c2026,
+      sameStart,
+      badCasual,
+      back,
+      backCasual,
+      lastSet,
+      noSet,
+      stillOff,
+      payeRow,
+      n0,
+      nSame,
+      nNew,
+      nBack,
+      lastRate,
+      noShare,
+      before,
+      after,
+      badDay,
+      shareVoid,
+      handVoid,
+    }
+    if (
+      refused !== '42501' ||
+      refusedBands !== '42501' ||
+      p2027 !== 113000 ||
+      p2026 !== 114000 ||
+      c2027 !== 51600 ||
+      c2026 !== 66000 ||
+      sameStart !== '22023' ||
+      badCasual !== '22023' ||
+      back !== 114000 ||
+      backCasual !== 66000 ||
+      lastSet !== '22023' ||
+      noSet !== 'P0002'
+    )
+      throw new Error('bands: ' + JSON.stringify(want))
+    const set2027 = list1.payeSets.find((s) => s.validFrom === '2027-01-01')
+    if (
+      list0.payeSets?.length < 1 ||
+      Number(list0.payeSets[0].casualRate) !== 15 ||
+      !set2027 ||
+      Number(set2027.casualRate) !== 12 ||
+      set2027.bands.length !== 4 ||
+      Number(list0.remitDays?.rra) !== 15 ||
+      !(Number(list0.salaried) >= 1)
+    )
+      throw new Error('list: ' + JSON.stringify({ sets: list1.payeSets, days: list0.remitDays }))
+    if (
+      (slipOff.lines ?? []).some((l) => l.code === 'hazard') ||
+      stillOff !== false ||
+      Number((slipGross.lines ?? []).find((l) => l.code === 'cbhi')?.employee) !== 1500 ||
+      payeRow.agency !== 'rra' ||
+      payeRow.base !== 'gross'
+    )
+      throw new Error(
+        'rules: ' +
+          JSON.stringify({ off: slipOff.lines, stillOff, gross: slipGross.lines, payeRow }),
+      )
+    if (
+      nSame !== n0 ||
+      nNew !== n0 + 1 ||
+      nBack !== n0 ||
+      !dated?.setBy ||
+      lastRate !== '22023' ||
+      noShare !== '22023' ||
+      Number(after) !== Number(before) + 1
+    )
+      throw new Error('rates: ' + JSON.stringify({ ...want, dated }))
+    const withheld = (tried.lines ?? []).reduce((s, l) => s + Number(l.employee), 0)
+    if (
+      Number(tl.paye?.employee) !== 54000 ||
+      Number(tl.pension?.employee) !== 18000 ||
+      Number(tl.pension?.employer) !== 18000 ||
+      Number(tl.maternity?.employee) !== 900 ||
+      Number(tl.hazard?.employer) !== 6000 ||
+      Number(tl.cbhi?.employee) !== 1136 ||
+      Number(tried.net) !== 300000 - withheld
+    )
+      throw new Error('tried: ' + JSON.stringify(tried))
+    const next = new Date(month + '-01T00:00:00Z')
+    next.setUTCMonth(next.getUTCMonth() + 1)
+    const nextMonth = next.toISOString().slice(0, 7)
+    if (
+      !rssb ||
+      rssb.dueOn !== `${nextMonth}-10` ||
+      !rra ||
+      rra.dueOn !== `${nextMonth}-15` ||
+      badDay !== '22023' ||
+      shareVoid !== '22023' ||
+      handVoid !== '22023'
+    )
+      throw new Error('hand-over: ' + JSON.stringify({ rssb, rra, badDay, shareVoid, handVoid }))
+    return `bands from 2027 (500,000 → 113,000; casual 12% → 51,600) while 2026 keeps 114,000 / 66,000, removed again, the last set kept; hazards off: no line, an edit keeps it off; Mutuelle on the gross 1,500 then back; PAYE stays RRA on the gross; same maternity rates add no row, new ones a row (set by ${dated.setBy}) removed, the last kept; a rule with no share refused; RAMA people ${before} → ${after}; 300,000 tried: PAYE 54,000, pension 18,000 + 18,000, Mutuelle 1,136, net ${tried.net}; RSSB due ${rssb.dueOn}, RRA ${rra.dueOn}; the clinic's share and the hand-over refused from the expenses list; doctor 42501`
+  },
+)
+// @@t214-end
 finish()
 
 function finish() {

@@ -33,8 +33,10 @@ import {
   CUSTOM_UNITS,
   PAYE_MODES,
   SALARY_INTERVALS,
+  EXPENSE_GROUPS,
   SYSTEM_OUT_KINDS,
   cleanPercent,
+  expenseGroup,
   intervalWords,
   deductionName,
   kindName,
@@ -48,6 +50,8 @@ import {
   useMoneyKinds,
   useSalaryOverview,
   type CustomUnit,
+  type Expense,
+  type ExpenseGroup,
   type ExpenseKind,
   type FinanceSummary,
   type PayeMode,
@@ -1312,14 +1316,33 @@ function ExpensesTab() {
       setMsg({ ok: false, text: errText(err) })
     }
   }
-  const total = rows.filter((r) => !r.voided).reduce((s, r) => s + r.amount, 0)
+  // 0214: one group at a time, Other expenses first (the same figure as on the Money tab);
+  // within a group, one kind if wanted
+  const [group, setGroup] = useState<ExpenseGroup>('other')
+  const [kindFilter, setKindFilter] = useState('')
+  const kindKey = (r: Expense) => r.kindId ?? `kind:${r.kind}`
+  const kindLabel = (r: Expense) =>
+    r.kindName
+      ? kindName(t, { code: r.kindCode ?? null, name: r.kindName })
+      : t(`accounts.expenses.kinds.${r.kind as ExpenseKind}`)
+  const inGroup = rows.filter((r) => group === 'all' || expenseGroup(r) === group)
+  const kindsHere = [...new Map(inGroup.map((r) => [kindKey(r), kindLabel(r)])).entries()].sort(
+    (a, b) => a[1].localeCompare(b[1]),
+  )
+  const kindOn = kindsHere.some(([k]) => k === kindFilter) ? kindFilter : ''
+  const shown = kindOn ? inGroup.filter((r) => kindKey(r) === kindOn) : inGroup
+  const total = shown.filter((r) => !r.voided).reduce((s, r) => s + r.amount, 0)
+  const groupWord = t(`accounts.expenses.groups.${group}`)
   return (
     <div className="flex flex-col gap-4">
       <ActionRow>
         <PeriodSeg period={period} className="max-w-full flex-wrap" />
         <div className="flex flex-wrap items-center gap-2">
           <BannerChip icon={Receipt}>
-            {t('accounts.expenses.total', { amount: formatRwf(total) })}
+            {t('accounts.expenses.totalOf', {
+              what: kindOn ? (kindsHere.find(([k]) => k === kindOn)?.[1] ?? groupWord) : groupWord,
+              amount: formatRwf(total),
+            })}
           </BannerChip>
           <ReportsLink id="finance.expenses" />
         </div>
@@ -1445,8 +1468,42 @@ function ExpensesTab() {
         </form>
       </Panel>
       <SectionTitle icon={Receipt}>{t('accounts.expenses.list')}</SectionTitle>
-      {rows.length === 0 ? (
-        <Empty icon={Receipt}>{t('accounts.expenses.none')}</Empty>
+      <div className="flex flex-wrap items-end gap-3">
+        <Seg
+          label={t('accounts.expenses.show')}
+          value={group}
+          onChange={(g) => {
+            setGroup(g)
+            setKindFilter('')
+          }}
+          options={EXPENSE_GROUPS.map((g) => ({
+            value: g,
+            label: t(`accounts.expenses.groups.${g}`),
+          }))}
+        />
+        {kindsHere.length > 1 && (
+          <Select
+            wrapperClassName="w-56 max-w-full"
+            label={t('accounts.expenses.kind')}
+            value={kindOn}
+            onChange={(e) => setKindFilter(e.target.value)}
+          >
+            <option value="">{t('accounts.expenses.kindAll')}</option>
+            {kindsHere.map(([k, label]) => (
+              <option key={k} value={k}>
+                {label}
+              </option>
+            ))}
+          </Select>
+        )}
+      </div>
+      <p className="text-ink-3 m-0 -mt-1 text-[13px]">
+        {t(`accounts.expenses.groupHints.${group}`)}
+      </p>
+      {shown.length === 0 ? (
+        <Empty icon={Receipt}>
+          {t(rows.length === 0 ? 'accounts.expenses.none' : 'accounts.expenses.noneHere')}
+        </Empty>
       ) : (
         <div className="border-border bg-card overflow-x-auto rounded-md border">
           {/* seven columns: tighter cells, so the Void button of a row stays in sight beside the
@@ -1464,7 +1521,7 @@ function ExpensesTab() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {shown.map((r) => (
                 <tr key={r.id} className={cn(tableRow, r.voided && 'opacity-60')}>
                   <td className={cn(figureLabel, 'whitespace-nowrap')}>
                     {formatDate(new Date(r.paidOn))}
@@ -1477,11 +1534,7 @@ function ExpensesTab() {
                       </span>
                     )}
                   </td>
-                  <td className={tableCell}>
-                    {r.kindName
-                      ? kindName(t, { code: r.kindCode ?? null, name: r.kindName })
-                      : t(`accounts.expenses.kinds.${r.kind as ExpenseKind}`)}
-                  </td>
+                  <td className={tableCell}>{kindLabel(r)}</td>
                   <td className={cn(figureAmount, 'font-semibold', r.voided && 'line-through')}>
                     {formatRwf(r.amount)}
                     {r.rate != null && r.baseAmount != null && (
@@ -1501,11 +1554,23 @@ function ExpensesTab() {
                   </td>
                   <td className={tableCell}>{r.paidBy ?? '—'}</td>
                   <td className={cn(tableCell, 'text-right')}>
-                    {!r.voided && r.kind !== 'salary' && !r.periodId && (
-                      <Button size="sm" variant="ghost" onClick={() => void undo(r.id, r.label)}>
-                        {t('accounts.expenses.void')}
-                      </Button>
-                    )}
+                    {/* 0214: what the system recorded is undone where it was made */}
+                    {!r.voided &&
+                      (expenseGroup(r) === 'salaries' || r.periodId ? (
+                        <span className="text-ink-3 inline-block min-w-24 text-[12px] whitespace-normal">
+                          {t(
+                            expenseGroup(r) === 'salaries'
+                              ? r.kindCode === 'remittance'
+                                ? 'accounts.expenses.undoOnTaxes'
+                                : 'accounts.expenses.undoOnSalaries'
+                              : 'accounts.expenses.undoOnTaxes',
+                          )}
+                        </span>
+                      ) : (
+                        <Button size="sm" variant="ghost" onClick={() => void undo(r.id, r.label)}>
+                          {t('accounts.expenses.void')}
+                        </Button>
+                      ))}
                   </td>
                 </tr>
               ))}

@@ -11,11 +11,12 @@
  * kept in memory for the session.
  */
 import { useEffect } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatRwf } from '@mmc/shared'
 import { supabase } from '@/lib/supabase'
 import { useSession } from '@/store/session'
 import { kigaliToday } from '@/lib/clock'
+import { slipOf, type Slip } from '@/lib/payslip'
 import { NotReadyError, apiError, isMissingFunction } from './errors'
 
 export const SALARY_INTERVALS = [
@@ -91,6 +92,9 @@ export interface DeductionRate {
   employeeAmount: number | null
   employerRate: number | null
   employerAmount: number | null
+  /** 0214: who typed these rates, and when. */
+  setBy?: string | null
+  setAt?: string | null
 }
 /** A deduction on salaries (0186): built in (code) or the accountant's; its rates by date. */
 export interface DeductionRule {
@@ -105,7 +109,7 @@ export interface DeductionRule {
   sortOrder: number
   current: DeductionRate | null
   rates: DeductionRate[]
-  /** Employees it is switched on for by name. */
+  /** 0214: the employees with a salary it applies to today (those it is on for by default too). */
   people: number
 }
 export interface PayeBand {
@@ -113,9 +117,19 @@ export interface PayeBand {
   lower: number
   rate: number
 }
+/** 0214: a set of PAYE bands from a date, with the casual worker's rate of that date. */
+export interface PayeSet {
+  validFrom: string
+  casualRate: number | null
+  bands: { lower: number; rate: number }[]
+}
 export interface Deductions {
   rules: DeductionRule[]
   payeBands: PayeBand[]
+  /** 0214: the sets of bands by date, the hand-over day per agency, the employees with a salary. */
+  payeSets: PayeSet[]
+  remitDays: Record<Agency, number>
+  salaried: number
   today: string
 }
 export const deductionName = (
@@ -355,6 +369,22 @@ export interface Expense {
   baseAmount?: number | null
 }
 
+/**
+ * 0214: the groups the expenses list shows one at a time. "other" is exactly what the Money tab
+ * counts as Other expenses (every expense that is not a salary, the clinic's share paid to RSSB,
+ * PAYE and RSSB handed over, or a tax); "salaries" what the system records with the salaries.
+ */
+export const EXPENSE_GROUPS = ['other', 'salaries', 'taxes', 'all'] as const
+export type ExpenseGroup = (typeof EXPENSE_GROUPS)[number]
+export const expenseGroup = (
+  e: Pick<Expense, 'kind' | 'kindCode'>,
+): Exclude<ExpenseGroup, 'all'> =>
+  e.kind === 'salary' || e.kindCode === 'statutory' || e.kindCode === 'remittance'
+    ? 'salaries'
+    : e.kind === 'tax'
+      ? 'taxes'
+      : 'other'
+
 export interface FinanceSummary {
   from: string
   to: string
@@ -530,17 +560,41 @@ const sampleDeductions: Deductions = {
       true,
       'By bands on the gross pay',
     ),
-    sampleRule(
-      'd-pension',
-      'pension',
-      'RSSB pension',
-      'rssb',
-      'gross',
-      6,
-      6,
-      true,
-      '7% + 7% from 1 January 2027',
-    ),
+    {
+      ...sampleRule(
+        'd-pension',
+        'pension',
+        'RSSB pension',
+        'rssb',
+        'gross',
+        6,
+        6,
+        true,
+        '7% + 7% from 1 January 2027',
+      ),
+      sortOrder: 20,
+      people: 3,
+      rates: [
+        {
+          validFrom: '2025-01-01',
+          employeeRate: 6,
+          employeeAmount: null,
+          employerRate: 6,
+          employerAmount: null,
+          setBy: null,
+          setAt: null,
+        },
+        {
+          validFrom: '2027-01-01',
+          employeeRate: 7,
+          employeeAmount: null,
+          employerRate: 7,
+          employerAmount: null,
+          setBy: 'Mugisha Samuel',
+          setAt: '2026-11-19T09:00:00+02:00',
+        },
+      ],
+    },
     sampleRule('d-maternity', 'maternity', 'Maternity leave fund', 'rssb', 'gross', 0.3, 0.3),
     sampleRule('d-cbhi', 'cbhi', 'Mutuelle de santé (CBHI)', 'rssb', 'net', 0.5, null),
     sampleRule('d-hazard', 'hazard', 'Occupational hazards', 'rssb', 'gross', null, 2),
@@ -554,6 +608,20 @@ const sampleDeductions: Deductions = {
     { validFrom: '2024-01-01', lower: 100000, rate: 20 },
     { validFrom: '2024-01-01', lower: 200000, rate: 30 },
   ],
+  payeSets: [
+    {
+      validFrom: '2024-01-01',
+      casualRate: 15,
+      bands: [
+        { lower: 0, rate: 0 },
+        { lower: 60000, rate: 10 },
+        { lower: 100000, rate: 20 },
+        { lower: 200000, rate: 30 },
+      ],
+    },
+  ],
+  remitDays: { rra: 15, rssb: 15, other: 15 },
+  salaried: 3,
 }
 const sampleRemittances = (year: number): Remittance[] =>
   ['01', '02', '03'].flatMap((m, i) => {
@@ -1139,6 +1207,25 @@ const sampleExpenses: Expense[] = [
     voidReason: null,
     periodId: 'sp-9',
   },
+  // 0186: the clinic's share recorded by itself with the salary above (pension 6%, maternity
+  // 0.3%, occupational hazards 2% of a gross of 180,000)
+  {
+    id: 'e-2b',
+    kind: 'other',
+    kindId: 'k-statutory',
+    kindCode: 'statutory',
+    kindName: 'Clinic’s share paid to RSSB',
+    label: 'RSSB · Uwimana Josiane · 05/10 – 04/11',
+    amount: 14940,
+    method: 'bank',
+    reference: null,
+    note: null,
+    paidOn: kigaliToday(),
+    paidBy: 'Mugisha Samuel',
+    voided: false,
+    voidReason: null,
+    periodId: 'sp-9',
+  },
   {
     id: 'e-3',
     kind: 'tax',
@@ -1321,6 +1408,8 @@ const toRate = (x: Partial<DeductionRate>): DeductionRate => ({
   employeeAmount: numOrNull(x.employeeAmount),
   employerRate: numOrNull(x.employerRate),
   employerAmount: numOrNull(x.employerAmount),
+  setBy: x.setBy ?? null,
+  setAt: x.setAt ?? null,
 })
 
 /** The deductions on salaries and the PAYE bands (0186). */
@@ -1350,7 +1439,31 @@ export async function fetchDeductions(sample = !supabase): Promise<Deductions> {
       lower: num(b.lower),
       rate: num(b.rate),
     })),
+    // 0214 (a database without it: the sets made from the bands, the 15th, 15%)
+    payeSets: d.payeSets
+      ? d.payeSets.map((x) => ({
+          validFrom: String(x.validFrom ?? ''),
+          casualRate: numOrNull(x.casualRate),
+          bands: (x.bands ?? []).map((b) => ({ lower: num(b.lower), rate: num(b.rate) })),
+        }))
+      : setsOfBands(d.payeBands ?? []),
+    remitDays: {
+      rra: num(d.remitDays?.rra ?? 15),
+      rssb: num(d.remitDays?.rssb ?? 15),
+      other: num(d.remitDays?.other ?? 15),
+    },
+    salaried: num(d.salaried),
   }
+}
+const setsOfBands = (bands: Partial<PayeBand>[]): PayeSet[] => {
+  const by = new Map<string, PayeSet>()
+  for (const b of bands) {
+    const k = String(b.validFrom ?? '')
+    const set = by.get(k) ?? { validFrom: k, casualRate: 15, bands: [] }
+    set.bands.push({ lower: num(b.lower), rate: num(b.rate) })
+    by.set(k, set)
+  }
+  return [...by.values()].sort((a, b) => (a.validFrom < b.validFrom ? -1 : 1))
 }
 
 export function useDeductions(enabled = true) {
@@ -1359,6 +1472,50 @@ export function useDeductions(enabled = true) {
     enabled,
     staleTime: 60_000,
     queryFn: () => fetchDeductions(),
+  })
+}
+
+/** 0214: a salary tried with the rules as they are, before it is paid. */
+export interface SlipTry {
+  gross: number
+  on: string
+  mode: PayeMode
+  /** One employee (their ticks); null: the rules on for everyone. */
+  profileId: string | null
+}
+export async function fetchPayslipPreview(i: SlipTry, sample = !supabase): Promise<Slip> {
+  if (sample || !supabase) {
+    const person = sampleOverview(Number(i.on.slice(0, 4))).people.find((p) => p.id === i.profileId)
+    return slipOf(sampleDeductions.rules, sampleDeductions.payeSets, i.gross, i.on, i.mode, (r) => {
+      const tick = person?.deductions.find((d) => d.ruleId === r.id)
+      return tick ? tick.applies && (!tick.until || tick.until >= i.on) : r.defaultOn
+    })
+  }
+  const { data, error } = await supabase.rpc('payslip_preview', {
+    p_gross: i.gross,
+    p_on: i.on,
+    p_paye_mode: i.mode,
+    p_profile: i.profileId,
+  })
+  if (error && isMissingFunction(error)) throw new NotReadyError()
+  if (error) throw apiError(error)
+  const d = (data ?? {}) as Partial<Slip> & { lines?: Partial<PayslipLine>[] }
+  return {
+    gross: num(d.gross),
+    paye: num(d.paye),
+    lines: (d.lines ?? []).map(toLine),
+    employeeTotal: num(d.employeeTotal),
+    net: num(d.net),
+    employerTotal: num(d.employerTotal),
+  }
+}
+export function usePayslipPreview(i: SlipTry | null) {
+  return useQuery({
+    queryKey: [...KEY, 'preview', i],
+    enabled: !!i,
+    staleTime: 30_000,
+    placeholderData: keepPreviousData,
+    queryFn: () => fetchPayslipPreview(i!),
   })
 }
 
@@ -1765,8 +1922,36 @@ export function useAccountsActions() {
     onSuccess: refresh,
   })
   const setPayeBands = useMutation({
-    mutationFn: (i: { validFrom: string; bands: { lower: number; rate: number }[] }) =>
-      rpc('set_paye_bands', { p_valid_from: i.validFrom, p_bands: i.bands }),
+    mutationFn: (i: {
+      validFrom: string
+      bands: { lower: number; rate: number }[]
+      casualRate: number | null
+    }) =>
+      rpc('set_paye_bands', {
+        p_valid_from: i.validFrom,
+        p_bands: i.bands,
+        p_casual_rate: i.casualRate,
+      }),
+    onSuccess: refresh,
+  })
+  // 0214: a rule switched off and on, a dated rate or a set of bands removed, the hand-over day
+  const setDeductionActive = useMutation({
+    mutationFn: (i: { id: string; active: boolean }) =>
+      rpc('set_deduction_active', { p_id: i.id, p_active: i.active }),
+    onSuccess: refresh,
+  })
+  const removeDeductionRate = useMutation({
+    mutationFn: (i: { ruleId: string; validFrom: string }) =>
+      rpc('remove_deduction_rate', { p_rule: i.ruleId, p_valid_from: i.validFrom }),
+    onSuccess: refresh,
+  })
+  const removePayeBands = useMutation({
+    mutationFn: (validFrom: string) => rpc('remove_paye_bands', { p_valid_from: validFrom }),
+    onSuccess: refresh,
+  })
+  const setRemitDay = useMutation({
+    mutationFn: (i: { agency: Agency; day: number }) =>
+      rpc('set_remittance_day', { p_agency: i.agency, p_day: i.day }),
     onSuccess: refresh,
   })
   const setStaffDeduction = useMutation({
@@ -2012,6 +2197,10 @@ export function useAccountsActions() {
     setDeduction,
     removeDeduction,
     setPayeBands,
+    setDeductionActive,
+    removeDeductionRate,
+    removePayeBands,
+    setRemitDay,
     setStaffDeduction,
     payRemittance,
     unpayRemittance,
